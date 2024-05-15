@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use log::debug;
 use pollster::block_on;
 use wgpu::{CommandEncoderDescriptor, Device, DeviceDescriptor, InstanceDescriptor, PowerPreference, Queue, RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor};
 use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::ActiveEventLoop, window::{Window, WindowId}};
@@ -23,10 +24,10 @@ impl<'a> ApplicationHandler for App<'a> {
         },
         WindowEvent::RedrawRequested => {
           let Some(ref mut state) = self.state else { todo!(); };
-          // state.window.request_redraw();
+          state.window.request_redraw();
           state.update();
           match state.render() {
-            Ok(_) => {}
+            Ok(_) => {},
             // reconfigure the surface if lost
             Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
             // the system is out of memory, we should probably quit
@@ -53,6 +54,7 @@ pub struct KhelState<'a> {
   pub queue: Queue,
   pub config: SurfaceConfiguration,
   pub size: winit::dpi::PhysicalSize<u32>,
+  pub clear_color: wgpu::Color,
 }
 
 impl<'a> KhelState<'a> {
@@ -94,6 +96,7 @@ impl<'a> KhelState<'a> {
       view_formats: Vec::new(),
     };
     surface.configure(&device, &config);
+    let clear_color = wgpu::Color::BLACK;
     Self {
       window,
       surface,
@@ -101,6 +104,7 @@ impl<'a> KhelState<'a> {
       queue,
       config,
       size,
+      clear_color,
     }
   }
   pub fn resize(&mut self, new_size: PhysicalSize<u32>) {
@@ -111,9 +115,19 @@ impl<'a> KhelState<'a> {
       self.surface.configure(&self.device, &self.config);
     }
   }
-  fn input(&mut self, _event: &WindowEvent) -> bool {
-    // TODO
-    false
+  fn input(&mut self, event: &WindowEvent) -> bool {
+    match event {
+      WindowEvent::CursorMoved { position, .. } => {
+        self.clear_color = wgpu::Color {
+          r: position.x as f64 / self.size.width as f64,
+          g: position.y as f64 / self.size.height as f64,
+          b: 1.0,
+          a: 1.0,
+        };
+        true
+      },
+      _ => false,
+    }
   }
   fn update(&mut self) {
     // TODO
@@ -131,12 +145,7 @@ impl<'a> KhelState<'a> {
           view: &view,
           resolve_target: None,
           ops: wgpu::Operations {
-            load: wgpu::LoadOp::Clear(wgpu::Color {
-                r: 0.1,
-                g: 0.2,
-                b: 0.3,
-                a: 1.0,
-            }),
+            load: wgpu::LoadOp::Clear(self.clear_color),
             store: wgpu::StoreOp::Store,
           },
         })],

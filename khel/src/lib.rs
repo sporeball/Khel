@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use log::debug;
 use pollster::block_on;
-use wgpu::{CommandEncoderDescriptor, Device, DeviceDescriptor, InstanceDescriptor, PowerPreference, Queue, RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor};
+use wgpu::{include_wgsl, BlendState, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, InstanceDescriptor, MultisampleState, PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, VertexState};
 use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::ActiveEventLoop, window::{Window, WindowId}};
 
 #[derive(Default)]
@@ -55,6 +55,7 @@ pub struct KhelState<'a> {
   pub config: SurfaceConfiguration,
   pub size: winit::dpi::PhysicalSize<u32>,
   pub clear_color: wgpu::Color,
+  pub render_pipeline: RenderPipeline,
 }
 
 impl<'a> KhelState<'a> {
@@ -97,6 +98,48 @@ impl<'a> KhelState<'a> {
     };
     surface.configure(&device, &config);
     let clear_color = wgpu::Color::BLACK;
+    let shader = device.create_shader_module(include_wgsl!("shader.wgsl"));
+    let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+      label: Some("Render Pipeline Layout"),
+      bind_group_layouts: &[],
+      push_constant_ranges: &[],
+    });
+    let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
+      label: Some("Render Pipeline"),
+      layout: Some(&render_pipeline_layout),
+      vertex: VertexState {
+        module: &shader,
+        entry_point: "vs_main",
+        compilation_options: PipelineCompilationOptions::default(),
+        buffers: &[],
+      },
+      fragment: Some(FragmentState {
+        module: &shader,
+        entry_point: "fs_main",
+        compilation_options: PipelineCompilationOptions::default(),
+        targets: &[Some(ColorTargetState {
+          format: config.format,
+          blend: Some(BlendState::REPLACE),
+          write_mask: ColorWrites::ALL,
+        })],
+      }),
+      primitive: PrimitiveState {
+        topology: PrimitiveTopology::TriangleList,
+        strip_index_format: None,
+        front_face: FrontFace::Ccw,
+        cull_mode: Some(Face::Back),
+        polygon_mode: PolygonMode::Fill,
+        unclipped_depth: false,
+        conservative: false,
+      },
+      depth_stencil: None,
+      multisample: MultisampleState {
+        count: 1,
+        mask: !0,
+        alpha_to_coverage_enabled: false,
+      },
+      multiview: None,
+    });
     Self {
       window,
       surface,
@@ -105,6 +148,7 @@ impl<'a> KhelState<'a> {
       config,
       size,
       clear_color,
+      render_pipeline,
     }
   }
   pub fn resize(&mut self, new_size: PhysicalSize<u32>) {
@@ -139,7 +183,7 @@ impl<'a> KhelState<'a> {
       label: Some("Render Encoder"),
     });
     {
-      let _render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+      let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
         label: Some("Render Pass"),
         color_attachments: &[Some(RenderPassColorAttachment {
           view: &view,
@@ -153,6 +197,8 @@ impl<'a> KhelState<'a> {
         occlusion_query_set: None,
         timestamp_writes: None,
       });
+      render_pass.set_pipeline(&self.render_pipeline);
+      render_pass.draw(0..3, 0..1)
     }
 
     // submit will accept anything that implements IntoIter

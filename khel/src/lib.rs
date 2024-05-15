@@ -1,7 +1,8 @@
-use std::sync::Arc;
+use std::{mem, sync::Arc};
+use cgmath::Vector3;
 use log::debug;
 use pollster::block_on;
-use wgpu::{include_wgsl, util::{BufferInitDescriptor, DeviceExt}, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendState, Buffer, BufferUsages, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, IndexFormat, InstanceDescriptor, MultisampleState, PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration, SurfaceError, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension, VertexState};
+use wgpu::{include_wgsl, util::{BufferInitDescriptor, DeviceExt}, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendState, Buffer, BufferUsages, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, IndexFormat, InstanceDescriptor, MultisampleState, PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration, SurfaceError, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension, VertexBufferLayout, VertexState};
 use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::ActiveEventLoop, window::{Window, WindowId}};
 
 mod texture;
@@ -15,8 +16,8 @@ struct Vertex {
 }
 
 impl Vertex {
-  fn desc() -> wgpu::VertexBufferLayout<'static> {
-    wgpu::VertexBufferLayout {
+  fn desc() -> VertexBufferLayout<'static> {
+    VertexBufferLayout {
       array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
       step_mode: wgpu::VertexStepMode::Vertex,
       attributes: &[
@@ -50,6 +51,58 @@ const INDICES: &[u16] = &[
   0, 1, 3,
   1, 2, 3
 ];
+
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct InstanceRaw {
+  model: [[f32; 4]; 4],
+}
+
+impl InstanceRaw {
+  fn desc() -> VertexBufferLayout<'static> {
+    VertexBufferLayout {
+      array_stride: mem::size_of::<InstanceRaw>() as wgpu::BufferAddress,
+      step_mode: wgpu::VertexStepMode::Instance,
+      attributes: &[
+        wgpu::VertexAttribute {
+          offset: 0,
+          shader_location: 5,
+          format: wgpu::VertexFormat::Float32x4,
+        },
+        wgpu::VertexAttribute {
+          offset: mem::size_of::<[f32; 4]>() as wgpu::BufferAddress,
+          shader_location: 6,
+          format: wgpu::VertexFormat::Float32x4,
+        },
+        wgpu::VertexAttribute {
+          offset: mem::size_of::<[f32; 8]>() as wgpu::BufferAddress,
+          shader_location: 7,
+          format: wgpu::VertexFormat::Float32x4,
+        },
+        wgpu::VertexAttribute {
+          offset: mem::size_of::<[f32; 12]>() as wgpu::BufferAddress,
+          shader_location: 8,
+          format: wgpu::VertexFormat::Float32x4,
+        },
+      ],
+    }
+  }
+}
+
+struct Instance {
+  position: Vector3<f32>,
+  // rotation: Quaternion<f32>,
+}
+
+impl Instance {
+  fn to_raw(&self) -> InstanceRaw {
+    InstanceRaw {
+      model: (cgmath::Matrix4::from_translation(self.position)).into(),
+    }
+  }
+}
+
+const NUM_INSTANCES: u32 = 5;
 
 #[derive(Default)]
 pub struct App<'a> {
@@ -110,6 +163,8 @@ pub struct KhelState<'a> {
   pub vertex_buffer: Buffer,
   pub index_buffer: Buffer,
   pub num_indices: u32,
+  pub instance_buffer: Buffer,
+  pub instances: Vec<Instance>,
   pub diffuse_bind_group: BindGroup,
   pub diffuse_texture: texture::Texture,
 }
@@ -214,7 +269,7 @@ impl<'a> KhelState<'a> {
         module: &shader,
         entry_point: "vs_main",
         compilation_options: PipelineCompilationOptions::default(),
-        buffers: &[Vertex::desc()],
+        buffers: &[Vertex::desc(), InstanceRaw::desc()],
       },
       fragment: Some(FragmentState {
         module: &shader,
@@ -243,7 +298,7 @@ impl<'a> KhelState<'a> {
       },
       multiview: None,
     });
-    // buffers
+    // vertex and index buffers
     let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
       label: Some("Vertex Buffer"),
       contents: bytemuck::cast_slice(VERTICES),
@@ -255,6 +310,20 @@ impl<'a> KhelState<'a> {
       usage: BufferUsages::INDEX,
     });
     let num_indices = INDICES.len() as u32;
+    // instance buffer
+    let instances = (0..NUM_INSTANCES).map(move |x| {
+      // let position = Vector3 { x: x as f32, y: 0.0, z: 0.0 } - INSTANCE_DISPLACEMENT;
+      let position = Vector3 { x: x as f32 * 0.1, y: 0.0, z: 0.0 };
+      Instance {
+        position,
+      }
+    }).collect::<Vec<_>>();
+    let instance_data = instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
+    let instance_buffer = device.create_buffer_init(&BufferInitDescriptor {
+      label: Some("Instance Buffer"),
+      contents: bytemuck::cast_slice(&instance_data),
+      usage: BufferUsages::VERTEX,
+    });
     // return value
     Self {
       window,
@@ -268,6 +337,8 @@ impl<'a> KhelState<'a> {
       vertex_buffer,
       index_buffer,
       num_indices,
+      instance_buffer,
+      instances,
       diffuse_bind_group,
       diffuse_texture,
     }
@@ -325,8 +396,9 @@ impl<'a> KhelState<'a> {
       render_pass.set_pipeline(&self.render_pipeline);
       render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
       render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+      render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
       render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
-      render_pass.draw_indexed(0..self.num_indices, 0, 0..1)
+      render_pass.draw_indexed(0..self.num_indices, 0, 0..self.instances.len() as _);
     }
 
     // submit will accept anything that implements IntoIter

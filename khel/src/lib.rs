@@ -33,14 +33,19 @@ impl Vertex {
 }
 
 const VERTICES: &[Vertex] = &[
-  Vertex { position: [0.0, 0.5, 0.0], color: [1.0, 0.0, 0.0] },
-  Vertex { position: [-0.5, -0.5, 0.0], color: [0.0, 1.0, 0.0] },
-  Vertex { position: [0.5, -0.5, 0.0], color: [0.0, 0.0, 1.0] },
+  // Vertex { position: [0.0, 0.5, 0.0], color: [1.0, 0.0, 0.0] }, // A
+  // Vertex { position: [-0.5, -0.5, 0.0], color: [0.0, 1.0, 0.0] }, // B
+  // Vertex { position: [0.5, -0.5, 0.0], color: [0.0, 0.0, 1.0] }, // C
+  Vertex { position: [-0.5, 0.5, 0.0], color: [1.0, 0.0, 1.0]}, // top left
+  Vertex { position: [-0.5, -0.5, 0.0], color: [1.0, 0.0, 1.0]}, // bottom left
+  Vertex { position: [0.5, -0.5, 0.0], color: [1.0, 0.0, 1.0]}, // bottom right
+  Vertex { position: [0.5, 0.5, 0.0], color: [1.0, 0.0, 1.0]}, // top right
 ];
 
-// 1 triangle
 const INDICES: &[u16] = &[
-  0, 1, 2
+  // 0, 1, 2,
+  0, 1, 3,
+  1, 2, 3
 ];
 
 #[derive(Default)]
@@ -49,13 +54,17 @@ pub struct App<'a> {
 }
 
 impl<'a> ApplicationHandler for App<'a> {
+  /// Emitted when the app has been resumed.
   fn resumed(&mut self, event_loop: &ActiveEventLoop) {
     self.state = Some(
       KhelState::new(event_loop.create_window(Window::default_attributes().with_title("Khel")).unwrap())
     );
   }
+  /// Emitted when an event is received.
   fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
     let Some(ref mut state) = self.state else { todo!(); };
+    // state.input gets a cbance to handle the event instead
+    // any events it does not handle return false
     if !state.input(&event) {
       match event {
         WindowEvent::CloseRequested => {
@@ -101,19 +110,26 @@ pub struct KhelState<'a> {
 }
 
 impl<'a> KhelState<'a> {
+  /// Create a new KhelState instance.
   pub fn new(window: Window) -> KhelState<'a> {
+    // basic properties
     let window = Arc::new(window);
     let size = window.inner_size();
+    let clear_color = wgpu::Color::BLACK;
+    // instance
     let instance = wgpu::Instance::new(InstanceDescriptor {
       backends: wgpu::Backends::PRIMARY,
       ..Default::default()
     });
+    // surface
     let surface = instance.create_surface(window.clone()).unwrap();
+    // adapter
     let adapter = block_on(instance.request_adapter(&RequestAdapterOptions {
       power_preference: PowerPreference::default(),
       compatible_surface: Some(&surface),
       force_fallback_adapter: false,
     })).unwrap();
+    // device and queue
     let (device, queue) = block_on(adapter.request_device(
       &DeviceDescriptor {
         label: None,
@@ -122,6 +138,7 @@ impl<'a> KhelState<'a> {
       },
       None
     )).unwrap();
+    // surface configuration
     let surface_capabilities = surface.get_capabilities(&adapter);
     // let surface_format = surface_capabilities.formats.iter()
     //   .copied()
@@ -139,8 +156,9 @@ impl<'a> KhelState<'a> {
       view_formats: Vec::new(),
     };
     surface.configure(&device, &config);
-    let clear_color = wgpu::Color::BLACK;
+    // shader module
     let shader = device.create_shader_module(include_wgsl!("shader.wgsl"));
+    // render pipeline
     let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
       label: Some("Render Pipeline Layout"),
       bind_group_layouts: &[],
@@ -182,6 +200,7 @@ impl<'a> KhelState<'a> {
       },
       multiview: None,
     });
+    // buffers
     let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
       label: Some("Vertex Buffer"),
       contents: bytemuck::cast_slice(VERTICES),
@@ -193,6 +212,7 @@ impl<'a> KhelState<'a> {
       usage: BufferUsages::INDEX,
     });
     let num_indices = INDICES.len() as u32;
+    // return value
     Self {
       window,
       surface,
@@ -207,6 +227,7 @@ impl<'a> KhelState<'a> {
       num_indices,
     }
   }
+  /// Resize this KhelState's surface.
   pub fn resize(&mut self, new_size: PhysicalSize<u32>) {
     if new_size.width > 0 && new_size.height > 0 {
       self.size = new_size;
@@ -215,6 +236,8 @@ impl<'a> KhelState<'a> {
       self.surface.configure(&self.device, &self.config);
     }
   }
+  /// Handle input.
+  /// Any events not handled here will be handled in window_event on App.
   fn input(&mut self, event: &WindowEvent) -> bool {
     match event {
       WindowEvent::CursorMoved { position, .. } => {
@@ -232,6 +255,7 @@ impl<'a> KhelState<'a> {
   fn update(&mut self) {
     // TODO
   }
+  /// Use this KhelState to perform a render pass.
   fn render(&mut self) -> Result<(), SurfaceError> {
     let output = self.surface.get_current_texture()?;
     let view = output.texture.create_view(&TextureViewDescriptor::default());

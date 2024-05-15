@@ -1,14 +1,16 @@
 use std::sync::Arc;
+use image::GenericImageView;
 use log::debug;
 use pollster::block_on;
-use wgpu::{include_wgsl, util::{BufferInitDescriptor, DeviceExt}, BlendState, Buffer, BufferUsages, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, IndexFormat, InstanceDescriptor, MultisampleState, PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, VertexState};
+use wgpu::{include_wgsl, util::{BufferInitDescriptor, DeviceExt}, AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendState, Buffer, BufferUsages, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Extent3d, Face, FilterMode, FragmentState, FrontFace, ImageCopyTexture, ImageDataLayout, IndexFormat, InstanceDescriptor, MultisampleState, Origin3d, PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, SamplerBindingType, SamplerDescriptor, ShaderStages, Surface, SurfaceConfiguration, SurfaceError, TextureAspect, TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension, VertexState};
 use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::ActiveEventLoop, window::{Window, WindowId}};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct Vertex {
   position: [f32; 3],
-  color: [f32; 3],
+  // color: [f32; 3],
+  tex_coords: [f32; 2],
 }
 
 impl Vertex {
@@ -25,7 +27,7 @@ impl Vertex {
         wgpu::VertexAttribute {
           offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
           shader_location: 1,
-          format: wgpu::VertexFormat::Float32x3,
+          format: wgpu::VertexFormat::Float32x2,
         }
       ]
     }
@@ -36,10 +38,10 @@ const VERTICES: &[Vertex] = &[
   // Vertex { position: [0.0, 0.5, 0.0], color: [1.0, 0.0, 0.0] }, // A
   // Vertex { position: [-0.5, -0.5, 0.0], color: [0.0, 1.0, 0.0] }, // B
   // Vertex { position: [0.5, -0.5, 0.0], color: [0.0, 0.0, 1.0] }, // C
-  Vertex { position: [-0.5, 0.5, 0.0], color: [1.0, 0.0, 1.0]}, // top left
-  Vertex { position: [-0.5, -0.5, 0.0], color: [1.0, 0.0, 1.0]}, // bottom left
-  Vertex { position: [0.5, -0.5, 0.0], color: [1.0, 0.0, 1.0]}, // bottom right
-  Vertex { position: [0.5, 0.5, 0.0], color: [1.0, 0.0, 1.0]}, // top right
+  Vertex { position: [-0.0625, 0.0625, 0.0], tex_coords: [0.0, 0.0]}, // top left
+  Vertex { position: [-0.0625, -0.0625, 0.0], tex_coords: [0.0, 1.0]}, // bottom left
+  Vertex { position: [0.0625, -0.0625, 0.0], tex_coords: [1.0, 1.0]}, // bottom right
+  Vertex { position: [0.0625, 0.0625, 0.0], tex_coords: [1.0, 0.0]}, // top right
 ];
 
 const INDICES: &[u16] = &[
@@ -107,6 +109,7 @@ pub struct KhelState<'a> {
   pub vertex_buffer: Buffer,
   pub index_buffer: Buffer,
   pub num_indices: u32,
+  pub diffuse_bind_group: BindGroup,
 }
 
 impl<'a> KhelState<'a> {
@@ -156,12 +159,96 @@ impl<'a> KhelState<'a> {
       view_formats: Vec::new(),
     };
     surface.configure(&device, &config);
+    // texture
+    let diffuse_bytes = include_bytes!("circle_red.png");
+    let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
+    let diffuse_rgba = diffuse_image.to_rgba8();
+    let dimensions = diffuse_image.dimensions();
+    let texture_size = Extent3d {
+      width: dimensions.0,
+      height: dimensions.1,
+      depth_or_array_layers: 1,
+    };
+    let diffuse_texture = device.create_texture(&TextureDescriptor {
+      label: Some("diffuse_texture"),
+      size: texture_size,
+      mip_level_count: 1,
+      sample_count: 1,
+      dimension: TextureDimension::D2,
+      format: TextureFormat::Rgba8UnormSrgb,
+      usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
+      view_formats: &[],
+    });
+    queue.write_texture(
+      // tells wgpu where to copy the pixel data
+      ImageCopyTexture {
+        texture: &diffuse_texture,
+        mip_level: 0,
+        origin: Origin3d::ZERO,
+        aspect: TextureAspect::All,
+      },
+      // pixel data
+      &diffuse_rgba,
+      // texture layout
+      ImageDataLayout {
+        offset: 0,
+        bytes_per_row: Some(4 * dimensions.0),
+        rows_per_image: Some(dimensions.1),
+      },
+      texture_size,
+    );
+    // bind group
+    let diffuse_texture_view = diffuse_texture.create_view(&TextureViewDescriptor::default());
+    let diffuse_sampler = device.create_sampler(&SamplerDescriptor {
+      address_mode_u: AddressMode::ClampToEdge,
+      address_mode_v: AddressMode::ClampToEdge,
+      address_mode_w: AddressMode::ClampToEdge,
+      mag_filter: FilterMode::Linear,
+      min_filter: FilterMode::Nearest,
+      mipmap_filter: FilterMode::Nearest,
+      ..Default::default()
+    });
+    let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+      entries: &[
+        BindGroupLayoutEntry {
+          binding: 0,
+          visibility: ShaderStages::FRAGMENT,
+          ty: BindingType::Texture {
+            sample_type: TextureSampleType::Float { filterable: true },
+            view_dimension: TextureViewDimension::D2,
+            multisampled: false,
+          },
+          count: None,
+        },
+        BindGroupLayoutEntry {
+          binding: 1,
+          visibility: ShaderStages::FRAGMENT,
+          ty: BindingType::Sampler(SamplerBindingType::Filtering),
+          count: None,
+        },
+      ],
+      label: Some("texture_bind_group_layout"),
+    });
+    let diffuse_bind_group = device.create_bind_group(&BindGroupDescriptor {
+      layout: &texture_bind_group_layout,
+      entries: &[
+        BindGroupEntry {
+          binding: 0,
+          resource: BindingResource::TextureView(&diffuse_texture_view),
+        },
+        BindGroupEntry {
+          binding: 1,
+          resource: BindingResource::Sampler(&diffuse_sampler),
+        },
+      ],
+      label: Some("diffuse_bind_group"),
+    });
     // shader module
     let shader = device.create_shader_module(include_wgsl!("shader.wgsl"));
     // render pipeline
     let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
       label: Some("Render Pipeline Layout"),
-      bind_group_layouts: &[],
+      bind_group_layouts: &[&texture_bind_group_layout],
       push_constant_ranges: &[],
     });
     let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -179,7 +266,7 @@ impl<'a> KhelState<'a> {
         compilation_options: PipelineCompilationOptions::default(),
         targets: &[Some(ColorTargetState {
           format: config.format,
-          blend: Some(BlendState::REPLACE),
+          blend: Some(BlendState::ALPHA_BLENDING),
           write_mask: ColorWrites::ALL,
         })],
       }),
@@ -225,6 +312,7 @@ impl<'a> KhelState<'a> {
       vertex_buffer,
       index_buffer,
       num_indices,
+      diffuse_bind_group,
     }
   }
   /// Resize this KhelState's surface.
@@ -278,6 +366,7 @@ impl<'a> KhelState<'a> {
         timestamp_writes: None,
       });
       render_pass.set_pipeline(&self.render_pipeline);
+      render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
       render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
       render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
       render_pass.draw_indexed(0..self.num_indices, 0, 0..1)

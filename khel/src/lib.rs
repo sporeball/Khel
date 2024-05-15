@@ -1,8 +1,47 @@
 use std::sync::Arc;
 use log::debug;
 use pollster::block_on;
-use wgpu::{include_wgsl, BlendState, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, InstanceDescriptor, MultisampleState, PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, VertexState};
+use wgpu::{include_wgsl, util::{BufferInitDescriptor, DeviceExt}, BlendState, Buffer, BufferUsages, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, IndexFormat, InstanceDescriptor, MultisampleState, PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, VertexState};
 use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::ActiveEventLoop, window::{Window, WindowId}};
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct Vertex {
+  position: [f32; 3],
+  color: [f32; 3],
+}
+
+impl Vertex {
+  fn desc() -> wgpu::VertexBufferLayout<'static> {
+    wgpu::VertexBufferLayout {
+      array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+      step_mode: wgpu::VertexStepMode::Vertex,
+      attributes: &[
+        wgpu::VertexAttribute {
+          offset: 0,
+          shader_location: 0,
+          format: wgpu::VertexFormat::Float32x3,
+        },
+        wgpu::VertexAttribute {
+          offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+          shader_location: 1,
+          format: wgpu::VertexFormat::Float32x3,
+        }
+      ]
+    }
+  }
+}
+
+const VERTICES: &[Vertex] = &[
+  Vertex { position: [0.0, 0.5, 0.0], color: [1.0, 0.0, 0.0] },
+  Vertex { position: [-0.5, -0.5, 0.0], color: [0.0, 1.0, 0.0] },
+  Vertex { position: [0.5, -0.5, 0.0], color: [0.0, 0.0, 1.0] },
+];
+
+// 1 triangle
+const INDICES: &[u16] = &[
+  0, 1, 2
+];
 
 #[derive(Default)]
 pub struct App<'a> {
@@ -56,6 +95,9 @@ pub struct KhelState<'a> {
   pub size: winit::dpi::PhysicalSize<u32>,
   pub clear_color: wgpu::Color,
   pub render_pipeline: RenderPipeline,
+  pub vertex_buffer: Buffer,
+  pub index_buffer: Buffer,
+  pub num_indices: u32,
 }
 
 impl<'a> KhelState<'a> {
@@ -111,7 +153,7 @@ impl<'a> KhelState<'a> {
         module: &shader,
         entry_point: "vs_main",
         compilation_options: PipelineCompilationOptions::default(),
-        buffers: &[],
+        buffers: &[Vertex::desc()],
       },
       fragment: Some(FragmentState {
         module: &shader,
@@ -140,6 +182,17 @@ impl<'a> KhelState<'a> {
       },
       multiview: None,
     });
+    let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
+      label: Some("Vertex Buffer"),
+      contents: bytemuck::cast_slice(VERTICES),
+      usage: BufferUsages::VERTEX,
+    });
+    let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
+      label: Some("Index Buffer"),
+      contents: bytemuck::cast_slice(INDICES),
+      usage: BufferUsages::INDEX,
+    });
+    let num_indices = INDICES.len() as u32;
     Self {
       window,
       surface,
@@ -149,6 +202,9 @@ impl<'a> KhelState<'a> {
       size,
       clear_color,
       render_pipeline,
+      vertex_buffer,
+      index_buffer,
+      num_indices,
     }
   }
   pub fn resize(&mut self, new_size: PhysicalSize<u32>) {
@@ -198,7 +254,9 @@ impl<'a> KhelState<'a> {
         timestamp_writes: None,
       });
       render_pass.set_pipeline(&self.render_pipeline);
-      render_pass.draw(0..3, 0..1)
+      render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+      render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
+      render_pass.draw_indexed(0..self.num_indices, 0, 0..1)
     }
 
     // submit will accept anything that implements IntoIter

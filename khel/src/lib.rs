@@ -1,9 +1,10 @@
 use std::sync::Arc;
-use image::GenericImageView;
 use log::debug;
 use pollster::block_on;
-use wgpu::{include_wgsl, util::{BufferInitDescriptor, DeviceExt}, AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendState, Buffer, BufferUsages, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Extent3d, Face, FilterMode, FragmentState, FrontFace, ImageCopyTexture, ImageDataLayout, IndexFormat, InstanceDescriptor, MultisampleState, Origin3d, PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, SamplerBindingType, SamplerDescriptor, ShaderStages, Surface, SurfaceConfiguration, SurfaceError, TextureAspect, TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension, VertexState};
+use wgpu::{include_wgsl, util::{BufferInitDescriptor, DeviceExt}, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendState, Buffer, BufferUsages, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, IndexFormat, InstanceDescriptor, MultisampleState, PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration, SurfaceError, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension, VertexState};
 use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::ActiveEventLoop, window::{Window, WindowId}};
+
+mod texture;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -110,6 +111,7 @@ pub struct KhelState<'a> {
   pub index_buffer: Buffer,
   pub num_indices: u32,
   pub diffuse_bind_group: BindGroup,
+  pub diffuse_texture: texture::Texture,
 }
 
 impl<'a> KhelState<'a> {
@@ -161,53 +163,7 @@ impl<'a> KhelState<'a> {
     surface.configure(&device, &config);
     // texture
     let diffuse_bytes = include_bytes!("circle_red.png");
-    let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
-    let diffuse_rgba = diffuse_image.to_rgba8();
-    let dimensions = diffuse_image.dimensions();
-    let texture_size = Extent3d {
-      width: dimensions.0,
-      height: dimensions.1,
-      depth_or_array_layers: 1,
-    };
-    let diffuse_texture = device.create_texture(&TextureDescriptor {
-      label: Some("diffuse_texture"),
-      size: texture_size,
-      mip_level_count: 1,
-      sample_count: 1,
-      dimension: TextureDimension::D2,
-      format: TextureFormat::Rgba8UnormSrgb,
-      usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
-      view_formats: &[],
-    });
-    queue.write_texture(
-      // tells wgpu where to copy the pixel data
-      ImageCopyTexture {
-        texture: &diffuse_texture,
-        mip_level: 0,
-        origin: Origin3d::ZERO,
-        aspect: TextureAspect::All,
-      },
-      // pixel data
-      &diffuse_rgba,
-      // texture layout
-      ImageDataLayout {
-        offset: 0,
-        bytes_per_row: Some(4 * dimensions.0),
-        rows_per_image: Some(dimensions.1),
-      },
-      texture_size,
-    );
-    // bind group
-    let diffuse_texture_view = diffuse_texture.create_view(&TextureViewDescriptor::default());
-    let diffuse_sampler = device.create_sampler(&SamplerDescriptor {
-      address_mode_u: AddressMode::ClampToEdge,
-      address_mode_v: AddressMode::ClampToEdge,
-      address_mode_w: AddressMode::ClampToEdge,
-      mag_filter: FilterMode::Linear,
-      min_filter: FilterMode::Nearest,
-      mipmap_filter: FilterMode::Nearest,
-      ..Default::default()
-    });
+    let diffuse_texture = texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "circle_red.png").unwrap();
     let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
       entries: &[
         BindGroupLayoutEntry {
@@ -234,11 +190,11 @@ impl<'a> KhelState<'a> {
       entries: &[
         BindGroupEntry {
           binding: 0,
-          resource: BindingResource::TextureView(&diffuse_texture_view),
+          resource: BindingResource::TextureView(&diffuse_texture.view),
         },
         BindGroupEntry {
           binding: 1,
-          resource: BindingResource::Sampler(&diffuse_sampler),
+          resource: BindingResource::Sampler(&diffuse_texture.sampler),
         },
       ],
       label: Some("diffuse_bind_group"),
@@ -313,6 +269,7 @@ impl<'a> KhelState<'a> {
       index_buffer,
       num_indices,
       diffuse_bind_group,
+      diffuse_texture,
     }
   }
   /// Resize this KhelState's surface.

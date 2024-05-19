@@ -1,11 +1,17 @@
 use anyhow::*;
 use image::{DynamicImage, GenericImageView};
-use wgpu::{AddressMode, Device, Extent3d, FilterMode, ImageCopyTexture, ImageDataLayout, Origin3d, Queue, Sampler, SamplerDescriptor, TextureAspect, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor};
+use wgpu::{util::{BufferInitDescriptor, DeviceExt}, AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferUsages, Device, Extent3d, FilterMode, ImageCopyTexture, ImageDataLayout, IndexFormat, Origin3d, Queue, RenderPass, SamplerBindingType, SamplerDescriptor, ShaderStages, TextureAspect, TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension};
+
+use crate::Vertex;
 
 pub struct Texture {
   pub texture: wgpu::Texture,
-  pub view: TextureView,
-  pub sampler: Sampler,
+  // pub view: TextureView,
+  // pub sampler: Sampler,
+  pub bind_group: BindGroup,
+  pub bind_group_layout: BindGroupLayout,
+  pub vertex_buffer: Buffer,
+  pub index_buffer: Buffer,
 }
 
 impl Texture {
@@ -56,6 +62,89 @@ impl Texture {
       mipmap_filter: FilterMode::Nearest,
       ..Default::default()
     });
-    Ok(Self { texture, view, sampler })
+    let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+      entries: &[
+        BindGroupLayoutEntry {
+          binding: 0,
+          visibility: ShaderStages::FRAGMENT,
+          ty: BindingType::Texture {
+            sample_type: TextureSampleType::Float { filterable: true },
+            view_dimension: TextureViewDimension::D2,
+            multisampled: false,
+          },
+          count: None,
+        },
+        BindGroupLayoutEntry {
+          binding: 1,
+          visibility: ShaderStages::FRAGMENT,
+          ty: BindingType::Sampler(SamplerBindingType::Filtering),
+          count: None,
+        },
+      ],
+      label: Some("texture_bind_group_layout"),
+    });
+    let bind_group = device.create_bind_group(&BindGroupDescriptor {
+      layout: &bind_group_layout,
+      entries: &[
+        BindGroupEntry {
+          binding: 0,
+          resource: BindingResource::TextureView(&view),
+        },
+        BindGroupEntry {
+          binding: 1,
+          resource: BindingResource::Sampler(&sampler),
+        },
+      ],
+      label: Some("diffuse_bind_group"),
+    });
+    let vertices = vec![
+      Vertex { position: [-0.0625, 0.0625, 0.0], tex_coords: [0.0, 0.0]}, // top left
+      Vertex { position: [-0.0625, -0.0625, 0.0], tex_coords: [0.0, 1.0]}, // bottom left
+      Vertex { position: [0.0625, -0.0625, 0.0], tex_coords: [1.0, 1.0]}, // bottom right
+      Vertex { position: [0.0625, 0.0625, 0.0], tex_coords: [1.0, 0.0]}, // top right
+    ];
+    let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
+      label: Some("Vertex Buffer"),
+      contents: bytemuck::cast_slice(&vertices),
+      usage: BufferUsages::VERTEX,
+    });
+    let indices = vec![
+      0, 1, 3,
+      1, 2, 3,
+    ];
+    let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
+      label: Some("Index Buffer"),
+      contents: bytemuck::cast_slice(&indices),
+      usage: BufferUsages::INDEX,
+    });
+    Ok(Self {
+      texture,
+      // view,
+      // sampler,
+      bind_group_layout,
+      bind_group,
+      vertex_buffer,
+      index_buffer,
+    })
+  }
+}
+
+pub trait DrawTexture<'a> {
+  fn draw_texture(&mut self, texture: &'a Texture);
+  fn draw_texture_instanced(&mut self, texture: &'a Texture, instances: core::ops::Range<u32>);
+}
+
+impl<'a, 'b> DrawTexture<'b> for RenderPass<'a>
+where
+  'b: 'a,
+{
+  fn draw_texture(&mut self, texture: &'b Texture) {
+    self.draw_texture_instanced(texture, 0..1);
+  }
+  fn draw_texture_instanced(&mut self, texture: &'b Texture, instances: core::ops::Range<u32>) {
+    self.set_bind_group(0, &texture.bind_group, &[]);
+    self.set_vertex_buffer(0, texture.vertex_buffer.slice(..));
+    self.set_index_buffer(texture.index_buffer.slice(..), IndexFormat::Uint32);
+    self.draw_indexed(0..6, 0, instances);
   }
 }

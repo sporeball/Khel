@@ -1,8 +1,9 @@
+use crate::texture::DrawTexture;
 use std::{mem, sync::Arc};
 use cgmath::Vector3;
 use log::debug;
 use pollster::block_on;
-use wgpu::{include_wgsl, util::{BufferInitDescriptor, DeviceExt}, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendState, Buffer, BufferUsages, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, IndexFormat, InstanceDescriptor, MultisampleState, PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, SamplerBindingType, ShaderStages, Surface, SurfaceConfiguration, SurfaceError, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension, VertexBufferLayout, VertexState};
+use wgpu::{include_wgsl, util::{BufferInitDescriptor, DeviceExt}, BlendState, Buffer, BufferUsages, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, InstanceDescriptor, MultisampleState, PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, VertexBufferLayout, VertexState};
 use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::ActiveEventLoop, window::{Window, WindowId}};
 
 mod texture;
@@ -36,21 +37,21 @@ impl Vertex {
   }
 }
 
-const VERTICES: &[Vertex] = &[
-  // Vertex { position: [0.0, 0.5, 0.0], color: [1.0, 0.0, 0.0] }, // A
-  // Vertex { position: [-0.5, -0.5, 0.0], color: [0.0, 1.0, 0.0] }, // B
-  // Vertex { position: [0.5, -0.5, 0.0], color: [0.0, 0.0, 1.0] }, // C
-  Vertex { position: [-0.0625, 0.0625, 0.0], tex_coords: [0.0, 0.0]}, // top left
-  Vertex { position: [-0.0625, -0.0625, 0.0], tex_coords: [0.0, 1.0]}, // bottom left
-  Vertex { position: [0.0625, -0.0625, 0.0], tex_coords: [1.0, 1.0]}, // bottom right
-  Vertex { position: [0.0625, 0.0625, 0.0], tex_coords: [1.0, 0.0]}, // top right
-];
+// const VERTICES: &[Vertex] = &[
+//   // Vertex { position: [0.0, 0.5, 0.0], color: [1.0, 0.0, 0.0] }, // A
+//   // Vertex { position: [-0.5, -0.5, 0.0], color: [0.0, 1.0, 0.0] }, // B
+//   // Vertex { position: [0.5, -0.5, 0.0], color: [0.0, 0.0, 1.0] }, // C
+//   Vertex { position: [-0.0625, 0.0625, 0.0], tex_coords: [0.0, 0.0]}, // top left
+//   Vertex { position: [-0.0625, -0.0625, 0.0], tex_coords: [0.0, 1.0]}, // bottom left
+//   Vertex { position: [0.0625, -0.0625, 0.0], tex_coords: [1.0, 1.0]}, // bottom right
+//   Vertex { position: [0.0625, 0.0625, 0.0], tex_coords: [1.0, 0.0]}, // top right
+// ];
 
-const INDICES: &[u16] = &[
-  // 0, 1, 2,
-  0, 1, 3,
-  1, 2, 3
-];
+// const INDICES: &[u16] = &[
+//   // 0, 1, 2,
+//   0, 1, 3,
+//   1, 2, 3
+// ];
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -160,12 +161,8 @@ pub struct KhelState<'a> {
   pub size: winit::dpi::PhysicalSize<u32>,
   pub clear_color: wgpu::Color,
   pub render_pipeline: RenderPipeline,
-  pub vertex_buffer: Buffer,
-  pub index_buffer: Buffer,
-  pub num_indices: u32,
   pub instance_buffer: Buffer,
   pub instances: Vec<Instance>,
-  pub diffuse_bind_group: BindGroup,
   pub diffuse_texture: texture::Texture,
 }
 
@@ -219,47 +216,12 @@ impl<'a> KhelState<'a> {
     // texture
     let diffuse_bytes = load_binary("circle_red.png").unwrap();
     let diffuse_texture = texture::Texture::from_bytes(&device, &queue, &diffuse_bytes, "circle_red.png").unwrap();
-    let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-      entries: &[
-        BindGroupLayoutEntry {
-          binding: 0,
-          visibility: ShaderStages::FRAGMENT,
-          ty: BindingType::Texture {
-            sample_type: TextureSampleType::Float { filterable: true },
-            view_dimension: TextureViewDimension::D2,
-            multisampled: false,
-          },
-          count: None,
-        },
-        BindGroupLayoutEntry {
-          binding: 1,
-          visibility: ShaderStages::FRAGMENT,
-          ty: BindingType::Sampler(SamplerBindingType::Filtering),
-          count: None,
-        },
-      ],
-      label: Some("texture_bind_group_layout"),
-    });
-    let diffuse_bind_group = device.create_bind_group(&BindGroupDescriptor {
-      layout: &texture_bind_group_layout,
-      entries: &[
-        BindGroupEntry {
-          binding: 0,
-          resource: BindingResource::TextureView(&diffuse_texture.view),
-        },
-        BindGroupEntry {
-          binding: 1,
-          resource: BindingResource::Sampler(&diffuse_texture.sampler),
-        },
-      ],
-      label: Some("diffuse_bind_group"),
-    });
     // shader module
     let shader = device.create_shader_module(include_wgsl!("shader.wgsl"));
     // render pipeline
     let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
       label: Some("Render Pipeline Layout"),
-      bind_group_layouts: &[&texture_bind_group_layout],
+      bind_group_layouts: &[&diffuse_texture.bind_group_layout],
       push_constant_ranges: &[],
     });
     let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -298,18 +260,6 @@ impl<'a> KhelState<'a> {
       },
       multiview: None,
     });
-    // vertex and index buffers
-    let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
-      label: Some("Vertex Buffer"),
-      contents: bytemuck::cast_slice(VERTICES),
-      usage: BufferUsages::VERTEX,
-    });
-    let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
-      label: Some("Index Buffer"),
-      contents: bytemuck::cast_slice(INDICES),
-      usage: BufferUsages::INDEX,
-    });
-    let num_indices = INDICES.len() as u32;
     // instance buffer
     let instances = (0..NUM_INSTANCES).map(move |x| {
       // let position = Vector3 { x: x as f32, y: 0.0, z: 0.0 } - INSTANCE_DISPLACEMENT;
@@ -334,12 +284,8 @@ impl<'a> KhelState<'a> {
       size,
       clear_color,
       render_pipeline,
-      vertex_buffer,
-      index_buffer,
-      num_indices,
       instance_buffer,
       instances,
-      diffuse_bind_group,
       diffuse_texture,
     }
   }
@@ -393,12 +339,9 @@ impl<'a> KhelState<'a> {
         occlusion_query_set: None,
         timestamp_writes: None,
       });
-      render_pass.set_pipeline(&self.render_pipeline);
-      render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
-      render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
       render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-      render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
-      render_pass.draw_indexed(0..self.num_indices, 0, 0..self.instances.len() as _);
+      render_pass.set_pipeline(&self.render_pipeline);
+      render_pass.draw_texture_instanced(&self.diffuse_texture, 0..self.instances.len() as u32);
     }
 
     // submit will accept anything that implements IntoIter

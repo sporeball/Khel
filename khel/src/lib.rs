@@ -217,8 +217,8 @@ impl<'a> KhelState<'a> {
     };
     surface.configure(&device, &config);
     // texture
-    let diffuse_bytes = include_bytes!("circle_red.png");
-    let diffuse_texture = texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "circle_red.png").unwrap();
+    let diffuse_bytes = load_binary("circle_red.png").unwrap();
+    let diffuse_texture = texture::Texture::from_bytes(&device, &queue, &diffuse_bytes, "circle_red.png").unwrap();
     let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
       entries: &[
         BindGroupLayoutEntry {
@@ -407,4 +407,12 @@ impl<'a> KhelState<'a> {
 
     Ok(())
   }
+}
+
+pub fn load_binary(filename: &str) -> anyhow::Result<Vec<u8>> {
+  let path = std::path::Path::new(env!("OUT_DIR"))
+    .join("assets")
+    .join(filename);
+  let data = std::fs::read(path)?;
+  Ok(data)
 }

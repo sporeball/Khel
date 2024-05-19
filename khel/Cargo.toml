@@ -13,3 +13,7 @@ log = "0.4.21"
 pollster = "0.3.0"
 wgpu = "0.20.0"
 winit = "0.30.0"
+
+[build-dependencies]
+anyhow = "1.0.83"
+fs_extra = "1.3.0"

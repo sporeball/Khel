@@ -128,6 +128,7 @@ impl<'a> ApplicationHandler for App<'a> {
         WindowEvent::Resized(physical_size) => {
           let Some(ref mut state) = self.state else { todo!(); };
           state.resize(physical_size);
+          state.diffuse_texture.vertex_buffer = texture::create_vertex_buffer(state.diffuse_texture.texture.size(), physical_size, &state.device);
         },
         WindowEvent::ScaleFactorChanged { scale_factor: _, inner_size_writer: _ } => todo!(),
         _ => (),

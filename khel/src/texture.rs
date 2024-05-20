@@ -101,20 +101,7 @@ impl Texture {
       ],
       label: Some("diffuse_bind_group"),
     });
-    let w = (size.width as f32 / (window_size.width as f32 / 2.0) - 1.0) * (size.width as f32 / window_size.width as f32);
-    let h = (size.height as f32 / (window_size.height as f32 / 2.0) - 1.0) * (size.height as f32 / window_size.height as f32);
-    info!("{},{}", w, h);
-    let vertices = vec![
-      Vertex { position: [-w, h, 0.0], tex_coords: [0.0, 0.0]}, // top left
-      Vertex { position: [-w, -h, 0.0], tex_coords: [0.0, 1.0]}, // bottom left
-      Vertex { position: [w, -h, 0.0], tex_coords: [1.0, 1.0]}, // bottom right
-      Vertex { position: [w, h, 0.0], tex_coords: [1.0, 0.0]}, // top right
-    ];
-    let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
-      label: Some("Vertex Buffer"),
-      contents: bytemuck::cast_slice(&vertices),
-      usage: BufferUsages::VERTEX,
-    });
+    let vertex_buffer = create_vertex_buffer(size, window_size, device);
     let indices = vec![
       0, 1, 3,
       1, 2, 3,
@@ -134,6 +121,24 @@ impl Texture {
       index_buffer,
     })
   }
+}
+
+pub fn create_vertex_buffer(size: Extent3d, window_size: PhysicalSize<u32>, device: &Device) -> Buffer {
+  let w = (size.width as f32 / (window_size.width as f32 / 2.0) - 1.0) * (size.width as f32 / window_size.width as f32);
+  let h = (size.height as f32 / (window_size.height as f32 / 2.0) - 1.0) * (size.height as f32 / window_size.height as f32);
+  // info!("{},{}", w, h);
+  let vertices = vec![
+    Vertex { position: [-w, h, 0.0], tex_coords: [0.0, 0.0]}, // top left
+    Vertex { position: [-w, -h, 0.0], tex_coords: [0.0, 1.0]}, // bottom left
+    Vertex { position: [w, -h, 0.0], tex_coords: [1.0, 1.0]}, // bottom right
+    Vertex { position: [w, h, 0.0], tex_coords: [1.0, 0.0]}, // top right
+  ];
+  let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
+    label: Some("Vertex Buffer"),
+    contents: bytemuck::cast_slice(&vertices),
+    usage: BufferUsages::VERTEX,
+  });
+  vertex_buffer
 }
 
 pub trait DrawTexture<'a> {

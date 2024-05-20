@@ -1,6 +1,8 @@
 use anyhow::*;
 use image::{DynamicImage, GenericImageView};
+use log::info;
 use wgpu::{util::{BufferInitDescriptor, DeviceExt}, AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferUsages, Device, Extent3d, FilterMode, ImageCopyTexture, ImageDataLayout, IndexFormat, Origin3d, Queue, RenderPass, SamplerBindingType, SamplerDescriptor, ShaderStages, TextureAspect, TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension};
+use winit::dpi::PhysicalSize;
 
 use crate::Vertex;
 
@@ -15,11 +17,11 @@ pub struct Texture {
 }
 
 impl Texture {
-  pub fn from_bytes(device: &Device, queue: &Queue, bytes: &[u8], label: &str) -> Result<Self> {
+  pub fn from_bytes(window_size: PhysicalSize<u32>, device: &Device, queue: &Queue, bytes: &[u8], label: &str) -> Result<Self> {
     let img = image::load_from_memory(bytes)?;
-    Self::from_image(device, queue, &img, Some(label))
+    Self::from_image(window_size, device, queue, &img, Some(label))
   }
-  pub fn from_image(device: &Device, queue: &Queue, img: &DynamicImage, label: Option<&str>) -> Result<Self> {
+  pub fn from_image(window_size: PhysicalSize<u32>, device: &Device, queue: &Queue, img: &DynamicImage, label: Option<&str>) -> Result<Self> {
     let rgba = img.to_rgba8();
     let dimensions = img.dimensions();
     let size = Extent3d {
@@ -27,6 +29,8 @@ impl Texture {
       height: dimensions.1,
       depth_or_array_layers: 1,
     };
+    let window_width = window_size.width;
+    let window_height = window_size.height;
     let texture = device.create_texture(&TextureDescriptor {
       label,
       size,
@@ -97,11 +101,14 @@ impl Texture {
       ],
       label: Some("diffuse_bind_group"),
     });
+    let w = (size.width as f32 / (window_size.width as f32 / 2.0) - 1.0) * (size.width as f32 / window_size.width as f32);
+    let h = (size.height as f32 / (window_size.height as f32 / 2.0) - 1.0) * (size.height as f32 / window_size.height as f32);
+    info!("{},{}", w, h);
     let vertices = vec![
-      Vertex { position: [-0.0625, 0.0625, 0.0], tex_coords: [0.0, 0.0]}, // top left
-      Vertex { position: [-0.0625, -0.0625, 0.0], tex_coords: [0.0, 1.0]}, // bottom left
-      Vertex { position: [0.0625, -0.0625, 0.0], tex_coords: [1.0, 1.0]}, // bottom right
-      Vertex { position: [0.0625, 0.0625, 0.0], tex_coords: [1.0, 0.0]}, // top right
+      Vertex { position: [-w, h, 0.0], tex_coords: [0.0, 0.0]}, // top left
+      Vertex { position: [-w, -h, 0.0], tex_coords: [0.0, 1.0]}, // bottom left
+      Vertex { position: [w, -h, 0.0], tex_coords: [1.0, 1.0]}, // bottom right
+      Vertex { position: [w, h, 0.0], tex_coords: [1.0, 0.0]}, // top right
     ];
     let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
       label: Some("Vertex Buffer"),

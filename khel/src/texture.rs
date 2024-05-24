@@ -29,8 +29,6 @@ impl Texture {
       height: dimensions.1,
       depth_or_array_layers: 1,
     };
-    let window_width = window_size.width;
-    let window_height = window_size.height;
     let texture = device.create_texture(&TextureDescriptor {
       label,
       size,
@@ -127,6 +125,7 @@ pub fn create_vertex_buffer(size: Extent3d, window_size: PhysicalSize<u32>, devi
   let w = (size.width as f32 / (window_size.width as f32 / 2.0) - 1.0) * (size.width as f32 / window_size.width as f32);
   let h = (size.height as f32 / (window_size.height as f32 / 2.0) - 1.0) * (size.height as f32 / window_size.height as f32);
   // info!("{},{}", w, h);
+  // TODO: this is upside down!
   let vertices = vec![
     Vertex { position: [-w, h, 0.0], tex_coords: [0.0, 0.0]}, // top left
     Vertex { position: [-w, -h, 0.0], tex_coords: [0.0, 1.0]}, // bottom left

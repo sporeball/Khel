@@ -2,10 +2,12 @@ use crate::texture::DrawTexture;
 use std::{mem, sync::Arc};
 use cgmath::Vector3;
 use log::debug;
+use object::{DrawObject, Object};
 use pollster::block_on;
-use wgpu::{include_wgsl, util::{BufferInitDescriptor, DeviceExt}, BlendState, Buffer, BufferUsages, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, InstanceDescriptor, MultisampleState, PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, VertexBufferLayout, VertexState};
+use wgpu::{include_wgsl, BlendState, Buffer, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, InstanceDescriptor, MultisampleState, PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, VertexBufferLayout, VertexState};
 use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::ActiveEventLoop, window::{Window, WindowId}};
 
+mod object;
 mod texture;
 
 #[repr(C)]
@@ -87,8 +89,6 @@ impl Instance {
   }
 }
 
-const NUM_INSTANCES: u32 = 5;
-
 #[derive(Default)]
 pub struct App<'a> {
   pub state: Option<KhelState<'a>>,
@@ -100,6 +100,15 @@ impl<'a> ApplicationHandler for App<'a> {
     self.state = Some(
       KhelState::new(event_loop.create_window(Window::default_attributes().with_title("Khel")).unwrap())
     );
+    let Some(ref mut state) = self.state else { todo!(); };
+    let device = &state.device;
+    let objects = &mut state.objects;
+    let [
+      circle_red,
+      circle_green,
+    ] = objects.as_mut_slice() else { todo!(); };
+    circle_red.instantiate(0.9, 0.9, device);
+    circle_green.instantiate(0.0, 0.0, device);
   }
   /// Emitted when an event is received.
   fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
@@ -128,7 +137,10 @@ impl<'a> ApplicationHandler for App<'a> {
         WindowEvent::Resized(physical_size) => {
           let Some(ref mut state) = self.state else { todo!(); };
           state.resize(physical_size);
-          state.diffuse_texture.vertex_buffer = texture::create_vertex_buffer(state.diffuse_texture.texture.size(), physical_size, &state.device);
+          // state.diffuse_texture.vertex_buffer = texture::create_vertex_buffer(state.diffuse_texture.texture.size(), physical_size, &state.device);
+          for object in &mut state.objects {
+            object.texture.vertex_buffer = texture::create_vertex_buffer(object.texture.texture.size(), physical_size, &state.device);
+          }
         },
         WindowEvent::ScaleFactorChanged { scale_factor: _, inner_size_writer: _ } => todo!(),
         _ => (),
@@ -146,9 +158,7 @@ pub struct KhelState<'a> {
   pub size: winit::dpi::PhysicalSize<u32>,
   pub clear_color: wgpu::Color,
   pub render_pipeline: RenderPipeline,
-  pub instance_buffer: Buffer,
-  pub instances: Vec<Instance>,
-  pub diffuse_texture: texture::Texture,
+  pub objects: Vec<Object>,
 }
 
 impl<'a> KhelState<'a> {
@@ -198,15 +208,19 @@ impl<'a> KhelState<'a> {
       view_formats: Vec::new(),
     };
     surface.configure(&device, &config);
-    // texture
-    let diffuse_bytes = load_binary("circle_red.png").unwrap();
-    let diffuse_texture = texture::Texture::from_bytes(size, &device, &queue, &diffuse_bytes, "circle_red.png").unwrap();
+    // objects!
+    let circle_red = Object::from_file("circle_red.png", size, &device, &queue).unwrap();
+    let circle_green = Object::from_file("circle_green.png", size, &device, &queue).unwrap();
+    let objects = vec![
+      circle_red,
+      circle_green,
+    ];
     // shader module
     let shader = device.create_shader_module(include_wgsl!("shader.wgsl"));
     // render pipeline
     let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
       label: Some("Render Pipeline Layout"),
-      bind_group_layouts: &[&diffuse_texture.bind_group_layout],
+      bind_group_layouts: &[&objects[0].texture.bind_group_layout],
       push_constant_ranges: &[],
     });
     let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -245,20 +259,6 @@ impl<'a> KhelState<'a> {
       },
       multiview: None,
     });
-    // instance buffer
-    let instances = (0..NUM_INSTANCES).map(move |x| {
-      // let position = Vector3 { x: x as f32, y: 0.0, z: 0.0 } - INSTANCE_DISPLACEMENT;
-      let position = Vector3 { x: x as f32 * 0.1, y: 0.0, z: 0.0 };
-      Instance {
-        position,
-      }
-    }).collect::<Vec<_>>();
-    let instance_data = instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
-    let instance_buffer = device.create_buffer_init(&BufferInitDescriptor {
-      label: Some("Instance Buffer"),
-      contents: bytemuck::cast_slice(&instance_data),
-      usage: BufferUsages::VERTEX,
-    });
     // return value
     Self {
       window,
@@ -269,9 +269,7 @@ impl<'a> KhelState<'a> {
       size,
       clear_color,
       render_pipeline,
-      instance_buffer,
-      instances,
-      diffuse_texture,
+      objects,
     }
   }
   /// Resize this KhelState's surface.
@@ -324,9 +322,10 @@ impl<'a> KhelState<'a> {
         occlusion_query_set: None,
         timestamp_writes: None,
       });
-      render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
       render_pass.set_pipeline(&self.render_pipeline);
-      render_pass.draw_texture_instanced(&self.diffuse_texture, 0..self.instances.len() as u32);
+      for object in &self.objects {
+        render_pass.draw_object_instanced(object);
+      }
     }
 
     // submit will accept anything that implements IntoIter

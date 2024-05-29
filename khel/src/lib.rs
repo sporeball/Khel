@@ -1,13 +1,14 @@
-use crate::texture::DrawTexture;
+use crate::object::{DrawObject, Object};
 use std::{mem, sync::Arc};
+use sound::Sound;
 use cgmath::Vector3;
-use log::debug;
-use object::{DrawObject, Object};
+// use log::debug;
 use pollster::block_on;
-use wgpu::{include_wgsl, BlendState, Buffer, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, InstanceDescriptor, MultisampleState, PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, VertexBufferLayout, VertexState};
+use wgpu::{include_wgsl, BlendState, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, InstanceDescriptor, MultisampleState, PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, VertexBufferLayout, VertexState};
 use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::ActiveEventLoop, window::{Window, WindowId}};
 
 mod object;
+mod sound;
 mod texture;
 
 #[repr(C)]
@@ -102,6 +103,7 @@ impl<'a> ApplicationHandler for App<'a> {
     );
     let Some(ref mut state) = self.state else { todo!(); };
     let device = &state.device;
+    // objects
     let objects = &mut state.objects;
     let [
       circle_red,
@@ -109,6 +111,12 @@ impl<'a> ApplicationHandler for App<'a> {
     ] = objects.as_mut_slice() else { todo!(); };
     circle_red.instantiate(0.9, 0.9, device);
     circle_green.instantiate(0.0, 0.0, device);
+    // sounds
+    // let sounds = &mut state.sounds;
+    // let [
+    //   sound,
+    // ] = sounds.as_mut_slice() else { todo!(); };
+    // sound.play();
   }
   /// Emitted when an event is received.
   fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
@@ -159,6 +167,7 @@ pub struct KhelState<'a> {
   pub clear_color: wgpu::Color,
   pub render_pipeline: RenderPipeline,
   pub objects: Vec<Object>,
+  pub sounds: Vec<Sound>,
 }
 
 impl<'a> KhelState<'a> {
@@ -259,6 +268,11 @@ impl<'a> KhelState<'a> {
       },
       multiview: None,
     });
+    // sounds
+    // let sound = Sound::new("sound.wav");
+    let sounds = vec![
+    //   sound,
+    ];
     // return value
     Self {
       window,
@@ -270,6 +284,7 @@ impl<'a> KhelState<'a> {
       clear_color,
       render_pipeline,
       objects,
+      sounds,
     }
   }
   /// Resize this KhelState's surface.

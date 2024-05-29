@@ -1,9 +1,7 @@
-use crate::{texture::DrawTexture, KhelState};
+use crate::{load_binary, texture::{self, Texture, DrawTexture}, Instance};
 use cgmath::Vector3;
 use wgpu::{util::{BufferInitDescriptor, DeviceExt}, Buffer, BufferUsages, Device, Queue, RenderPass};
 use winit::dpi::PhysicalSize;
-
-use crate::{load_binary, texture::{self, Texture}, Instance};
 
 pub struct Object {
   pub texture: Texture,

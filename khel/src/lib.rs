@@ -1,15 +1,19 @@
 use crate::object::{DrawObject, Object};
 use std::{mem, sync::Arc};
+use egui_wgpu::ScreenDescriptor;
+use gui::EguiRenderer;
 use sound::Sound;
 use cgmath::Vector3;
 // use log::debug;
 use pollster::block_on;
-use wgpu::{include_wgsl, BlendState, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, InstanceDescriptor, MultisampleState, PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, VertexBufferLayout, VertexState};
-use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::ActiveEventLoop, window::{Window, WindowId}};
+use wgpu::{include_wgsl, BlendState, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, InstanceDescriptor, MultisampleState, /*PipelineCompilationOptions,*/ PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, VertexBufferLayout, VertexState};
+// use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::ActiveEventLoop, window::{Window, WindowId}};
+use winit::{dpi::PhysicalSize, event::WindowEvent, window::Window};
 
-mod object;
-mod sound;
-mod texture;
+pub mod gui;
+pub mod object;
+pub mod sound;
+pub mod texture;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -95,67 +99,67 @@ pub struct App<'a> {
   pub state: Option<KhelState<'a>>,
 }
 
-impl<'a> ApplicationHandler for App<'a> {
-  /// Emitted when the app has been resumed.
-  fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-    self.state = Some(
-      KhelState::new(event_loop.create_window(Window::default_attributes().with_title("Khel")).unwrap())
-    );
-    let Some(ref mut state) = self.state else { todo!(); };
-    let device = &state.device;
-    // objects
-    let objects = &mut state.objects;
-    let [
-      circle_red,
-      circle_green,
-    ] = objects.as_mut_slice() else { todo!(); };
-    circle_red.instantiate(0.9, 0.9, device);
-    circle_green.instantiate(0.0, 0.0, device);
-    // sounds
-    // let sounds = &mut state.sounds;
-    // let [
-    //   sound,
-    // ] = sounds.as_mut_slice() else { todo!(); };
-    // sound.play();
-  }
+// impl<'a> ApplicationHandler for App<'a> {
+//   /// Emitted when the app has been resumed.
+//   fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+//     self.state = Some(
+//       KhelState::new(event_loop.create_window(Window::default_attributes().with_title("Khel")).unwrap())
+//     );
+//     let Some(ref mut state) = self.state else { todo!(); };
+//     let device = &state.device;
+//     // objects
+//     let objects = &mut state.objects;
+//     let [
+//       circle_red,
+//       circle_green,
+//     ] = objects.as_mut_slice() else { todo!(); };
+//     circle_red.instantiate(0.9, 0.9, device);
+//     circle_green.instantiate(0.0, 0.0, device);
+//     // sounds
+//     // let sounds = &mut state.sounds;
+//     // let [
+//     //   sound,
+//     // ] = sounds.as_mut_slice() else { todo!(); };
+//     // sound.play();
+//   }
   /// Emitted when an event is received.
-  fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
-    let Some(ref mut state) = self.state else { todo!(); };
-    // state.input gets a cbance to handle the event instead
-    // any events it does not handle return false
-    if !state.input(&event) {
-      match event {
-        WindowEvent::CloseRequested => {
-          event_loop.exit();
-        },
-        WindowEvent::RedrawRequested => {
-          let Some(ref mut state) = self.state else { todo!(); };
-          state.window.request_redraw();
-          state.update();
-          match state.render() {
-            Ok(_) => {},
-            // reconfigure the surface if lost
-            Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
-            // the system is out of memory, we should probably quit
-            Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
-            // all other errors (Outdated, Timeout) should be resolved by the next frame
-            Err(e) => eprintln!("{:?}", e),
-          }
-        },
-        WindowEvent::Resized(physical_size) => {
-          let Some(ref mut state) = self.state else { todo!(); };
-          state.resize(physical_size);
-          // state.diffuse_texture.vertex_buffer = texture::create_vertex_buffer(state.diffuse_texture.texture.size(), physical_size, &state.device);
-          for object in &mut state.objects {
-            object.texture.vertex_buffer = texture::create_vertex_buffer(object.texture.texture.size(), physical_size, &state.device);
-          }
-        },
-        WindowEvent::ScaleFactorChanged { scale_factor: _, inner_size_writer: _ } => todo!(),
-        _ => (),
-      }
-    }
-  }
-}
+//   fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+//     let Some(ref mut state) = self.state else { todo!(); };
+//     // state.input gets a cbance to handle the event instead
+//     // any events it does not handle return false
+//     if !state.input(&event) {
+//       match event {
+//         WindowEvent::CloseRequested => {
+//           event_loop.exit();
+//         },
+//         WindowEvent::RedrawRequested => {
+//           let Some(ref mut state) = self.state else { todo!(); };
+//           state.window.request_redraw();
+//           state.update();
+//           match state.render() {
+//             Ok(_) => {},
+//             // reconfigure the surface if lost
+//             Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
+//             // the system is out of memory, we should probably quit
+//             Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
+//             // all other errors (Outdated, Timeout) should be resolved by the next frame
+//             Err(e) => eprintln!("{:?}", e),
+//           }
+//         },
+//         WindowEvent::Resized(physical_size) => {
+//           let Some(ref mut state) = self.state else { todo!(); };
+//           state.resize(physical_size);
+//           // state.diffuse_texture.vertex_buffer = texture::create_vertex_buffer(state.diffuse_texture.texture.size(), physical_size, &state.device);
+//           for object in &mut state.objects {
+//             object.texture.vertex_buffer = texture::create_vertex_buffer(object.texture.texture.size(), physical_size, &state.device);
+//           }
+//         },
+//         WindowEvent::ScaleFactorChanged { scale_factor: _, inner_size_writer: _ } => todo!(),
+//         _ => (),
+//       }
+//     }
+//   }
+// }
 
 pub struct KhelState<'a> {
   pub window: Arc<Window>,
@@ -168,6 +172,7 @@ pub struct KhelState<'a> {
   pub render_pipeline: RenderPipeline,
   pub objects: Vec<Object>,
   pub sounds: Vec<Sound>,
+  pub egui: EguiRenderer,
 }
 
 impl<'a> KhelState<'a> {
@@ -238,13 +243,13 @@ impl<'a> KhelState<'a> {
       vertex: VertexState {
         module: &shader,
         entry_point: "vs_main",
-        compilation_options: PipelineCompilationOptions::default(),
+        // compilation_options: PipelineCompilationOptions::default(),
         buffers: &[Vertex::desc(), InstanceRaw::desc()],
       },
       fragment: Some(FragmentState {
         module: &shader,
         entry_point: "fs_main",
-        compilation_options: PipelineCompilationOptions::default(),
+        // compilation_options: PipelineCompilationOptions::default(),
         targets: &[Some(ColorTargetState {
           format: config.format,
           blend: Some(BlendState::ALPHA_BLENDING),
@@ -273,6 +278,14 @@ impl<'a> KhelState<'a> {
     let sounds = vec![
     //   sound,
     ];
+    // egui
+    let egui = EguiRenderer::new(
+      &device,
+      config.format,
+      None,
+      1,
+      &window
+    );
     // return value
     Self {
       window,
@@ -285,6 +298,7 @@ impl<'a> KhelState<'a> {
       render_pipeline,
       objects,
       sounds,
+      egui,
     }
   }
   /// Resize this KhelState's surface.
@@ -298,25 +312,27 @@ impl<'a> KhelState<'a> {
   }
   /// Handle input.
   /// Any events not handled here will be handled in window_event on App.
-  fn input(&mut self, event: &WindowEvent) -> bool {
-    match event {
-      WindowEvent::CursorMoved { position, .. } => {
-        self.clear_color = wgpu::Color {
-          r: position.x as f64 / self.size.width as f64,
-          g: position.y as f64 / self.size.height as f64,
-          b: 1.0,
-          a: 1.0,
-        };
-        true
-      },
-      _ => false,
-    }
+  pub fn input(&mut self, event: &WindowEvent) -> bool {
+    self.window.request_redraw();
+    // match event {
+    //   WindowEvent::CursorMoved { position, .. } => {
+    //     self.clear_color = wgpu::Color {
+    //       r: position.x as f64 / self.size.width as f64,
+    //       g: position.y as f64 / self.size.height as f64,
+    //       b: 1.0,
+    //       a: 1.0,
+    //     };
+    //     true
+    //   },
+    //   _ => false,
+    // }
+    false
   }
-  fn update(&mut self) {
+  pub fn update(&mut self) {
     // TODO
   }
   /// Use this KhelState to perform a render pass.
-  fn render(&mut self) -> Result<(), SurfaceError> {
+  pub fn render(&mut self) -> Result<(), SurfaceError> {
     let output = self.surface.get_current_texture()?;
     let view = output.texture.create_view(&TextureViewDescriptor::default());
     let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor {
@@ -342,6 +358,20 @@ impl<'a> KhelState<'a> {
         render_pass.draw_object_instanced(object);
       }
     }
+
+    let screen_descriptor = ScreenDescriptor {
+      size_in_pixels: [self.config.width, self.config.height],
+      pixels_per_point: self.window.scale_factor() as f32,
+    };
+    self.egui.draw(
+      &self.device,
+      &self.queue,
+      &mut encoder,
+      &self.window,
+      &view,
+      screen_descriptor,
+      |ui| gui::gui(ui),
+    );
 
     // submit will accept anything that implements IntoIter
     self.queue.submit(std::iter::once(encoder.finish()));

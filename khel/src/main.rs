@@ -7,29 +7,27 @@ fn main() -> Result<(), anyhow::Error> {
   let event_loop = EventLoop::new().unwrap();
   event_loop.set_control_flow(ControlFlow::Poll);
   let window = WindowBuilder::new().build(&event_loop).unwrap();
-  let mut state = KhelState::new(window);
-  let device = &state.device;
-  // objects
-  let objects = &mut state.objects;
-  let [
-    circle_red,
-    circle_green,
-  ] = objects.as_mut_slice() else { todo!(); };
-  circle_red.instantiate(0.9, 0.9, device);
-  circle_green.instantiate(0.0, 0.0, device);
+  let mut state = Some(KhelState::new(window));
+  let Some(ref mut state) = state else { todo!(); };
+  state.instantiate("circle_red", 0.9, 0.9);
+  state.instantiate("circle_green", 0.0, 0.0);
+  let to_be_destroyed = state.instantiate("circle_red", 0.0, 0.0);
+  state.destroy(to_be_destroyed);
+
   // run event loop
   // event_loop.run_app(&mut app)?;
   let _ = event_loop.run(move |event, elwt| {
-    // let Some(ref mut state) = state else { todo!(); };
+    // handle event
     match event {
       Event::WindowEvent { event, .. } => {
+        // state.input gets a chance to handle the event instead
+        // any events it does not handle return false
         if !state.input(&event) {
           match event {
             WindowEvent::CloseRequested => {
               elwt.exit();
             },
             WindowEvent::RedrawRequested => {
-              // let Some(ref mut state) = state else { todo!(); };
               state.window.request_redraw();
               state.update();
               match state.render() {
@@ -43,16 +41,15 @@ fn main() -> Result<(), anyhow::Error> {
               }
             },
             WindowEvent::Resized(physical_size) => {
-              // let Some(ref mut state) = state else { todo!(); };
               state.resize(physical_size);
-              // state.diffuse_texture.vertex_buffer = texture::create_vertex_buffer(state.diffuse_texture.texture.size(), physical_size, &state.device);
-              for object in &mut state.objects {
+              for object in state.objects.values_mut() {
                 object.texture.vertex_buffer = texture::create_vertex_buffer(object.texture.texture.size(), physical_size, &state.device);
               }
             },
             WindowEvent::ScaleFactorChanged { scale_factor: _, inner_size_writer: _ } => todo!(),
             _ => (),
           }
+          // egui
           state.egui.handle_input(&mut state.window, &event);
         }
       },

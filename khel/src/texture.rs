@@ -64,27 +64,7 @@ impl Texture {
       mipmap_filter: FilterMode::Nearest,
       ..Default::default()
     });
-    let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-      entries: &[
-        BindGroupLayoutEntry {
-          binding: 0,
-          visibility: ShaderStages::FRAGMENT,
-          ty: BindingType::Texture {
-            sample_type: TextureSampleType::Float { filterable: true },
-            view_dimension: TextureViewDimension::D2,
-            multisampled: false,
-          },
-          count: None,
-        },
-        BindGroupLayoutEntry {
-          binding: 1,
-          visibility: ShaderStages::FRAGMENT,
-          ty: BindingType::Sampler(SamplerBindingType::Filtering),
-          count: None,
-        },
-      ],
-      label: Some("texture_bind_group_layout"),
-    });
+    let bind_group_layout = device.create_bind_group_layout(&bgl_desc());
     let bind_group = device.create_bind_group(&BindGroupDescriptor {
       layout: &bind_group_layout,
       entries: &[
@@ -118,6 +98,30 @@ impl Texture {
       vertex_buffer,
       index_buffer,
     })
+  }
+}
+
+pub fn bgl_desc() -> BindGroupLayoutDescriptor<'static> {
+  BindGroupLayoutDescriptor {
+    entries: &[
+      BindGroupLayoutEntry {
+        binding: 0,
+        visibility: ShaderStages::FRAGMENT,
+        ty: BindingType::Texture {
+          sample_type: TextureSampleType::Float { filterable: true },
+          view_dimension: TextureViewDimension::D2,
+          multisampled: false,
+        },
+        count: None,
+      },
+      BindGroupLayoutEntry {
+        binding: 1,
+        visibility: ShaderStages::FRAGMENT,
+        ty: BindingType::Sampler(SamplerBindingType::Filtering),
+        count: None,
+      },
+    ],
+    label: Some("texture_bind_group_layout"),
   }
 }
 

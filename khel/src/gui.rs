@@ -20,14 +20,6 @@ impl EguiRenderer {
   ) -> Self {
     let context = Context::default();
     let id = context.viewport_id();
-    // let visuals = Visuals {
-    //   window_rounding: Rounding::ZERO,
-    //   window_shadow: Shadow::NONE,
-    //   window_fill: Color32::TRANSPARENT,
-    //   // window_stroke: Stroke::NONE,
-    //   ..Default::default()
-    // };
-    // context.set_visuals(visuals);
     let state = egui_winit::State::new(context.clone(), id, &window, None, None);
     let renderer = Renderer::new(
       device,
@@ -55,7 +47,7 @@ impl EguiRenderer {
     run_ui: impl FnOnce(&Context),
   ) {
     let raw_input = self.state.take_egui_input(window);
-    let full_output = self.context.run(raw_input, |ui| {
+    let full_output = self.context.run(raw_input, |_ui| {
       run_ui(&self.context);
     });
     self.state.handle_platform_output(&window, full_output.platform_output);

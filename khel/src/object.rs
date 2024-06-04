@@ -1,4 +1,4 @@
-use crate::{load_binary, texture::{self, Texture, DrawTexture}, Instance};
+use crate::{load_binary, texture::{self, DrawTexture, Texture}, Instance, KhelState};
 use cgmath::Vector3;
 use wgpu::{util::{BufferInitDescriptor, DeviceExt}, Buffer, BufferUsages, Device, Queue, RenderPass};
 use winit::dpi::PhysicalSize;
@@ -20,15 +20,6 @@ impl Object {
       instances,
       instance_buffer,
     })
-  }
-  pub fn instantiate(&mut self, x: f32, y: f32, device: &Device) -> usize {
-    let instance = Instance {
-      position: Vector3 { x, y, z: 0.0 },
-    };
-    self.instances.push(instance);
-    self.instance_buffer = create_instance_buffer(&self.instances, &device);
-    // Ok(self.instances.len())
-    self.instances.len()
   }
 }
 

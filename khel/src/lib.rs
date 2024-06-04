@@ -1,10 +1,10 @@
 use crate::object::{DrawObject, Object};
-use std::{mem, sync::Arc};
+use std::{collections::HashMap, mem, sync::Arc};
 use egui_wgpu::ScreenDescriptor;
 use gui::EguiRenderer;
 use sound::Sound;
 use cgmath::Vector3;
-// use log::debug;
+use log::info;
 use pollster::block_on;
 use wgpu::{include_wgsl, BlendState, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, InstanceDescriptor, MultisampleState, /*PipelineCompilationOptions,*/ PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, VertexBufferLayout, VertexState};
 // use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::ActiveEventLoop, window::{Window, WindowId}};
@@ -19,7 +19,6 @@ pub mod texture;
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct Vertex {
   position: [f32; 3],
-  // color: [f32; 3],
   tex_coords: [f32; 2],
 }
 
@@ -46,6 +45,7 @@ impl Vertex {
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+/// A raw object instance to send to the shader.
 struct InstanceRaw {
   model: [[f32; 4]; 4],
 }
@@ -81,12 +81,17 @@ impl InstanceRaw {
   }
 }
 
+/// An object instance.
+#[derive(Clone)]
 struct Instance {
+  id: u32,
+  t: String,
   position: Vector3<f32>,
   // rotation: Quaternion<f32>,
 }
 
 impl Instance {
+  /// Convert this Instance to an InstanceRaw to be sent to the shader.
   fn to_raw(&self) -> InstanceRaw {
     InstanceRaw {
       model: (cgmath::Matrix4::from_translation(self.position)).into(),
@@ -94,10 +99,10 @@ impl Instance {
   }
 }
 
-#[derive(Default)]
-pub struct App<'a> {
-  pub state: Option<KhelState<'a>>,
-}
+// #[derive(Default)]
+// pub struct App<'a> {
+//   pub state: Option<KhelState<'a>>,
+// }
 
 // impl<'a> ApplicationHandler for App<'a> {
 //   /// Emitted when the app has been resumed.
@@ -170,7 +175,9 @@ pub struct KhelState<'a> {
   pub size: winit::dpi::PhysicalSize<u32>,
   pub clear_color: wgpu::Color,
   pub render_pipeline: RenderPipeline,
-  pub objects: Vec<Object>,
+  pub objects: HashMap<String, Object>,
+  pub instances: HashMap<u32, Instance>,
+  pub min_available_object_id: u32,
   pub sounds: Vec<Sound>,
   pub egui: EguiRenderer,
 }
@@ -223,18 +230,20 @@ impl<'a> KhelState<'a> {
     };
     surface.configure(&device, &config);
     // objects!
-    let circle_red = Object::from_file("circle_red.png", size, &device, &queue).unwrap();
-    let circle_green = Object::from_file("circle_green.png", size, &device, &queue).unwrap();
-    let objects = vec![
-      circle_red,
-      circle_green,
-    ];
+    // let circle_red = Object::from_file("circle_red.png", size, &device, &queue).unwrap();
+    // let circle_green = Object::from_file("circle_green.png", size, &device, &queue).unwrap();
+    let mut objects: HashMap<String, Object> = HashMap::new();
+    // objects.insert("circle_red".to_string(), circle_red);
+    // objects.insert("circle_green".to_string(), circle_green);
+    let instances: HashMap<u32, Instance> = HashMap::new();
+    let min_available_object_id = 0;
     // shader module
     let shader = device.create_shader_module(include_wgsl!("shader.wgsl"));
     // render pipeline
     let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
       label: Some("Render Pipeline Layout"),
-      bind_group_layouts: &[&objects[0].texture.bind_group_layout],
+      // bind_group_layouts: &[&objects.get("circle_red").unwrap().texture.bind_group_layout],
+      bind_group_layouts: &[&device.create_bind_group_layout(&texture::bgl_desc())],
       push_constant_ranges: &[],
     });
     let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -297,6 +306,8 @@ impl<'a> KhelState<'a> {
       clear_color,
       render_pipeline,
       objects,
+      instances,
+      min_available_object_id,
       sounds,
       egui,
     }
@@ -312,7 +323,7 @@ impl<'a> KhelState<'a> {
   }
   /// Handle input.
   /// Any events not handled here will be handled in window_event on App.
-  pub fn input(&mut self, event: &WindowEvent) -> bool {
+  pub fn input(&mut self, _event: &WindowEvent) -> bool {
     self.window.request_redraw();
     // match event {
     //   WindowEvent::CursorMoved { position, .. } => {
@@ -354,7 +365,7 @@ impl<'a> KhelState<'a> {
         timestamp_writes: None,
       });
       render_pass.set_pipeline(&self.render_pipeline);
-      for object in &self.objects {
+      for object in self.objects.values() {
         render_pass.draw_object_instanced(object);
       }
     }
@@ -378,6 +389,35 @@ impl<'a> KhelState<'a> {
     output.present();
 
     Ok(())
+  }
+  /// Instantiate an object at the given coordinates.
+  pub fn instantiate(&mut self, t: &str, x: f32, y: f32) -> u32 {
+    if self.objects.get(t).is_none() {
+      let filename = format!("{}.png", t);
+      let object = Object::from_file(filename.as_str(), self.window.inner_size(), &self.device, &self.queue).unwrap();
+      self.objects.insert(t.to_string(), object);
+    }
+    let object = self.objects.get_mut(t).unwrap();
+    let id = self.min_available_object_id;
+    let instance = Instance {
+      id,
+      t: t.to_string(),
+      position: Vector3 { x, y, z: 0.0 },
+    };
+    object.instances.push(instance.clone());
+    object.instance_buffer = object::create_instance_buffer(&object.instances, &self.device);
+    self.instances.insert(id, instance);
+    info!("created instance of {} with id {}", t, id);
+    self.min_available_object_id += 1;
+    id
+  }
+  pub fn destroy(&mut self, id: u32) {
+    let instance = self.instances.get(&id).unwrap().to_owned();
+    let t = instance.t;
+    let object = self.objects.get_mut(&t).unwrap();
+    self.instances.remove(&id);
+    object.instances.retain(|x| x.id != id);
+    info!("destroyed instance of {} with id {}", t, id);
   }
 }
 

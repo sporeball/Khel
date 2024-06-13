@@ -1,13 +1,14 @@
+use crate::KhelState;
 use egui::{epaint::Shadow, Button, Color32, Context, Frame, Margin, Rounding};
-use egui_wgpu::{Renderer, ScreenDescriptor};
+use egui_wgpu::Renderer;
 use log::info;
-use wgpu::{CommandEncoder, Device, Queue, RenderPassColorAttachment, RenderPassDescriptor, TextureFormat, TextureView};
+use wgpu::{Device, TextureFormat};
 use winit::{event::WindowEvent, window::Window};
 
 pub struct EguiRenderer {
   pub context: Context,
-  state: egui_winit::State,
-  renderer: Renderer,
+  pub state: egui_winit::State,
+  pub renderer: Renderer,
 }
 
 impl EguiRenderer {
@@ -36,50 +37,10 @@ impl EguiRenderer {
   pub fn handle_input(&mut self, window: &Window, event: &WindowEvent) {
     let _ = self.state.on_window_event(window, event);
   }
-  pub fn draw(
-    &mut self,
-    device: &Device,
-    queue: &Queue,
-    encoder: &mut CommandEncoder,
-    window: &Window,
-    window_surface_view: &TextureView,
-    screen_descriptor: ScreenDescriptor,
-    run_ui: impl FnOnce(&Context),
-  ) {
-    let raw_input = self.state.take_egui_input(window);
-    let full_output = self.context.run(raw_input, |_ui| {
-      run_ui(&self.context);
-    });
-    self.state.handle_platform_output(&window, full_output.platform_output);
-    let tris = self.context
-      .tessellate(full_output.shapes, full_output.pixels_per_point);
-    for (id, image_delta) in &full_output.textures_delta.set {
-      self.renderer.update_texture(&device, &queue, *id, &image_delta);
-    }
-    self.renderer.update_buffers(&device, &queue, encoder, &tris, &screen_descriptor);
-    let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
-      color_attachments: &[Some(RenderPassColorAttachment {
-        view: &window_surface_view,
-        resolve_target: None,
-        ops: wgpu::Operations {
-          load: wgpu::LoadOp::Load,
-          store: wgpu::StoreOp::Store,
-        },
-      })],
-      depth_stencil_attachment: None,
-      label: Some("egui main render pass"),
-      timestamp_writes: None,
-      occlusion_query_set: None,
-    });
-    self.renderer.render(&mut rpass, &tris, &screen_descriptor);
-    drop(rpass);
-    for x in &full_output.textures_delta.free {
-      self.renderer.free_texture(x)
-    }
-  }
 }
 
-pub fn gui(ui: &Context) {
+pub fn gui(state: &mut KhelState) {
+  let ctx = state.egui.context.to_owned();
   // egui::Window::new("Khel")
   egui::CentralPanel::default()
     .frame(Frame {
@@ -90,9 +51,11 @@ pub fn gui(ui: &Context) {
       // stroke: Stroke::NONE,
       ..Default::default()
     })
-    .show(&ui, |ui| {
-      if ui.add(Button::new("Click me")).clicked() {
-        info!("button pressed!")
+    .show(&ctx, |ui| {
+      if ui.add(Button::new("Create object")).clicked() {
+        info!("creating an object...");
+        let o = state.instantiate("circle_red", -1.0, 0.0);
+        state.velocity(o, 100.0, 0.0);
       }
       ui.end_row();
     });

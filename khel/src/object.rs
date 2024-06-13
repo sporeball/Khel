@@ -1,11 +1,11 @@
-use crate::{load_binary, texture::{self, DrawTexture, Texture}, Instance, KhelState};
-use cgmath::Vector3;
+use crate::{load_binary, texture::{self, DrawTexture, Texture}, Instance};
+use std::collections::HashMap;
 use wgpu::{util::{BufferInitDescriptor, DeviceExt}, Buffer, BufferUsages, Device, Queue, RenderPass};
 use winit::dpi::PhysicalSize;
 
 pub struct Object {
   pub texture: Texture,
-  pub instances: Vec<Instance>,
+  pub instances: HashMap<u32, Instance>,
   pub instance_buffer: Buffer,
 }
 
@@ -13,7 +13,8 @@ impl Object {
   pub fn from_file(filename: &str, window_size: PhysicalSize<u32>, device: &Device, queue: &Queue) -> Result<Self, anyhow::Error> {
     let bytes = load_binary(filename).unwrap();
     let texture = texture::Texture::from_bytes(window_size, &device, &queue, &bytes, filename).unwrap();
-    let instances = vec![];
+    // let instances = vec![];
+    let instances: HashMap<u32, Instance> = HashMap::new();
     let instance_buffer = create_instance_buffer(&instances, device);
     Ok(Self {
       texture,
@@ -23,8 +24,19 @@ impl Object {
   }
 }
 
-pub fn create_instance_buffer(instances: &Vec<Instance>, device: &Device) -> Buffer {
-  let instance_data = instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
+// pub fn create_instance_buffer(instances: &Vec<Instance>, device: &Device) -> Buffer {
+pub fn create_instance_buffer(instances: &HashMap<u32, Instance>, device: &Device) -> Buffer {
+  // let instance_data = instances
+  //   .iter()
+  //   .map(Instance::to_raw)
+  //   .collect::<Vec<_>>();
+  let instance_data = instances
+    .values()
+    .cloned()
+    .collect::<Vec<_>>()
+    .iter()
+    .map(Instance::to_raw)
+    .collect::<Vec<_>>();
   let instance_buffer = device.create_buffer_init(&BufferInitDescriptor {
     label: Some("Instance Buffer"),
     contents: bytemuck::cast_slice(&instance_data),

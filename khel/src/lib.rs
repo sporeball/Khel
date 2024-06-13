@@ -1,12 +1,13 @@
 use crate::object::{DrawObject, Object};
 use std::{collections::HashMap, mem, sync::Arc};
+// use egui::Context;
 use egui_wgpu::ScreenDescriptor;
 use gui::EguiRenderer;
 use sound::Sound;
-use cgmath::Vector3;
+use cgmath::{Vector2, Vector3};
 use log::info;
 use pollster::block_on;
-use wgpu::{include_wgsl, BlendState, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, InstanceDescriptor, MultisampleState, /*PipelineCompilationOptions,*/ PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, VertexBufferLayout, VertexState};
+use wgpu::{include_wgsl, BlendState, ColorTargetState, ColorWrites, CommandEncoder, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, InstanceDescriptor, MultisampleState, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureView, TextureViewDescriptor, VertexBufferLayout, VertexState};
 // use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::ActiveEventLoop, window::{Window, WindowId}};
 use winit::{dpi::PhysicalSize, event::WindowEvent, window::Window};
 
@@ -28,11 +29,13 @@ impl Vertex {
       array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
       step_mode: wgpu::VertexStepMode::Vertex,
       attributes: &[
+        // position
         wgpu::VertexAttribute {
           offset: 0,
           shader_location: 0,
           format: wgpu::VertexFormat::Float32x3,
         },
+        // tex_coords
         wgpu::VertexAttribute {
           offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
           shader_location: 1,
@@ -47,6 +50,7 @@ impl Vertex {
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 /// A raw object instance to send to the shader.
 struct InstanceRaw {
+  // mat4
   model: [[f32; 4]; 4],
 }
 
@@ -56,21 +60,25 @@ impl InstanceRaw {
       array_stride: mem::size_of::<InstanceRaw>() as wgpu::BufferAddress,
       step_mode: wgpu::VertexStepMode::Instance,
       attributes: &[
+        // model vec4 #1
         wgpu::VertexAttribute {
           offset: 0,
           shader_location: 5,
           format: wgpu::VertexFormat::Float32x4,
         },
+        // model vec4 #2
         wgpu::VertexAttribute {
           offset: mem::size_of::<[f32; 4]>() as wgpu::BufferAddress,
           shader_location: 6,
           format: wgpu::VertexFormat::Float32x4,
         },
+        // model vec4 #3
         wgpu::VertexAttribute {
           offset: mem::size_of::<[f32; 8]>() as wgpu::BufferAddress,
           shader_location: 7,
           format: wgpu::VertexFormat::Float32x4,
         },
+        // model vec4 #4
         wgpu::VertexAttribute {
           offset: mem::size_of::<[f32; 12]>() as wgpu::BufferAddress,
           shader_location: 8,
@@ -84,9 +92,8 @@ impl InstanceRaw {
 /// An object instance.
 #[derive(Clone)]
 struct Instance {
-  id: u32,
-  t: String,
   position: Vector3<f32>,
+  velocity: Vector2<f32>,
   // rotation: Quaternion<f32>,
 }
 
@@ -176,7 +183,7 @@ pub struct KhelState<'a> {
   pub clear_color: wgpu::Color,
   pub render_pipeline: RenderPipeline,
   pub objects: HashMap<String, Object>,
-  pub instances: HashMap<u32, Instance>,
+  pub instances: HashMap<u32, String>,
   pub min_available_object_id: u32,
   pub sounds: Vec<Sound>,
   pub egui: EguiRenderer,
@@ -184,9 +191,9 @@ pub struct KhelState<'a> {
 
 impl<'a> KhelState<'a> {
   /// Create a new KhelState instance.
-  pub fn new(window: Window) -> KhelState<'a> {
+  pub fn new(window: Arc<Window>) -> KhelState<'a> {
     // basic properties
-    let window = Arc::new(window);
+    // let window = Arc::new(window);
     let size = window.inner_size();
     let clear_color = wgpu::Color::BLACK;
     // instance
@@ -230,12 +237,8 @@ impl<'a> KhelState<'a> {
     };
     surface.configure(&device, &config);
     // objects!
-    // let circle_red = Object::from_file("circle_red.png", size, &device, &queue).unwrap();
-    // let circle_green = Object::from_file("circle_green.png", size, &device, &queue).unwrap();
-    let mut objects: HashMap<String, Object> = HashMap::new();
-    // objects.insert("circle_red".to_string(), circle_red);
-    // objects.insert("circle_green".to_string(), circle_green);
-    let instances: HashMap<u32, Instance> = HashMap::new();
+    let objects: HashMap<String, Object> = HashMap::new();
+    let instances: HashMap<u32, String> = HashMap::new();
     let min_available_object_id = 0;
     // shader module
     let shader = device.create_shader_module(include_wgsl!("shader.wgsl"));
@@ -323,7 +326,7 @@ impl<'a> KhelState<'a> {
   }
   /// Handle input.
   /// Any events not handled here will be handled in window_event on App.
-  pub fn input(&mut self, _event: &WindowEvent) -> bool {
+  pub fn input(&mut self, event: &WindowEvent) -> bool {
     self.window.request_redraw();
     // match event {
     //   WindowEvent::CursorMoved { position, .. } => {
@@ -337,10 +340,45 @@ impl<'a> KhelState<'a> {
     //   },
     //   _ => false,
     // }
-    false
+    match event {
+      WindowEvent::CloseRequested => {
+        return false;
+      },
+      WindowEvent::RedrawRequested => {
+        self.window.request_redraw();
+        // self.update();
+        match self.render() {
+          Ok(_) => {},
+          // reconfigure the surface if lost
+          Err(wgpu::SurfaceError::Lost) => self.resize(self.size),
+          // the system is out of memory, we should probably quit
+          Err(wgpu::SurfaceError::OutOfMemory) => return false,
+          // all other errors (Outdated, Timeout) should be resolved by the next frame
+          Err(e) => eprintln!("{:?}", e),
+        }
+      },
+      WindowEvent::Resized(physical_size) => {
+        self.resize(*physical_size);
+        for object in self.objects.values_mut() {
+          object.texture.vertex_buffer = texture::create_vertex_buffer(object.texture.texture.size(), *physical_size, &self.device);
+        }
+      },
+      WindowEvent::ScaleFactorChanged { scale_factor: _, inner_size_writer: _ } => todo!(),
+      _ => (),
+    }
+    // egui
+    self.egui.handle_input(&mut self.window, &event);
+    // return value
+    true
   }
-  pub fn update(&mut self) {
-    // TODO
+  pub fn update(&mut self, dt: f64) {
+    for object in self.objects.values_mut() {
+      for instance in &mut object.instances.values_mut() {
+        instance.position.x += instance.velocity.x / self.size.width as f32 * dt as f32;
+        instance.position.y += instance.velocity.y / self.size.height as f32 * dt as f32;
+      }
+      object.instance_buffer = object::create_instance_buffer(&object.instances, &self.device);
+    }
   }
   /// Use this KhelState to perform a render pass.
   pub fn render(&mut self) -> Result<(), SurfaceError> {
@@ -370,18 +408,19 @@ impl<'a> KhelState<'a> {
       }
     }
 
-    let screen_descriptor = ScreenDescriptor {
-      size_in_pixels: [self.config.width, self.config.height],
-      pixels_per_point: self.window.scale_factor() as f32,
-    };
-    self.egui.draw(
-      &self.device,
-      &self.queue,
+    // self.egui.draw(
+    //   &self.device,
+    //   &self.queue,
+    //   &mut encoder,
+    //   &self.window,
+    //   &view,
+    //   // screen_descriptor,
+    //   |ctx| gui::gui(ctx),
+    // );
+    self.render_gui(
       &mut encoder,
-      &self.window,
       &view,
-      screen_descriptor,
-      |ui| gui::gui(ui),
+      gui::gui,
     );
 
     // submit will accept anything that implements IntoIter
@@ -390,34 +429,94 @@ impl<'a> KhelState<'a> {
 
     Ok(())
   }
+  pub fn render_gui(
+    &mut self,
+    encoder: &mut CommandEncoder,
+    window_surface_view: &TextureView,
+    // run_ui: impl FnOnce(&mut KhelState),
+    run_ui: fn(&mut KhelState),
+  ) {
+    let screen_descriptor = ScreenDescriptor {
+      size_in_pixels: [self.config.width, self.config.height],
+      pixels_per_point: self.window.scale_factor() as f32,
+    };
+    let raw_input = self.egui.state.take_egui_input(&self.window);
+    // let full_output = self.egui.context.run(raw_input, |_ui| {
+    //   // run_ui(&self.egui.context);
+    // });
+    self.egui.context.begin_frame(raw_input);
+    run_ui(self);
+    let full_output = self.egui.context.end_frame();
+    self.egui.state.handle_platform_output(&self.window, full_output.platform_output);
+    let tris = self.egui.context
+      .tessellate(full_output.shapes, full_output.pixels_per_point);
+    for (id, image_delta) in &full_output.textures_delta.set {
+      self.egui.renderer.update_texture(&self.device, &self.queue, *id, &image_delta);
+    }
+    self.egui.renderer.update_buffers(&self.device, &self.queue, encoder, &tris, &screen_descriptor);
+    let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
+      color_attachments: &[Some(RenderPassColorAttachment {
+        view: &window_surface_view,
+        resolve_target: None,
+        ops: wgpu::Operations {
+          load: wgpu::LoadOp::Load,
+          store: wgpu::StoreOp::Store,
+        },
+      })],
+      depth_stencil_attachment: None,
+      label: Some("egui main render pass"),
+      timestamp_writes: None,
+      occlusion_query_set: None,
+    });
+    self.egui.renderer.render(&mut rpass, &tris, &screen_descriptor);
+    // cleanup
+    drop(rpass);
+    for x in &full_output.textures_delta.free {
+      self.egui.renderer.free_texture(x)
+    }
+  }
   /// Instantiate an object at the given coordinates.
   pub fn instantiate(&mut self, t: &str, x: f32, y: f32) -> u32 {
+    // create an entry in objects if none exists
     if self.objects.get(t).is_none() {
       let filename = format!("{}.png", t);
-      let object = Object::from_file(filename.as_str(), self.window.inner_size(), &self.device, &self.queue).unwrap();
+      let object = Object::from_file(
+        filename.as_str(),
+        self.window.inner_size(),
+        &self.device,
+        &self.queue
+      ).unwrap();
       self.objects.insert(t.to_string(), object);
     }
+    // create an instance
     let object = self.objects.get_mut(t).unwrap();
     let id = self.min_available_object_id;
     let instance = Instance {
-      id,
-      t: t.to_string(),
       position: Vector3 { x, y, z: 0.0 },
+      velocity: Vector2 { x: 0.0, y: 0.0 },
     };
-    object.instances.push(instance.clone());
+    // push the instance
+    object.instances.insert(id, instance);
     object.instance_buffer = object::create_instance_buffer(&object.instances, &self.device);
-    self.instances.insert(id, instance);
-    info!("created instance of {} with id {}", t, id);
+    self.instances.insert(id, t.to_string());
+    info!("created {} instance (id: {})", t, id);
     self.min_available_object_id += 1;
     id
   }
+  /// Destroy the object instance with the given ID.
   pub fn destroy(&mut self, id: u32) {
-    let instance = self.instances.get(&id).unwrap().to_owned();
-    let t = instance.t;
+    let t = self.instances.get(&id).unwrap().to_owned();
     let object = self.objects.get_mut(&t).unwrap();
     self.instances.remove(&id);
-    object.instances.retain(|x| x.id != id);
-    info!("destroyed instance of {} with id {}", t, id);
+    object.instances.remove(&id);
+    info!("destroyed {} instance (id: {})", t, id);
+  }
+  pub fn velocity(&mut self, id: u32, x: f32, y: f32) {
+    let t = self.instances.get(&id).unwrap().to_owned();
+    let object = self.objects.get_mut(&t).unwrap();
+    let instance = object.instances.get_mut(&id).unwrap();
+    instance.velocity = Vector2 { x, y };
+    info!("set {} instance velocity (pps) (id: {}, x: {}, y: {})", t, id, x, y);
   }
 }
 

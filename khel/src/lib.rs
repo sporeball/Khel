@@ -2,6 +2,7 @@ use crate::object::{DrawObject, Object};
 use std::{collections::HashMap, mem, sync::Arc};
 // use egui::Context;
 use egui_wgpu::ScreenDescriptor;
+use fps_ticker::Fps;
 use gui::EguiRenderer;
 use sound::Sound;
 use cgmath::{Vector2, Vector3};
@@ -182,6 +183,7 @@ pub struct KhelState<'a> {
   pub size: winit::dpi::PhysicalSize<u32>,
   pub clear_color: wgpu::Color,
   pub render_pipeline: RenderPipeline,
+  pub fps: Fps,
   pub objects: HashMap<String, Object>,
   pub instances: HashMap<u32, String>,
   pub min_available_object_id: u32,
@@ -285,6 +287,7 @@ impl<'a> KhelState<'a> {
       },
       multiview: None,
     });
+    let fps = Fps::default();
     // sounds
     // let sound = Sound::new("sound.wav");
     let sounds = vec![
@@ -308,6 +311,7 @@ impl<'a> KhelState<'a> {
       size,
       clear_color,
       render_pipeline,
+      fps,
       objects,
       instances,
       min_available_object_id,
@@ -371,11 +375,12 @@ impl<'a> KhelState<'a> {
     // return value
     true
   }
-  pub fn update(&mut self, dt: f64) {
+  pub fn update(&mut self) {
     for object in self.objects.values_mut() {
       for instance in &mut object.instances.values_mut() {
-        instance.position.x += instance.velocity.x / self.size.width as f32 * dt as f32;
-        instance.position.y += instance.velocity.y / self.size.height as f32 * dt as f32;
+        // window coordinates are [-1.0, 1.0], so we have to multiply by 2
+        instance.position.x += instance.velocity.x / self.size.width as f32 / 60.0 * 2.0;
+        instance.position.y += instance.velocity.y / self.size.height as f32 / 60.0 * 2.0;
       }
       object.instance_buffer = object::create_instance_buffer(&object.instances, &self.device);
     }

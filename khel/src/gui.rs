@@ -1,5 +1,5 @@
 use crate::KhelState;
-use egui::{epaint::Shadow, Button, Color32, Context, Frame, Margin, Rounding};
+use egui::{epaint::Shadow, Button, Color32, Context, Frame, Label, Margin, Rounding};
 use egui_wgpu::Renderer;
 use log::info;
 use wgpu::{Device, TextureFormat};
@@ -39,6 +39,9 @@ impl EguiRenderer {
   }
 }
 
+/// Create a CentralPanel with some kind of GUI inside.
+/// This function is defined outside EguiRenderer so that the closure passed
+/// to CentralPanel::show can access the methods on KhelState directly.
 pub fn gui(state: &mut KhelState) {
   let ctx = state.egui.context.to_owned();
   // egui::Window::new("Khel")
@@ -52,6 +55,8 @@ pub fn gui(state: &mut KhelState) {
       ..Default::default()
     })
     .show(&ctx, |ui| {
+      ui.add(Label::new(format!("{:.0} fps", state.fps.avg())));
+      ui.end_row();
       if ui.add(Button::new("Create object")).clicked() {
         info!("creating an object...");
         let o = state.instantiate("circle_red", -1.0, 0.0);

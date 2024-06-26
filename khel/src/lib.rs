@@ -193,14 +193,18 @@ pub struct KhelState<'a> {
 
 impl<'a> KhelState<'a> {
   /// Create a new KhelState instance.
-  pub fn new(window: Arc<Window>) -> KhelState<'a> {
+  pub fn new(window: Arc<Window>, gl: bool) -> KhelState<'a> {
     // basic properties
     // let window = Arc::new(window);
     let size = window.inner_size();
     let clear_color = wgpu::Color::BLACK;
     // instance
+    let backends = match gl {
+      true => wgpu::Backends::SECONDARY,
+      false => wgpu::Backends::PRIMARY,
+    };
     let instance = wgpu::Instance::new(InstanceDescriptor {
-      backends: wgpu::Backends::PRIMARY,
+      backends,
       ..Default::default()
     });
     // surface

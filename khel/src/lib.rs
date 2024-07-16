@@ -220,7 +220,7 @@ impl<'a> KhelState<'a> {
       &DeviceDescriptor {
         label: None,
         required_features: wgpu::Features::empty(),
-        required_limits: wgpu::Limits::default(),
+        required_limits: wgpu::Limits::downlevel_defaults(),
       },
       None
     )).unwrap();
@@ -371,7 +371,7 @@ impl<'a> KhelState<'a> {
           object.texture.vertex_buffer = texture::create_vertex_buffer(object.texture.texture.size(), *physical_size, &self.device);
         }
       },
-      WindowEvent::ScaleFactorChanged { scale_factor: _, inner_size_writer: _ } => todo!(),
+      // WindowEvent::ScaleFactorChanged { scale_factor: _, inner_size_writer: _ } => todo!(),
       _ => (),
     }
     // egui

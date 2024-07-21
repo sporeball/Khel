@@ -40,7 +40,7 @@ fn main() -> Result<(), anyhow::Error> {
       g.game.update();
     },
     |g| {
-      g.game.render();
+      let _ = g.game.render();
     },
     |g, event| {
       match event {

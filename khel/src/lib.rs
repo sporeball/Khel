@@ -93,6 +93,7 @@ impl InstanceRaw {
 /// An object instance.
 #[derive(Clone)]
 struct Instance {
+  t: String,
   position: Vector3<f32>,
   velocity: Vector2<f32>,
   // rotation: Quaternion<f32>,
@@ -185,7 +186,6 @@ pub struct KhelState<'a> {
   pub render_pipeline: RenderPipeline,
   pub fps: Fps,
   pub objects: HashMap<String, Object>,
-  pub instances: HashMap<u32, String>,
   pub min_available_object_id: u32,
   pub sounds: Vec<Sound>,
   pub egui: EguiRenderer,
@@ -244,7 +244,6 @@ impl<'a> KhelState<'a> {
     surface.configure(&device, &config);
     // objects!
     let objects: HashMap<String, Object> = HashMap::new();
-    let instances: HashMap<u32, String> = HashMap::new();
     let min_available_object_id = 0;
     // shader module
     let shader = device.create_shader_module(include_wgsl!("shader.wgsl"));
@@ -317,7 +316,6 @@ impl<'a> KhelState<'a> {
       render_pipeline,
       fps,
       objects,
-      instances,
       min_available_object_id,
       sounds,
       egui,
@@ -485,6 +483,7 @@ impl<'a> KhelState<'a> {
     }
   }
   /// Instantiate an object at the given coordinates.
+  /// Returns the ID of the object.
   pub fn instantiate(&mut self, t: &str, x: f32, y: f32) -> u32 {
     // create an entry in objects if none exists
     if self.objects.get(t).is_none() {
@@ -501,31 +500,37 @@ impl<'a> KhelState<'a> {
     let object = self.objects.get_mut(t).unwrap();
     let id = self.min_available_object_id;
     let instance = Instance {
+      t: t.to_string(),
       position: Vector3 { x, y, z: 0.0 },
       velocity: Vector2 { x: 0.0, y: 0.0 },
     };
     // push the instance
-    object.instances.insert(id, instance);
+    object.instances.insert(id, instance.clone());
     object.instance_buffer = object::create_instance_buffer(&object.instances, &self.device);
-    self.instances.insert(id, t.to_string());
     info!("created {} instance (id: {})", t, id);
     self.min_available_object_id += 1;
     id
   }
   /// Destroy the object instance with the given ID.
   pub fn destroy(&mut self, id: u32) {
-    let t = self.instances.get(&id).unwrap().to_owned();
-    let object = self.objects.get_mut(&t).unwrap();
-    self.instances.remove(&id);
+    let Some(object) = self.objects.values_mut().find(|o| o.instances.contains_key(&id)) else { todo!(); };
     object.instances.remove(&id);
-    info!("destroyed {} instance (id: {})", t, id);
+    info!("destroyed object instance (id: {})", id);
   }
   pub fn velocity(&mut self, id: u32, x: f32, y: f32) {
-    let t = self.instances.get(&id).unwrap().to_owned();
-    let object = self.objects.get_mut(&t).unwrap();
-    let instance = object.instances.get_mut(&id).unwrap();
+    let mut instance = self.get_instance_mut(id);
     instance.velocity = Vector2 { x, y };
-    info!("set {} instance velocity (pps) (id: {}, x: {}, y: {})", t, id, x, y);
+    info!("set {} instance velocity (pps) (id: {}, x: {}, y: {})", instance.t, id, x, y);
+  }
+  fn get_instance(&self, id: u32) -> &Instance {
+    let Some(object) = self.objects.values().find(|o| o.instances.contains_key(&id)) else { todo!(); };
+    let Some(instance) = object.instances.get(&id) else { todo!(); };
+    instance
+  }
+  fn get_instance_mut(&mut self, id: u32) -> &mut Instance {
+    let Some(object) = self.objects.values_mut().find(|o| o.instances.contains_key(&id)) else { todo!(); };
+    let Some(instance) = object.instances.get_mut(&id) else { todo!(); };
+    instance
   }
 }
 

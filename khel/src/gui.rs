@@ -1,4 +1,4 @@
-use crate::KhelState;
+use crate::{KhelState, chart::Chart};
 use egui::{epaint::Shadow, Button, Color32, Context, Frame, Label, Margin, Rounding};
 use egui_wgpu::Renderer;
 use log::info;
@@ -61,6 +61,10 @@ pub fn gui(state: &mut KhelState) {
         info!("creating an object...");
         let o = state.instantiate("circle_red", -1.0, 0.0);
         state.velocity(o, 100.0, 0.0);
+      }
+      if ui.add(Button::new("Read charts/chart.khel")).clicked() {
+        let _ = Chart::read_from_disk("charts/chart.khel");
+        // info!("{:#?}", chart);
       }
       // if ui.add(Button::new("Destroy object 5")).clicked() && state.min_available_object_id > 5 {
       //   info!("destroying object with id 5...");

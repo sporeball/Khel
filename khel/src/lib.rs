@@ -1,5 +1,11 @@
-use crate::object::{DrawObject, Object};
-use std::{collections::HashMap, mem, sync::Arc};
+use crate::{chart::Chart, object::{DrawObject, Object}};
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::{self, BufRead};
+use std::mem;
+use std::sync::Arc;
+use std::path::Path;
+// use deku::prelude::*;
 // use egui::Context;
 use egui_wgpu::ScreenDescriptor;
 use fps_ticker::Fps;
@@ -10,8 +16,9 @@ use log::info;
 use pollster::block_on;
 use wgpu::{include_wgsl, BlendState, ColorTargetState, ColorWrites, CommandEncoder, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, InstanceDescriptor, MultisampleState, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureView, TextureViewDescriptor, VertexBufferLayout, VertexState};
 // use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::ActiveEventLoop, window::{Window, WindowId}};
-use winit::{dpi::PhysicalSize, event::WindowEvent, window::Window};
+use winit::{dpi::PhysicalSize, event::{ElementState, KeyEvent, WindowEvent}, window::Window};
 
+pub mod chart;
 pub mod gui;
 pub mod object;
 pub mod sound;
@@ -189,6 +196,7 @@ pub struct KhelState<'a> {
   pub min_available_object_id: u32,
   pub sounds: Vec<Sound>,
   pub egui: EguiRenderer,
+  pub chart: Option<Chart>,
 }
 
 impl<'a> KhelState<'a> {
@@ -304,6 +312,7 @@ impl<'a> KhelState<'a> {
       1,
       &window
     );
+    let chart = None;
     // return value
     Self {
       window,
@@ -319,6 +328,7 @@ impl<'a> KhelState<'a> {
       min_available_object_id,
       sounds,
       egui,
+      chart,
     }
   }
   /// Resize this KhelState's surface.
@@ -349,6 +359,25 @@ impl<'a> KhelState<'a> {
     match event {
       WindowEvent::CloseRequested => {
         return false;
+      },
+      WindowEvent::KeyboardInput { device_id: _, event, is_synthetic: _ } => {
+        let KeyEvent {
+          physical_key: _,
+          logical_key,
+          text: _,
+          location: _,
+          state,
+          repeat: _,
+          ..
+        } = event;
+        match state {
+          ElementState::Pressed => {
+            if let winit::keyboard::Key::Character(c) = logical_key {
+              info!("the {} key was pressed", c);
+            }
+          },
+          ElementState::Released => {},
+        };
       },
       WindowEvent::RedrawRequested => {
         self.window.request_redraw();
@@ -483,7 +512,7 @@ impl<'a> KhelState<'a> {
     }
   }
   /// Instantiate an object at the given coordinates.
-  /// Returns the ID of the object.
+  /// Returns the ID of the object instance.
   pub fn instantiate(&mut self, t: &str, x: f32, y: f32) -> u32 {
     // create an entry in objects if none exists
     if self.objects.get(t).is_none() {
@@ -517,16 +546,19 @@ impl<'a> KhelState<'a> {
     object.instances.remove(&id);
     info!("destroyed object instance (id: {})", id);
   }
+  /// Set the x and y velocity of the object instance with the given ID.
   pub fn velocity(&mut self, id: u32, x: f32, y: f32) {
-    let mut instance = self.get_instance_mut(id);
+    let instance = self.get_instance_mut(id);
     instance.velocity = Vector2 { x, y };
     info!("set {} instance velocity (pps) (id: {}, x: {}, y: {})", instance.t, id, x, y);
   }
+  /// Get a reference to the object instance with the given ID.
   fn get_instance(&self, id: u32) -> &Instance {
     let Some(object) = self.objects.values().find(|o| o.instances.contains_key(&id)) else { todo!(); };
     let Some(instance) = object.instances.get(&id) else { todo!(); };
     instance
   }
+  /// Get a mutable reference to the object instance with the given ID.
   fn get_instance_mut(&mut self, id: u32) -> &mut Instance {
     let Some(object) = self.objects.values_mut().find(|o| o.instances.contains_key(&id)) else { todo!(); };
     let Some(instance) = object.instances.get_mut(&id) else { todo!(); };
@@ -540,4 +572,12 @@ pub fn load_binary(filename: &str) -> anyhow::Result<Vec<u8>> {
     .join(filename);
   let data = std::fs::read(path)?;
   Ok(data)
+}
+
+fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+where
+  P: AsRef<Path>,
+{
+  let file = File::open(filename)?;
+  Ok(io::BufReader::new(file).lines())
 }

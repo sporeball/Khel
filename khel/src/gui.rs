@@ -1,4 +1,5 @@
 use crate::{KhelState, chart::Chart};
+use std::time::Duration;
 use egui::{epaint::Shadow, Button, Color32, Context, Frame, Label, Margin, Rounding};
 use egui_wgpu::Renderer;
 use log::info;
@@ -62,9 +63,20 @@ pub fn gui(state: &mut KhelState) {
         let o = state.instantiate("circle_red", -1.0, 0.0);
         state.velocity(o, 100.0, 0.0);
       }
-      if ui.add(Button::new("Read charts/chart.khel")).clicked() {
-        let _ = Chart::read_from_disk("charts/chart.khel");
-        // info!("{:#?}", chart);
+      if ui.add(Button::new("Load chart")).clicked() {
+        let Ok(chart) = Chart::read_from_disk("charts/chart.khel") else { return };
+        state.chart = Some(chart);
+        info!("{:?}", state.chart);
+      }
+      if ui.add(Button::new("Play chart")).clicked() {
+        let Some(ref chart) = state.chart else { return };
+        let ticks = &chart.ticks.0;
+        let start_bpm = ticks[0].bpm as f64;
+        let beat_duration = Duration::from_secs_f64(60f64 / start_bpm);
+        let bar_duration = beat_duration * 4;
+        // set chart start time
+        // this will play the chart once the time has passed
+        state.chart_start_time = Some(state.time + bar_duration);
       }
       // if ui.add(Button::new("Destroy object 5")).clicked() && state.min_available_object_id > 5 {
       //   info!("destroying object with id 5...");

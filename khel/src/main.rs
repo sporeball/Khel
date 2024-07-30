@@ -3,6 +3,7 @@ use game_loop::game_loop;
 use khel::KhelState;
 use log::info;
 use std::sync::Arc;
+use std::time::Instant;
 use winit::{event::Event, event_loop::{ControlFlow, EventLoop}, window::WindowBuilder};
 
 /// Colorful rhythm game
@@ -29,18 +30,25 @@ fn main() -> Result<(), anyhow::Error> {
   let cir = state.instantiate("circle_red", -1.0, 0.0);
   state.velocity(cir, 100.0, 0.0);
 
+  let now = Instant::now();
+
   game_loop(
     event_loop,
     window,
     state,
-    60,
+    1000,
     0.1,
-    |g| {
-      g.game.fps.tick();
+    move |g| {
+      // g.game.fps.tick();
       g.game.update();
+      // g.game.time = g.accumulated_time();
+      g.game.time = now.elapsed();
+      // info!("update @ {:?}", g.game.time);
     },
     |g| {
       let _ = g.game.render();
+      g.game.fps.tick();
+      // info!("render @ {:?}", g.game.time);
     },
     |g, event| {
       match event {

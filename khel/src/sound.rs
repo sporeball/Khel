@@ -3,10 +3,17 @@ use std::io::BufReader;
 // use log::info;
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink};
 
+// not thread-safe across all platforms
 pub struct Sound {
   pub stream: OutputStream,
   pub stream_handle: OutputStreamHandle,
   pub sink: Sink,
+}
+
+impl std::fmt::Debug for Sound {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "Sound {{ [private fields] }}")
+  }
 }
 
 impl Sound {
@@ -19,6 +26,7 @@ impl Sound {
     let sink = Sink::try_new(&stream_handle).unwrap();
     let source = Decoder::new(audio_file).unwrap();
     sink.append(source);
+    sink.pause();
     Self {
       stream,
       stream_handle,

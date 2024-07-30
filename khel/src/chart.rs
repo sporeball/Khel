@@ -2,6 +2,7 @@ use crate::{read_lines, sound::Sound};
 use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
+use std::time::Duration;
 use itertools::Itertools;
 use log::info;
 
@@ -177,6 +178,7 @@ impl TickList {
 #[derive(Debug)]
 pub struct Chart {
   pub metadata: Metadata,
+  pub audio: Sound,
   pub ticks: TickList,
 }
 
@@ -213,7 +215,14 @@ impl Chart {
     let ticks = map.get("ticks").expect("missing key-value pair: ticks").to_string();
     // metadata
     info!("creating metadata...");
-    let metadata = Metadata::new(version, title, subtitle, artist, credit, divisor);
+    let metadata = Metadata::new(version, title.clone(), subtitle.clone(), artist.clone(), credit, divisor);
+    // audio
+    info!("creating audio object...");
+    let audio_filename = match subtitle.as_str() {
+      "" => format!("{} - {}.wav", artist, title),
+      _ => format!("{} - {} ({}).wav", artist, title, subtitle),
+    };
+    let audio = Sound::new(&audio_filename);
     // ticks
     info!("creating tick list...");
     let ticks = TickList::from_string(ticks)?;
@@ -222,10 +231,18 @@ impl Chart {
     // chart
     let chart = Chart {
       metadata,
+      audio,
       ticks,
     };
-    info!("{:?}", chart);
     Ok(chart)
+  }
+  /// Begin playing this chart.
+  pub fn play(&self) -> () {
+    let Metadata { title, artist, credit, .. } = &self.metadata;
+    let ticks = &self.ticks.0;
+    let starting_bpm = ticks[0].bpm as f64;
+    info!("playing chart \"{} - {}\" (mapped by {}) at {}bpm...", artist, title, credit, starting_bpm);
+    self.audio.play();
   }
 }
 

@@ -3,8 +3,9 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::mem;
-use std::sync::Arc;
 use std::path::Path;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 // use deku::prelude::*;
 // use egui::Context;
 use egui_wgpu::ScreenDescriptor;
@@ -192,11 +193,13 @@ pub struct KhelState<'a> {
   pub clear_color: wgpu::Color,
   pub render_pipeline: RenderPipeline,
   pub fps: Fps,
+  pub time: Duration,
   pub objects: HashMap<String, Object>,
   pub min_available_object_id: u32,
   pub sounds: Vec<Sound>,
   pub egui: EguiRenderer,
   pub chart: Option<Chart>,
+  pub chart_start_time: Option<Duration>,
 }
 
 impl<'a> KhelState<'a> {
@@ -299,6 +302,7 @@ impl<'a> KhelState<'a> {
       multiview: None,
     });
     let fps = Fps::default();
+    let time = Duration::ZERO;
     // sounds
     // let sound = Sound::new("sound.wav");
     let sounds = vec![
@@ -313,6 +317,7 @@ impl<'a> KhelState<'a> {
       &window
     );
     let chart = None;
+    let chart_start_time = None;
     // return value
     Self {
       window,
@@ -324,11 +329,13 @@ impl<'a> KhelState<'a> {
       clear_color,
       render_pipeline,
       fps,
+      time,
       objects,
       min_available_object_id,
       sounds,
       egui,
       chart,
+      chart_start_time,
     }
   }
   /// Resize this KhelState's surface.
@@ -391,6 +398,7 @@ impl<'a> KhelState<'a> {
           // all other errors (Outdated, Timeout) should be resolved by the next frame
           Err(e) => eprintln!("{:?}", e),
         }
+        // info!("{}", self.time);
       },
       WindowEvent::Resized(physical_size) => {
         self.resize(*physical_size);
@@ -407,13 +415,21 @@ impl<'a> KhelState<'a> {
     true
   }
   pub fn update(&mut self) {
+    // move objects
     for object in self.objects.values_mut() {
       for instance in &mut object.instances.values_mut() {
         // window coordinates are [-1.0, 1.0], so we have to multiply by 2
-        instance.position.x += instance.velocity.x / self.size.width as f32 / 60.0 * 2.0;
-        instance.position.y += instance.velocity.y / self.size.height as f32 / 60.0 * 2.0;
+        instance.position.x += instance.velocity.x / self.size.width as f32 / 1000.0 * 2.0;
+        instance.position.y += instance.velocity.y / self.size.height as f32 / 1000.0 * 2.0;
       }
       object.instance_buffer = object::create_instance_buffer(&object.instances, &self.device);
+    }
+    // try to play chart
+    if let Some(chart_start_time) = self.chart_start_time {
+      if self.time > chart_start_time {
+        self.chart_start_time = None; // stop it from playing over and over
+        self.chart.as_ref().expect("no chart loaded").play();
+      }
     }
   }
   /// Use this KhelState to perform a render pass.

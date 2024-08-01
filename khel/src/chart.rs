@@ -130,7 +130,7 @@ impl Tick {
   /// # Examples
   ///
   /// ```
-  /// // a tick with one HitObject lasting 4 units at 120bpm
+  /// // a tick with one HitObject lasting 1 unit at 120bpm
   /// let tick = Tick::from_string(String::from("a:0@120"));
   /// ```
   pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
@@ -148,6 +148,14 @@ impl Tick {
       hit_objects,
     };
     Ok(tick)
+  }
+  pub fn duration(&self, divisor: u8) -> Duration {
+    let divisor = divisor as f64;
+    // 1-256
+    let length = self.length + 1;
+    let one_bar = Duration::from_secs_f64((60f64 / self.bpm as f64) * 4.0);
+    let sf = 2f64.powf(divisor) as f64;
+    one_bar.div_f64(sf)
   }
 }
 
@@ -243,6 +251,35 @@ impl Chart {
     let starting_bpm = ticks[0].bpm as f64;
     info!("playing chart \"{} - {}\" (mapped by {}) at {}bpm...", artist, title, credit, starting_bpm);
     self.audio.play();
+  }
+}
+
+/// Status of the currently active chart.
+// #[derive(Default)]
+pub enum ChartStatus {
+  Countdown,
+  // #[default]
+  None,
+  Paused,
+  Playing,
+}
+
+/// Info for KhelState about the currently active chart.
+pub struct ChartInfo {
+  pub chart: Chart,
+  pub status: ChartStatus,
+  pub start_time: Duration,
+  pub tick: u32,
+}
+
+impl ChartInfo {
+  pub fn new(chart: Chart) -> Self {
+    ChartInfo {
+      chart,
+      status: ChartStatus::None,
+      start_time: Duration::ZERO,
+      tick: 0,
+    }
   }
 }
 

@@ -27,8 +27,9 @@ fn main() -> Result<(), anyhow::Error> {
   let mut state = KhelState::new(window.clone(), args.gl);
   // let mut state = Some(state);
   // let Some(ref mut state) = state else { todo!(); };
-  let cir = state.instantiate("circle_red", -1.0, 0.0);
-  state.velocity(cir, 100.0, 0.0);
+
+  // let cir = state.instantiate("circle_red", -1.0, 0.0);
+  // state.velocity(cir, 100.0, 0.0);
 
   let now = Instant::now();
 

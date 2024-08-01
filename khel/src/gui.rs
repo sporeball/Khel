@@ -1,4 +1,4 @@
-use crate::{KhelState, chart::Chart};
+use crate::{KhelState, chart::{Chart, ChartInfo, ChartStatus}};
 use std::time::Duration;
 use egui::{epaint::Shadow, Button, Color32, Context, Frame, Label, Margin, Rounding};
 use egui_wgpu::Renderer;
@@ -65,18 +65,20 @@ pub fn gui(state: &mut KhelState) {
       }
       if ui.add(Button::new("Load chart")).clicked() {
         let Ok(chart) = Chart::read_from_disk("charts/chart.khel") else { return };
-        state.chart = Some(chart);
-        info!("{:?}", state.chart);
+        let chart_info = ChartInfo::new(chart);
+        state.chart_info = Some(chart_info);
       }
       if ui.add(Button::new("Play chart")).clicked() {
-        let Some(ref chart) = state.chart else { return };
+        let Some(ref mut chart_info) = state.chart_info else { return };
+        let chart = &chart_info.chart;
         let ticks = &chart.ticks.0;
         let start_bpm = ticks[0].bpm as f64;
-        let beat_duration = Duration::from_secs_f64(60f64 / start_bpm);
-        let bar_duration = beat_duration * 4;
+        let one_beat = Duration::from_secs_f64(60f64 / start_bpm);
+        let one_bar = one_beat * 4;
         // set chart start time
         // this will play the chart once the time has passed
-        state.chart_start_time = Some(state.time + bar_duration);
+        chart_info.status = ChartStatus::Countdown;
+        chart_info.start_time = state.time + one_bar;
       }
       // if ui.add(Button::new("Destroy object 5")).clicked() && state.min_available_object_id > 5 {
       //   info!("destroying object with id 5...");

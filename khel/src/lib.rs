@@ -1,4 +1,4 @@
-use crate::{chart::Chart, object::{DrawObject, Object}};
+use crate::{chart::{Chart, ChartInfo, ChartStatus}, object::{DrawObject, Object}};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
@@ -198,8 +198,9 @@ pub struct KhelState<'a> {
   pub min_available_object_id: u32,
   pub sounds: Vec<Sound>,
   pub egui: EguiRenderer,
-  pub chart: Option<Chart>,
-  pub chart_start_time: Option<Duration>,
+  // pub chart: Option<Chart>,
+  // pub chart_start_time: Option<Duration>,
+  pub chart_info: Option<ChartInfo>,
 }
 
 impl<'a> KhelState<'a> {
@@ -316,8 +317,9 @@ impl<'a> KhelState<'a> {
       1,
       &window
     );
-    let chart = None;
-    let chart_start_time = None;
+    // let chart = None;
+    // let chart_start_time = None;
+    let chart_info = None;
     // return value
     Self {
       window,
@@ -334,8 +336,9 @@ impl<'a> KhelState<'a> {
       min_available_object_id,
       sounds,
       egui,
-      chart,
-      chart_start_time,
+      // chart,
+      // chart_start_time,
+      chart_info,
     }
   }
   /// Resize this KhelState's surface.
@@ -425,11 +428,11 @@ impl<'a> KhelState<'a> {
       object.instance_buffer = object::create_instance_buffer(&object.instances, &self.device);
     }
     // try to play chart
-    if let Some(chart_start_time) = self.chart_start_time {
-      if self.time > chart_start_time {
-        self.chart_start_time = None; // stop it from playing over and over
-        self.chart.as_ref().expect("no chart loaded").play();
-      }
+    let Some(ref mut chart_info) = self.chart_info else { return; };
+    let chart = &chart_info.chart;
+    if matches!(chart_info.status, ChartStatus::Countdown) && self.time > chart_info.start_time {
+      chart.play();
+      chart_info.status = ChartStatus::Playing;
     }
   }
   /// Use this KhelState to perform a render pass.
@@ -555,6 +558,12 @@ impl<'a> KhelState<'a> {
     info!("created {} instance (id: {})", t, id);
     self.min_available_object_id += 1;
     id
+  }
+  /// Instantiate an object at the bottom of the given lane.
+  /// Returns the ID of the object instance.
+  pub fn instantiate_in_lane(&mut self, lane: u8, t: &str) -> u32 {
+    let x = (0.1f32 * lane as f32) - 0.45;
+    self.instantiate(t, x, 1.0)
   }
   /// Destroy the object instance with the given ID.
   pub fn destroy(&mut self, id: u32) {

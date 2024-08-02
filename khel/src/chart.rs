@@ -149,15 +149,29 @@ impl Tick {
     };
     Ok(tick)
   }
+  /// Return the length of this Tick as a Duration.
   pub fn duration(&self, divisor: u8) -> Duration {
     let divisor = divisor as f64;
     // 1-256
-    let length = self.length + 1;
+    let length = (self.length + 1) as f64;
     let one_bar = Duration::from_secs_f64((60f64 / self.bpm as f64) * 4.0);
     let sf = 2f64.powf(divisor) as f64;
-    one_bar.div_f64(sf)
+    one_bar.div_f64(sf).mul_f64(length)
   }
 }
+
+#[derive(Debug)]
+/// Info for KhelState about the current tick.
+pub struct TickInfo {
+  pub instance_time: Duration,
+  pub hit_time: Duration,
+  pub end_time: Duration,
+}
+
+// pub struct TickInfoList(pub Vec<TickInfo>);
+
+// impl TickInfoList {
+// }
 
 #[derive(Debug)]
 /// Wrapper over Vec<Tick>.
@@ -180,6 +194,31 @@ impl TickList {
       v.push(tick);
     }
     Ok(TickList(v))
+  }
+  pub fn get_tick_info(
+    &self,
+    divisor: u8,
+    start_time: Duration,
+  ) -> Vec<TickInfo> {
+    let ticks = &self.0;
+    let mut tick_info: Vec<TickInfo> = vec![];
+    // the first tick is known
+    let one_bar = Duration::from_secs_f64((60f64 / ticks[0].bpm as f64) * 4.0);
+    tick_info.push(TickInfo {
+      instance_time: start_time - one_bar,
+      hit_time: start_time,
+      end_time: start_time + ticks[0].duration(divisor),
+    });
+    for (i, tick) in &mut ticks[1..].iter().enumerate() {
+      let last_tick_info = tick_info.last().unwrap();
+      let one_bar = Duration::from_secs_f64((60f64 / ticks[i].bpm as f64) * 4.0);
+      tick_info.push(TickInfo {
+        instance_time: last_tick_info.end_time - one_bar,
+        hit_time: last_tick_info.end_time,
+        end_time: last_tick_info.end_time + tick.duration(divisor),
+      });
+    }
+    tick_info
   }
 }
 
@@ -280,6 +319,9 @@ impl ChartInfo {
       start_time: Duration::ZERO,
       tick: 0,
     }
+  }
+  pub fn next_tick(&mut self) -> () {
+    self.tick += 1;
   }
 }
 

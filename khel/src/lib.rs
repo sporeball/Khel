@@ -1,4 +1,4 @@
-use crate::{chart::{Chart, ChartInfo, ChartStatus}, object::{DrawObject, Object}};
+use crate::{chart::{Chart, ChartInfo, ChartStatus, TickInfo}, object::{DrawObject, Object}};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
@@ -201,6 +201,7 @@ pub struct KhelState<'a> {
   // pub chart: Option<Chart>,
   // pub chart_start_time: Option<Duration>,
   pub chart_info: Option<ChartInfo>,
+  pub tick_info: Option<Vec<TickInfo>>,
 }
 
 impl<'a> KhelState<'a> {
@@ -320,6 +321,7 @@ impl<'a> KhelState<'a> {
     // let chart = None;
     // let chart_start_time = None;
     let chart_info = None;
+    let tick_info = None;
     // return value
     Self {
       window,
@@ -339,6 +341,7 @@ impl<'a> KhelState<'a> {
       // chart,
       // chart_start_time,
       chart_info,
+      tick_info,
     }
   }
   /// Resize this KhelState's surface.
@@ -433,6 +436,20 @@ impl<'a> KhelState<'a> {
     if matches!(chart_info.status, ChartStatus::Countdown) && self.time > chart_info.start_time {
       chart.play();
       chart_info.status = ChartStatus::Playing;
+    }
+    // start to instantiate objects
+    let Some(ref tick_info) = self.tick_info else { return; };
+    let current_tick = chart_info.tick;
+    let Some(current_tick_info) = &tick_info.get(current_tick as usize) else { return; };
+    if self.time > current_tick_info.instance_time {
+      info!("instantiating an object at tick {}", chart_info.tick);
+      // i don't understand why this works but it does
+      // TODO: color correct
+      // TODO: window height-aware velocity
+      // TODO: slow down!
+      chart_info.tick += 1;
+      let o = self.instantiate_in_lane(current_tick as u8, "circle_red");
+      self.velocity(o, 0.0, 280.0);
     }
   }
   /// Use this KhelState to perform a render pass.
@@ -563,7 +580,7 @@ impl<'a> KhelState<'a> {
   /// Returns the ID of the object instance.
   pub fn instantiate_in_lane(&mut self, lane: u8, t: &str) -> u32 {
     let x = (0.1f32 * lane as f32) - 0.45;
-    self.instantiate(t, x, 1.0)
+    self.instantiate(t, x, -1.0)
   }
   /// Destroy the object instance with the given ID.
   pub fn destroy(&mut self, id: u32) {

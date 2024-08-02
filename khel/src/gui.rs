@@ -77,13 +77,14 @@ pub fn gui(state: &mut KhelState) {
         let one_bar = one_beat * 4;
         // set chart start time
         // this will play the chart once the time has passed
+        let start_time = state.time + one_bar;
         chart_info.status = ChartStatus::Countdown;
-        chart_info.start_time = state.time + one_bar;
+        chart_info.start_time = start_time;
+        // set tick info
+        let tick_info = chart.ticks.get_tick_info(chart.metadata.divisor, start_time);
+        state.tick_info = Some(tick_info);
+        info!("{:?}", state.tick_info);
       }
-      // if ui.add(Button::new("Destroy object 5")).clicked() && state.min_available_object_id > 5 {
-      //   info!("destroying object with id 5...");
-      //   state.destroy(5);
-      // }
       ui.end_row();
     });
 }

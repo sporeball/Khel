@@ -33,6 +33,11 @@ impl Sound {
       sink,
     }
   }
+  /// An empty sound. Uses a silent .wav file.
+  /// This is used to construct the empty Chart.
+  pub fn empty() -> Self {
+    Sound::new("silent_quarter-second.wav")
+  }
   pub fn play(&self) {
     self.sink.play();
   }

@@ -200,7 +200,7 @@ pub struct KhelState<'a> {
   pub egui: EguiRenderer,
   // pub chart: Option<Chart>,
   // pub chart_start_time: Option<Duration>,
-  pub chart_info: Option<ChartInfo>,
+  pub chart_info: ChartInfo,
   pub tick_info: Option<Vec<TickInfo>>,
 }
 
@@ -320,7 +320,7 @@ impl<'a> KhelState<'a> {
     );
     // let chart = None;
     // let chart_start_time = None;
-    let chart_info = None;
+    let chart_info = ChartInfo::none();
     let tick_info = None;
     // return value
     Self {
@@ -431,7 +431,7 @@ impl<'a> KhelState<'a> {
       object.instance_buffer = object::create_instance_buffer(&object.instances, &self.device);
     }
     // try to play chart
-    let Some(ref mut chart_info) = self.chart_info else { return; };
+    let chart_info = &mut self.chart_info;
     let chart = &chart_info.chart;
     if matches!(chart_info.status, ChartStatus::Countdown) && self.time > chart_info.start_time {
       chart.play();
@@ -442,14 +442,13 @@ impl<'a> KhelState<'a> {
     let current_tick = chart_info.tick;
     let Some(current_tick_info) = &tick_info.get(current_tick as usize) else { return; };
     if self.time > current_tick_info.instance_time {
-      info!("instantiating an object at tick {}", chart_info.tick);
-      // i don't understand why this works but it does
       // TODO: color correct
       // TODO: window height-aware velocity
       // TODO: slow down!
-      chart_info.tick += 1;
+      info!("instantiating an object at tick {}", chart_info.tick);
       let o = self.instantiate_in_lane(current_tick as u8, "circle_red");
       self.velocity(o, 0.0, 280.0);
+      self.chart_info.tick += 1;
     }
   }
   /// Use this KhelState to perform a render pass.

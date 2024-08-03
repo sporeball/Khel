@@ -24,7 +24,7 @@ fn main() -> Result<(), anyhow::Error> {
 
   let window = Arc::new(window);
   info!("created window (inner size = {:?})", window.inner_size());
-  let mut state = KhelState::new(window.clone(), args.gl);
+  let state = KhelState::new(window.clone(), args.gl);
   // let mut state = Some(state);
   // let Some(ref mut state) = state else { todo!(); };
 

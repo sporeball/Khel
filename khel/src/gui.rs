@@ -2,7 +2,7 @@ use crate::{KhelState, chart::{Chart, ChartInfo, ChartStatus}};
 use std::time::Duration;
 use egui::{epaint::Shadow, Button, Color32, Context, Frame, Label, Margin, Rounding};
 use egui_wgpu::Renderer;
-use log::info;
+use log::{info, warn};
 use wgpu::{Device, TextureFormat};
 use winit::{event::WindowEvent, window::Window};
 
@@ -65,14 +65,17 @@ pub fn gui(state: &mut KhelState) {
       }
       if ui.add(Button::new("Load chart")).clicked() {
         let Ok(chart) = Chart::read_from_disk("charts/chart.khel") else { return };
-        let chart_info = ChartInfo::new(chart);
-        state.chart_info = Some(chart_info);
+        state.chart_info = ChartInfo::new(chart);
       }
       if ui.add(Button::new("Play chart")).clicked() {
-        let Some(ref mut chart_info) = state.chart_info else { return };
+        let chart_info = &mut state.chart_info;
         let chart = &chart_info.chart;
         let ticks = &chart.ticks.0;
-        let start_bpm = ticks[0].bpm as f64;
+        let Some(first_tick) = ticks.get(0) else {
+          warn!("could not play chart, is it empty?");
+          return;
+        };
+        let start_bpm = first_tick.bpm as f64;
         let one_beat = Duration::from_secs_f64(60f64 / start_bpm);
         let one_bar = one_beat * 4;
         // set chart start time

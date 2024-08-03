@@ -8,7 +8,7 @@ use log::info;
 
 pub const CHART_VERSION: u8 = 0;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Metadata {
   pub version: u8,
   pub title: String,
@@ -59,7 +59,7 @@ impl HitObject {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 /// Wrapper over Vec<HitObject>.
 pub struct HitObjectList(pub Vec<HitObject>);
 
@@ -117,6 +117,7 @@ impl HitObjectList {
   }
 }
 
+// #[derive(Debug, Default)]
 #[derive(Debug)]
 pub struct Tick {
   pub length: u8,
@@ -134,6 +135,9 @@ impl Tick {
   /// let tick = Tick::from_string(String::from("a:0@120"));
   /// ```
   pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
+    if s.is_empty() {
+      panic!("attempted to create tick from an empty string");
+    }
     let v: Vec<&str> = s.split(&[':', '@']).collect();
     if v.len() > 3 {
       panic!("attempted to create tick with too many parts");
@@ -173,7 +177,7 @@ pub struct TickInfo {
 // impl TickInfoList {
 // }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 /// Wrapper over Vec<Tick>.
 pub struct TickList(pub Vec<Tick>);
 
@@ -283,6 +287,15 @@ impl Chart {
     };
     Ok(chart)
   }
+  /// An empty chart.
+  /// This is used internally when there is no chart being played.
+  pub fn empty() -> Self {
+    Chart {
+      metadata: Metadata::default(),
+      audio: Sound::empty(),
+      ticks: TickList::default(),
+    }
+  }
   /// Begin playing this chart.
   pub fn play(&self) -> () {
     let Metadata { title, artist, credit, .. } = &self.metadata;
@@ -317,6 +330,14 @@ impl ChartInfo {
       chart,
       status: ChartStatus::None,
       start_time: Duration::ZERO,
+      tick: 0,
+    }
+  }
+  pub fn none() -> Self {
+    ChartInfo {
+      chart: Chart::empty(),
+      status: ChartStatus::None,
+      start_time: Duration::MAX,
       tick: 0,
     }
   }

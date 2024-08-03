@@ -1,6 +1,5 @@
 use crate::{read_lines, sound::Sound};
 use std::collections::HashMap;
-use std::fs::File;
 use std::path::Path;
 use std::time::Duration;
 use itertools::Itertools;
@@ -38,28 +37,51 @@ impl Metadata {
   }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum HitObjectType {
   Hit,
   Hold,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct HitObject {
   pub t: HitObjectType,
-  pub keys: Vec<String>,
+  pub keys: Vec<char>,
 }
 
 impl HitObject {
-  pub fn from_keys(keys: Vec<String>, t: HitObjectType) -> Self {
+  /// Create a new HitObject from a Vec<char> and HitObjectType.
+  /// When possible, prefer creating a HitObjectList instead.
+  pub fn from_keys(keys: Vec<char>, t: HitObjectType) -> Self {
     HitObject {
       t,
       keys,
     }
   }
+  /// Return the lane that this HitObject is in.
+  pub fn lane(&self) -> u8 {
+    column(self.keys[0]).unwrap()
+  }
+  /// Return the asset that should be used to render this HitObject.
+  pub fn asset(&self) -> &str {
+    let rows: u8 = self.keys
+      .iter()
+      .map(|&c| row(c).expect("found invalid key in hit object"))
+      .sum();
+    match rows {
+      1 => "circle_red",
+      2 => "circle_green",
+      3 => "circle_yellow",
+      4 => "circle_blue",
+      5 => "circle_magenta",
+      6 => "circle_cyan",
+      7 => "circle_white",
+      _ => unreachable!(), // i hope
+    }
+  }
 }
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 /// Wrapper over Vec<HitObject>.
 pub struct HitObjectList(pub Vec<HitObject>);
 
@@ -93,7 +115,7 @@ impl HitObjectList {
         panic!("attempted to create hit across multiple columns");
       }
       v.push(HitObject::from_keys(
-        hit.chars().map(String::from).collect(),
+        hit.chars().collect(),
         HitObjectType::Hit
       ));
     }
@@ -109,7 +131,7 @@ impl HitObjectList {
         panic!("attempted to create hold across multiple columns");
       }
       v.push(HitObject::from_keys(
-        hold.chars().map(String::from).collect(),
+        hold.chars().collect(),
         HitObjectType::Hold
       ));
     }
@@ -118,7 +140,7 @@ impl HitObjectList {
 }
 
 // #[derive(Debug, Default)]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Tick {
   pub length: u8,
   pub bpm: u16,
@@ -235,7 +257,7 @@ pub struct Chart {
 
 impl Chart {
   /// Write this chart to disk as a .khel file.
-  pub fn write_to_disk(&self, filename: String) -> Result<(), anyhow::Error> {
+  pub fn write_to_disk(&self, _filename: String) -> Result<(), anyhow::Error> {
     // let mut file = File::create(filename)?;
     // TODO
     Ok(())
@@ -363,8 +385,18 @@ fn column(c: char) -> Option<u8> {
   }
 }
 
+/// Return the row that a key is in.
+fn row(c: char) -> Option<u8> {
+  match c {
+    'q' | 'w' | 'e' | 'r' | 't' | 'y' | 'u' | 'i' | 'o' | 'p' => Some(1),
+    'a' | 's' | 'd' | 'f' | 'g' | 'h' | 'j' | 'k' | 'l' | ';' => Some(2),
+    'z' | 'x' | 'c' | 'v' | 'b' | 'n' | 'm' | ',' | '.' | '/' => Some(4),
+    _ => None,
+  }
+}
+
 /// Serialize a key-value pair from a (String, String) into .khel format.
-fn serialize_kv(raw: (String, String)) -> Result<String, anyhow::Error> {
+fn serialize_kv(_raw: (String, String)) -> Result<String, anyhow::Error> {
   // TODO
   Ok(String::new())
 }

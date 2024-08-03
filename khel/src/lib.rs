@@ -1,11 +1,11 @@
-use crate::{chart::{Chart, ChartInfo, ChartStatus, TickInfo}, object::{DrawObject, Object}};
+use crate::{chart::{ChartInfo, ChartStatus, TickInfo}, object::{DrawObject, Object}};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::mem;
 use std::path::Path;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 // use deku::prelude::*;
 // use egui::Context;
 use egui_wgpu::ScreenDescriptor;
@@ -433,21 +433,25 @@ impl<'a> KhelState<'a> {
     // try to play chart
     let chart_info = &mut self.chart_info;
     let chart = &chart_info.chart;
+    // let ticks = &chart.ticks.0;
+    // TODO: is this expensive enough to avoid?
+    let ticks = chart.ticks.0.clone();
+    let current_tick_u32 = chart_info.tick;
     if matches!(chart_info.status, ChartStatus::Countdown) && self.time > chart_info.start_time {
       chart.play();
       chart_info.status = ChartStatus::Playing;
     }
     // start to instantiate objects
     let Some(ref tick_info) = self.tick_info else { return; };
-    let current_tick = chart_info.tick;
-    let Some(current_tick_info) = &tick_info.get(current_tick as usize) else { return; };
+    let Some(current_tick) = ticks.get(current_tick_u32 as usize) else { return; };
+    let Some(current_tick_info) = &tick_info.get(current_tick_u32 as usize) else { unreachable!(); };
     if self.time > current_tick_info.instance_time {
-      // TODO: color correct
       // TODO: window height-aware velocity
       // TODO: slow down!
-      info!("instantiating an object at tick {}", chart_info.tick);
-      let o = self.instantiate_in_lane(current_tick as u8, "circle_red");
-      self.velocity(o, 0.0, 280.0);
+      for hit_object in &current_tick.hit_objects.0 {
+        let o = self.instantiate_in_lane(hit_object.lane(), hit_object.asset());
+        self.velocity(o, 0.0, 280.0);
+      }
       self.chart_info.tick += 1;
     }
   }

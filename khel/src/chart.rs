@@ -14,6 +14,7 @@ pub struct Metadata {
   pub subtitle: String,
   pub artist: String,
   pub credit: String,
+  // TODO: triplets
   pub divisor: u8,
 }
 
@@ -184,6 +185,24 @@ impl Tick {
     let sf = 2f64.powf(divisor) as f64;
     one_bar.div_f64(sf).mul_f64(length)
   }
+  /// Return the asset that should be used to render this tick's timing line.
+  pub fn timing_line_asset(&self, divisor: u8, units_elapsed: u32) -> &str {
+    match divisor {
+      0 | 1 | 2 => "line_red",
+      3 => match units_elapsed % 2 {
+        0 => "line_red",
+        1 => "line_blue",
+        _ => unreachable!(),
+      },
+      4 => match units_elapsed % 4 {
+        0 => "line_red",
+        2 => "line_blue",
+        1 | 3 => "line_yellow",
+        _ => unreachable!(),
+      },
+      _ => panic!("unsupported divisor"),
+    }
+  }
 }
 
 #[derive(Debug)]
@@ -344,6 +363,7 @@ pub struct ChartInfo {
   pub status: ChartStatus,
   pub start_time: Duration,
   pub tick: u32,
+  pub units_elapsed: u32,
 }
 
 impl ChartInfo {
@@ -353,6 +373,7 @@ impl ChartInfo {
       status: ChartStatus::None,
       start_time: Duration::ZERO,
       tick: 0,
+      units_elapsed: 0,
     }
   }
   pub fn none() -> Self {
@@ -361,10 +382,8 @@ impl ChartInfo {
       status: ChartStatus::None,
       start_time: Duration::MAX,
       tick: 0,
+      units_elapsed: 0,
     }
-  }
-  pub fn next_tick(&mut self) -> () {
-    self.tick += 1;
   }
 }
 

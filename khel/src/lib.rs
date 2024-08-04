@@ -437,20 +437,24 @@ impl<'a> KhelState<'a> {
     let Some(current_tick) = ticks.get(current_tick_u32 as usize) else { return; };
     let Some(current_tick_info) = &tick_info.get(current_tick_u32 as usize) else { unreachable!(); };
     if self.time > current_tick_info.instance_time {
+      let yv = self.size.height as f32 * 0.4; // divide by 2
+      // instantiate timing line
+      let line = self.instantiate(
+        current_tick.timing_line_asset(self.chart_info.chart.metadata.divisor, self.chart_info.units_elapsed),
+        -1.0,
+        -1.0
+      );
+      self.velocity(line, 0.0, yv);
       // TODO: slow down!
       for hit_object in &current_tick.hit_objects.0 {
         // instantiate hit object
-        let yv = self.size.height as f32 * 0.4; // divide by 2
         let o = self.instantiate_in_lane(hit_object.lane(), hit_object.asset());
         self.velocity(o, 0.0, yv);
-        // instantiate timing line
-        // TODO
-        // let line = self.instantiate("line_red", -1.0, -1.0);
-        // self.velocity(line, 0.0, yv);
       }
       // access the field directly to avoid borrowing as mutable more than once
       // at a time
       self.chart_info.tick += 1;
+      self.chart_info.units_elapsed += (current_tick.length + 1) as u32;
     }
   }
   /// Use this KhelState to perform a render pass.

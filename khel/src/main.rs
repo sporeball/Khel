@@ -25,11 +25,6 @@ fn main() -> Result<(), anyhow::Error> {
   let window = Arc::new(window);
   info!("created window (inner size = {:?})", window.inner_size());
   let state = KhelState::new(window.clone(), args.gl);
-  // let mut state = Some(state);
-  // let Some(ref mut state) = state else { todo!(); };
-
-  // let cir = state.instantiate("circle_red", -1.0, 0.0);
-  // state.velocity(cir, 100.0, 0.0);
 
   let now = Instant::now();
 
@@ -40,16 +35,12 @@ fn main() -> Result<(), anyhow::Error> {
     1000,
     0.1,
     move |g| {
-      // g.game.fps.tick();
       g.game.update();
-      // g.game.time = g.accumulated_time();
       g.game.time = now.elapsed();
-      // info!("update @ {:?}", g.game.time);
     },
     |g| {
       let _ = g.game.render();
       g.game.fps.tick();
-      // info!("render @ {:?}", g.game.time);
     },
     |g, event| {
       match event {

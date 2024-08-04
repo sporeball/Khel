@@ -6,7 +6,6 @@ use std::mem;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
-// use deku::prelude::*;
 // use egui::Context;
 use egui_wgpu::ScreenDescriptor;
 use fps_ticker::Fps;
@@ -100,7 +99,7 @@ impl InstanceRaw {
 
 /// An object instance.
 #[derive(Clone)]
-struct Instance {
+pub struct Instance {
   t: String,
   position: Vector3<f32>,
   velocity: Vector2<f32>,
@@ -198,8 +197,6 @@ pub struct KhelState<'a> {
   pub min_available_object_id: u32,
   pub sounds: Vec<Sound>,
   pub egui: EguiRenderer,
-  // pub chart: Option<Chart>,
-  // pub chart_start_time: Option<Duration>,
   pub chart_info: ChartInfo,
   pub tick_info: Option<Vec<TickInfo>>,
 }
@@ -263,7 +260,6 @@ impl<'a> KhelState<'a> {
     // render pipeline
     let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
       label: Some("Render Pipeline Layout"),
-      // bind_group_layouts: &[&objects.get("circle_red").unwrap().texture.bind_group_layout],
       bind_group_layouts: &[&device.create_bind_group_layout(&texture::bgl_desc())],
       push_constant_ranges: &[],
     });
@@ -318,8 +314,6 @@ impl<'a> KhelState<'a> {
       1,
       &window
     );
-    // let chart = None;
-    // let chart_start_time = None;
     let chart_info = ChartInfo::none();
     let tick_info = None;
     // return value
@@ -338,8 +332,6 @@ impl<'a> KhelState<'a> {
       min_available_object_id,
       sounds,
       egui,
-      // chart,
-      // chart_start_time,
       chart_info,
       tick_info,
     }
@@ -404,7 +396,6 @@ impl<'a> KhelState<'a> {
           // all other errors (Outdated, Timeout) should be resolved by the next frame
           Err(e) => eprintln!("{:?}", e),
         }
-        // info!("{}", self.time);
       },
       WindowEvent::Resized(physical_size) => {
         self.resize(*physical_size);
@@ -446,12 +437,19 @@ impl<'a> KhelState<'a> {
     let Some(current_tick) = ticks.get(current_tick_u32 as usize) else { return; };
     let Some(current_tick_info) = &tick_info.get(current_tick_u32 as usize) else { unreachable!(); };
     if self.time > current_tick_info.instance_time {
-      // TODO: window height-aware velocity
       // TODO: slow down!
       for hit_object in &current_tick.hit_objects.0 {
+        // instantiate hit object
+        let yv = self.size.height as f32 * 0.4; // divide by 2
         let o = self.instantiate_in_lane(hit_object.lane(), hit_object.asset());
-        self.velocity(o, 0.0, 280.0);
+        self.velocity(o, 0.0, yv);
+        // instantiate timing line
+        // TODO
+        // let line = self.instantiate("line_red", -1.0, -1.0);
+        // self.velocity(line, 0.0, yv);
       }
+      // access the field directly to avoid borrowing as mutable more than once
+      // at a time
       self.chart_info.tick += 1;
     }
   }

@@ -58,17 +58,20 @@ pub fn gui(state: &mut KhelState) {
     .show(&ctx, |ui| {
       ui.add(Label::new(format!("{:.0} fps", state.fps.avg())));
       ui.end_row();
-      if ui.add(Button::new("Create object")).clicked() {
-        info!("creating an object...");
-        let o = state.instantiate("circle_red", -1.0, 0.0);
-        state.velocity(o, 100.0, 0.0);
+      if ui.add(Button::new("Load chart 1")).clicked() {
+        let Ok(chart) = Chart::read_from_disk("charts/hyperpops 2023.khel") else { return };
+        state.chart_info = ChartInfo::new(chart);
       }
-      if ui.add(Button::new("Load chart")).clicked() {
-        let Ok(chart) = Chart::read_from_disk("charts/chart.khel") else { return };
+      if ui.add(Button::new("Load chart 2")).clicked() {
+        let Ok(chart) = Chart::read_from_disk("charts/amanita.khel") else { return };
         state.chart_info = ChartInfo::new(chart);
       }
       if ui.add(Button::new("Play chart")).clicked() {
         let chart_info = &mut state.chart_info;
+        if let ChartStatus::Playing = chart_info.status {
+          warn!("chart is already playing");
+          return;
+        }
         let chart = &chart_info.chart;
         let ticks = &chart.ticks.0;
         let Some(first_tick) = ticks.get(0) else {
@@ -86,7 +89,7 @@ pub fn gui(state: &mut KhelState) {
         // set tick info
         let tick_info = chart.ticks.get_tick_info(chart.metadata.divisor, start_time);
         state.tick_info = Some(tick_info);
-        info!("{:?}", state.tick_info);
+        // info!("{:?}", state.tick_info);
       }
       ui.end_row();
     });

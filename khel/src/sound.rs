@@ -3,7 +3,7 @@ use std::io::BufReader;
 // use log::info;
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink};
 
-// not thread-safe across all platforms
+// not send/sync across all platforms
 pub struct Sound {
   pub stream: OutputStream,
   pub stream_handle: OutputStreamHandle,

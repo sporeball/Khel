@@ -1,4 +1,4 @@
-use crate::{chart::{ChartInfo, ChartStatus, TickInfo}, object::{DrawObject, Object}};
+use crate::{chart::{ChartInfo, ChartStatus, TickInfo}, object::{DrawObject, Object, Objects}};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
@@ -103,6 +103,8 @@ pub struct Instance {
   t: String,
   position: Vector3<f32>,
   velocity: Vector2<f32>,
+  // create_time: Duration,
+  // destroy_time: Duration,
   // rotation: Quaternion<f32>,
 }
 
@@ -193,7 +195,8 @@ pub struct KhelState<'a> {
   pub render_pipeline: RenderPipeline,
   pub fps: Fps,
   pub time: Duration,
-  pub objects: HashMap<String, Object>,
+  // pub objects: HashMap<String, Object>,
+  pub objects: Objects,
   pub min_available_object_id: u32,
   pub sounds: Vec<Sound>,
   pub egui: EguiRenderer,
@@ -253,7 +256,8 @@ impl<'a> KhelState<'a> {
     };
     surface.configure(&device, &config);
     // objects!
-    let objects: HashMap<String, Object> = HashMap::new();
+    // let objects: HashMap<String, Object> = HashMap::new();
+    let objects = Objects::default();
     let min_available_object_id = 0;
     // shader module
     let shader = device.create_shader_module(include_wgsl!("shader.wgsl"));
@@ -399,7 +403,7 @@ impl<'a> KhelState<'a> {
       },
       WindowEvent::Resized(physical_size) => {
         self.resize(*physical_size);
-        for object in self.objects.values_mut() {
+        for object in self.objects.map.values_mut() {
           object.texture.vertex_buffer = texture::create_vertex_buffer(object.texture.texture.size(), *physical_size, &self.device);
         }
       },
@@ -413,7 +417,7 @@ impl<'a> KhelState<'a> {
   }
   pub fn update(&mut self) {
     // move objects
-    for object in self.objects.values_mut() {
+    for object in self.objects.map.values_mut() {
       for instance in &mut object.instances.values_mut() {
         // window coordinates are [-1.0, 1.0], so we have to multiply by 2
         instance.position.x += instance.velocity.x / self.size.width as f32 / 1000.0 * 2.0;
@@ -445,14 +449,13 @@ impl<'a> KhelState<'a> {
         -1.0
       );
       self.velocity(line, 0.0, yv);
+      // instantiate hit objects
       // TODO: slow down!
       for hit_object in &current_tick.hit_objects.0 {
-        // instantiate hit object
         let o = self.instantiate_in_lane(hit_object.lane(), hit_object.asset());
         self.velocity(o, 0.0, yv);
       }
-      // access the field directly to avoid borrowing as mutable more than once
-      // at a time
+      // move to the next tick
       self.chart_info.tick += 1;
       self.chart_info.units_elapsed += (current_tick.length + 1) as u32;
     }
@@ -480,7 +483,7 @@ impl<'a> KhelState<'a> {
         timestamp_writes: None,
       });
       render_pass.set_pipeline(&self.render_pipeline);
-      for object in self.objects.values() {
+      for object in self.objects.map.values() {
         render_pass.draw_object_instanced(object);
       }
     }
@@ -497,6 +500,7 @@ impl<'a> KhelState<'a> {
     self.render_gui(
       &mut encoder,
       &view,
+      // TODO: pass one of several
       gui::gui,
     );
 
@@ -556,7 +560,7 @@ impl<'a> KhelState<'a> {
   /// Returns the ID of the object instance.
   pub fn instantiate(&mut self, t: &str, x: f32, y: f32) -> u32 {
     // create an entry in objects if none exists
-    if self.objects.get(t).is_none() {
+    if self.objects.map.get(t).is_none() {
       let filename = format!("{}.png", t);
       let object = Object::from_file(
         filename.as_str(),
@@ -564,20 +568,22 @@ impl<'a> KhelState<'a> {
         &self.device,
         &self.queue
       ).unwrap();
-      self.objects.insert(t.to_string(), object);
+      self.objects.map.insert(t.to_string(), object);
     }
     // create an instance
-    let object = self.objects.get_mut(t).unwrap();
+    let object = self.objects.map.get_mut(t).unwrap();
     let id = self.min_available_object_id;
     let instance = Instance {
       t: t.to_string(),
       position: Vector3 { x, y, z: 0.0 },
       velocity: Vector2 { x: 0.0, y: 0.0 },
+      // create_time: self.time,
+      // destroy_time: Duration::MAX,
     };
     // push the instance
     object.instances.insert(id, instance.clone());
     object.instance_buffer = object::create_instance_buffer(&object.instances, &self.device);
-    info!("created {} instance (id: {})", t, id);
+    // info!("created {} instance (id: {})", t, id);
     self.min_available_object_id += 1;
     id
   }
@@ -589,7 +595,7 @@ impl<'a> KhelState<'a> {
   }
   /// Destroy the object instance with the given ID.
   pub fn destroy(&mut self, id: u32) {
-    let Some(object) = self.objects.values_mut().find(|o| o.instances.contains_key(&id)) else { todo!(); };
+    let Some(object) = self.objects.map.values_mut().find(|o| o.instances.contains_key(&id)) else { todo!(); };
     object.instances.remove(&id);
     info!("destroyed object instance (id: {})", id);
   }
@@ -597,17 +603,17 @@ impl<'a> KhelState<'a> {
   pub fn velocity(&mut self, id: u32, x: f32, y: f32) {
     let instance = self.get_instance_mut(id);
     instance.velocity = Vector2 { x, y };
-    info!("set {} instance velocity (pps) (id: {}, x: {}, y: {})", instance.t, id, x, y);
+    // info!("set {} instance velocity (pps) (id: {}, x: {}, y: {})", instance.t, id, x, y);
   }
   /// Get a reference to the object instance with the given ID.
   fn get_instance(&self, id: u32) -> &Instance {
-    let Some(object) = self.objects.values().find(|o| o.instances.contains_key(&id)) else { todo!(); };
+    let Some(object) = self.objects.map.values().find(|o| o.instances.contains_key(&id)) else { todo!(); };
     let Some(instance) = object.instances.get(&id) else { todo!(); };
     instance
   }
   /// Get a mutable reference to the object instance with the given ID.
   fn get_instance_mut(&mut self, id: u32) -> &mut Instance {
-    let Some(object) = self.objects.values_mut().find(|o| o.instances.contains_key(&id)) else { todo!(); };
+    let Some(object) = self.objects.map.values_mut().find(|o| o.instances.contains_key(&id)) else { todo!(); };
     let Some(instance) = object.instances.get_mut(&id) else { todo!(); };
     instance
   }

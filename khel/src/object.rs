@@ -1,5 +1,6 @@
 use crate::{load_binary, texture::{self, DrawTexture, Texture}, Instance};
 use std::collections::HashMap;
+use std::time::Duration;
 use wgpu::{util::{BufferInitDescriptor, DeviceExt}, Buffer, BufferUsages, Device, Queue, RenderPass};
 use winit::dpi::PhysicalSize;
 
@@ -24,6 +25,14 @@ impl Object {
   }
 }
 
+#[derive(Default)]
+pub struct Objects {
+  pub map: HashMap<String, Object>,
+  // TODO
+  pub to_be_destroyed: HashMap<u32, Duration>,
+}
+
+// TODO: is it possible to put this on Object? i forgot...
 // pub fn create_instance_buffer(instances: &Vec<Instance>, device: &Device) -> Buffer {
 pub fn create_instance_buffer(instances: &HashMap<u32, Instance>, device: &Device) -> Buffer {
   // let instance_data = instances

@@ -3,6 +3,6 @@ title=hyperpops 2023;
 subtitle=;
 artist=sporeball;
 credit=sporeball;
-divisor=0;
+divisor=1;
 
 ticks=a:0@128,b:0@128,c:0@128,d:0@128,e:0@128,f:0@128,g:0@128,h:0@128,i:0@128,j:0@128,k:0@128,l:0@128,m:0@128,n:0@128,o:0@128,p:0@128,q:0@128,r:0@128,s:0@128,t:0@128,u:0@128,v:0@128,w:0@128,x:0@128,y:0@128,z:0@128;

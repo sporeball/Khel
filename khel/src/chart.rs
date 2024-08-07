@@ -14,7 +14,7 @@ pub struct Metadata {
   pub subtitle: String,
   pub artist: String,
   pub credit: String,
-  // TODO: triplets
+  // TODO: divisor change
   pub divisor: u8,
 }
 
@@ -182,23 +182,39 @@ impl Tick {
     // 1-256
     let length = (self.length + 1) as f64;
     let one_bar = Duration::from_secs_f64((60f64 / self.bpm as f64) * 4.0);
-    let sf = 2f64.powf(divisor) as f64;
-    one_bar.div_f64(sf).mul_f64(length)
+    one_bar.div_f64(divisor).mul_f64(length)
   }
   /// Return the asset that should be used to render this tick's timing line.
   pub fn timing_line_asset(&self, divisor: u8, units_elapsed: u32) -> &str {
     match divisor {
-      0 | 1 | 2 => "line_red",
-      3 => match units_elapsed % 2 {
-        0 => "line_red",
-        1 => "line_blue",
-        _ => unreachable!(),
+      1 | 2 | 4 => "line_red",
+      6 => match units_elapsed % 6 {
+        0 | 3 => "line_red",
+        _ => "line_magenta",
       },
-      4 => match units_elapsed % 4 {
+      8 => match units_elapsed % 2 {
+        0 => "line_red",
+        _ => "line_blue",
+      },
+      12 => match units_elapsed % 12 {
+        0 | 3 | 6 | 9 => "line_red",
+        _ => "line_magenta",
+      }
+      16 => match units_elapsed % 4 {
         0 => "line_red",
         2 => "line_blue",
-        1 | 3 => "line_yellow",
-        _ => unreachable!(),
+        _ => "line_yellow",
+      },
+      24 => match units_elapsed % 24 {
+        0 | 6 | 12 | 18 => "line_red",
+        3 | 9 | 15 | 21 => "line_magenta",
+        _ => "line_cyan",
+      },
+      32 => match units_elapsed % 8 {
+        0 => "line_red",
+        4 => "line_blue",
+        2 | 6 => "line_yellow",
+        _ => "line_green",
       },
       _ => panic!("unsupported divisor"),
     }

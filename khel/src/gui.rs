@@ -66,6 +66,10 @@ pub fn gui(state: &mut KhelState) {
         let Ok(chart) = Chart::read_from_disk("charts/amanita.khel") else { return };
         state.chart_info = ChartInfo::new(chart);
       }
+      if ui.add(Button::new("Load chart 3")).clicked() {
+        let Ok(chart) = Chart::read_from_disk("charts/Nest.khel") else { return };
+        state.chart_info = ChartInfo::new(chart);
+      }
       if ui.add(Button::new("Play chart")).clicked() {
         let chart_info = &mut state.chart_info;
         if let ChartStatus::Playing = chart_info.status {
@@ -87,7 +91,7 @@ pub fn gui(state: &mut KhelState) {
         chart_info.status = ChartStatus::Countdown;
         chart_info.start_time = start_time;
         // set tick info
-        let tick_info = chart.ticks.get_tick_info(chart.metadata.divisor, start_time);
+        let tick_info = chart.ticks.get_tick_info(chart.metadata.divisors.clone(), start_time);
         state.tick_info = Some(tick_info);
         // info!("{:?}", state.tick_info);
       }

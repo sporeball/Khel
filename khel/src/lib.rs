@@ -441,10 +441,16 @@ impl<'a> KhelState<'a> {
     let Some(current_tick) = ticks.get(current_tick_u32 as usize) else { return; };
     let Some(current_tick_info) = &tick_info.get(current_tick_u32 as usize) else { unreachable!(); };
     if self.time > current_tick_info.instance_time {
-      let yv = self.size.height as f32 * 0.4; // divide by 2
+      let time_to_travel = Duration::from_secs_f64((60f64 / current_tick.bpm as f64) * 4.0)
+        .as_secs_f32();
+      let distance_to_travel = self.size.height as f32 * 0.5;
+      let yv = distance_to_travel / time_to_travel;
       // instantiate timing line
       let line = self.instantiate(
-        current_tick.timing_line_asset(self.chart_info.chart.metadata.divisor, self.chart_info.units_elapsed),
+        current_tick.timing_line_asset(
+          self.chart_info.chart.metadata.divisors.divisor_at_tick(current_tick_u32).value,
+          self.chart_info.units_elapsed
+        ),
         -1.0,
         -1.0
       );

@@ -24,7 +24,8 @@ fn main() -> Result<(), anyhow::Error> {
 
   let window = Arc::new(window);
   info!("created window (inner size = {:?})", window.inner_size());
-  let state = KhelState::new(window.clone(), args.gl);
+  let mut state = KhelState::new(window.clone(), args.gl);
+  let hit_line = state.instantiate("line_white", -1.0, 0.0);
 
   let now = Instant::now();
 

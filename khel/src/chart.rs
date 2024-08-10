@@ -7,6 +7,76 @@ use log::info;
 
 pub const CHART_VERSION: u8 = 0;
 
+#[derive(Clone, Debug, Default)]
+pub struct Divisor {
+  pub value: u8,
+  pub start_tick: u32,
+}
+
+impl Divisor {
+  /// Create a Divisor from a String.
+  /// When possible, prefer creating a DivisorList instead.
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// // 1/16th divisor starting at tick 0
+  /// let divisor = Divisor::from_string(String::from("16@0"));
+  /// ```
+  pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
+    let v: Vec<&str> = s.split("@").collect();
+    if v.len() > 2 {
+      panic!("attempted to create divisor with too many parts");
+    }
+    let value = v.get(0).unwrap().parse::<u8>()?;
+    let start_tick = v.get(1).expect("missing divisor start tick").parse::<u32>()?;
+    Ok(Divisor {
+      value,
+      start_tick
+    })
+  }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct DivisorList(pub Vec<Divisor>);
+
+impl DivisorList {
+  /// Create a DivisorList from a single u8.
+  pub fn from_u8(value: u8) -> Self {
+    let divisor = Divisor {
+      value,
+      start_tick: 0,
+    };
+    DivisorList(vec![divisor])
+  }
+  /// Create a DivisorList from a string.
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// // single divisor
+  /// let divisor_list = DivisorList::from_string(String::from("16@0"));
+  /// // multiple divisors
+  /// let divisor_list = DivisorList::from_string(String::from("16@0,24@16"));
+  /// ```
+  pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
+    if s.is_empty() {
+      panic!("attempted to create divisor list from an empty string");
+    }
+    let mut v: Vec<Divisor> = vec![];
+    let divisors: Vec<&str> = s.split(",").collect();
+    for divisor in divisors {
+      let divisor = Divisor::from_string(divisor.to_string())?;
+      v.push(divisor);
+    }
+    Ok(DivisorList(v))
+  }
+  /// Return a reference to the Divisor from this DivisorList that should be used at a given tick.
+  pub fn divisor_at_tick(&self, tick: u32) -> &Divisor {
+    self.0.iter().filter(|d| d.start_tick <= tick).last().unwrap()
+  }
+}
+
 #[derive(Debug, Default)]
 pub struct Metadata {
   pub version: u8,
@@ -14,8 +84,7 @@ pub struct Metadata {
   pub subtitle: String,
   pub artist: String,
   pub credit: String,
-  // TODO: divisor change
-  pub divisor: u8,
+  pub divisors: DivisorList,
 }
 
 impl Metadata {
@@ -25,7 +94,7 @@ impl Metadata {
     subtitle: String,
     artist: String,
     credit: String,
-    divisor: u8,
+    divisors: DivisorList,
   ) -> Self {
     Metadata {
       version,
@@ -33,7 +102,7 @@ impl Metadata {
       subtitle,
       artist,
       credit,
-      divisor,
+      divisors,
     }
   }
 }
@@ -144,7 +213,7 @@ impl HitObjectList {
 #[derive(Clone, Debug)]
 pub struct Tick {
   pub length: u8,
-  pub bpm: u16,
+  pub bpm: f64,
   pub hit_objects: HitObjectList,
 }
 
@@ -161,13 +230,14 @@ impl Tick {
     if s.is_empty() {
       panic!("attempted to create tick from an empty string");
     }
+    // TODO: stricter split
     let v: Vec<&str> = s.split(&[':', '@']).collect();
     if v.len() > 3 {
       panic!("attempted to create tick with too many parts");
     }
     let head = v.get(0).unwrap();
     let length = v.get(1).expect("missing tick length").parse::<u8>()?;
-    let bpm = v.get(2).expect("missing tick bpm").parse::<u16>()?;
+    let bpm = v.get(2).expect("missing tick bpm").parse::<f64>()?;
     let hit_objects = HitObjectList::from_string(head.to_string());
     let tick = Tick {
       length,
@@ -185,6 +255,7 @@ impl Tick {
     one_bar.div_f64(divisor).mul_f64(length)
   }
   /// Return the asset that should be used to render this tick's timing line.
+  // TODO: i think this causes a bug because of units_elapsed across divisor changes
   pub fn timing_line_asset(&self, divisor: u8, units_elapsed: u32) -> &str {
     match divisor {
       1 | 2 | 4 => "line_red",
@@ -192,17 +263,17 @@ impl Tick {
         0 | 3 => "line_red",
         _ => "line_magenta",
       },
-      8 => match units_elapsed % 2 {
-        0 => "line_red",
+      8 => match units_elapsed % 8 {
+        0 | 4 => "line_red",
         _ => "line_blue",
       },
       12 => match units_elapsed % 12 {
         0 | 3 | 6 | 9 => "line_red",
         _ => "line_magenta",
       }
-      16 => match units_elapsed % 4 {
-        0 => "line_red",
-        2 => "line_blue",
+      16 => match units_elapsed % 16 {
+        0 | 4 | 8 | 12 => "line_red",
+        2 | 6 | 10 | 14 => "line_blue",
         _ => "line_yellow",
       },
       24 => match units_elapsed % 24 {
@@ -210,10 +281,10 @@ impl Tick {
         3 | 9 | 15 | 21 => "line_magenta",
         _ => "line_cyan",
       },
-      32 => match units_elapsed % 8 {
-        0 => "line_red",
-        4 => "line_blue",
-        2 | 6 => "line_yellow",
+      32 => match units_elapsed % 32 {
+        0 | 8 | 16 | 24 => "line_red",
+        4 | 12 | 20 | 28 => "line_blue",
+        2 | 6 | 10 | 14 | 18 | 22 | 26 | 30 => "line_yellow",
         _ => "line_green",
       },
       _ => panic!("unsupported divisor"),
@@ -258,25 +329,27 @@ impl TickList {
   }
   pub fn get_tick_info(
     &self,
-    divisor: u8,
+    divisors: DivisorList,
     start_time: Duration,
   ) -> Vec<TickInfo> {
     let ticks = &self.0;
     let mut tick_info: Vec<TickInfo> = vec![];
     // the first tick is known
     let one_bar = Duration::from_secs_f64((60f64 / ticks[0].bpm as f64) * 4.0);
+    let divisor = divisors.divisor_at_tick(0);
     tick_info.push(TickInfo {
       instance_time: start_time - one_bar,
       hit_time: start_time,
-      end_time: start_time + ticks[0].duration(divisor),
+      end_time: start_time + ticks[0].duration(divisor.value),
     });
     for (i, tick) in &mut ticks[1..].iter().enumerate() {
       let last_tick_info = tick_info.last().unwrap();
       let one_bar = Duration::from_secs_f64((60f64 / ticks[i].bpm as f64) * 4.0);
+      let divisor = divisors.divisor_at_tick(i as u32);
       tick_info.push(TickInfo {
         instance_time: last_tick_info.end_time - one_bar,
         hit_time: last_tick_info.end_time,
-        end_time: last_tick_info.end_time + tick.duration(divisor),
+        end_time: last_tick_info.end_time + tick.duration(divisor.value),
       });
     }
     tick_info
@@ -319,11 +392,18 @@ impl Chart {
     let subtitle = map.get("subtitle").expect("missing key-value pair: subtitle").to_string();
     let artist = map.get("artist").expect("missing key-value pair: artist").to_string();
     let credit = map.get("credit").expect("missing key-value pair: credit").to_string();
-    let divisor = map.get("divisor").expect("missing key-value pair: divisor").parse::<u8>()?;
+    // let divisor = map.get("divisor").expect("missing key-value pair: divisor").parse::<u8>()?;
     let ticks = map.get("ticks").expect("missing key-value pair: ticks").to_string();
+    // divisor(s)
+    let divisors = match (map.get("divisor"), map.get("divisors")) {
+      (Some(divisor), None) => DivisorList::from_u8(divisor.parse::<u8>()?),
+      (None, Some(divisors)) => DivisorList::from_string(divisors.to_string())?,
+      (Some(_), Some(_)) => panic!("found conflicting divisor information"),
+      (None, None) => panic!("missing divisor information"),
+    };
     // metadata
     info!("creating metadata...");
-    let metadata = Metadata::new(version, title.clone(), subtitle.clone(), artist.clone(), credit, divisor);
+    let metadata = Metadata::new(version, title.clone(), subtitle.clone(), artist.clone(), credit, divisors);
     // audio
     info!("creating audio object...");
     let audio_filename = match subtitle.as_str() {
@@ -342,6 +422,7 @@ impl Chart {
       audio,
       ticks,
     };
+    info!("{:?}", chart);
     Ok(chart)
   }
   /// An empty chart.

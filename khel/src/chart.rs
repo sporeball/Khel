@@ -423,7 +423,7 @@ impl Chart {
       audio,
       ticks,
     };
-    info!("{:?}", chart);
+    // info!("{:?}", chart);
     Ok(chart)
   }
   /// An empty chart.

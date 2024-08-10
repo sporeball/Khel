@@ -61,14 +61,17 @@ pub fn gui(state: &mut KhelState) {
       if ui.add(Button::new("Load chart 1")).clicked() {
         let Ok(chart) = Chart::read_from_disk("charts/hyperpops 2023.khel") else { return };
         state.chart_info = ChartInfo::new(chart);
+        state.tick_info = None;
       }
       if ui.add(Button::new("Load chart 2")).clicked() {
         let Ok(chart) = Chart::read_from_disk("charts/amanita.khel") else { return };
         state.chart_info = ChartInfo::new(chart);
+        state.tick_info = None;
       }
       if ui.add(Button::new("Load chart 3")).clicked() {
         let Ok(chart) = Chart::read_from_disk("charts/Nest.khel") else { return };
         state.chart_info = ChartInfo::new(chart);
+        state.tick_info = None;
         // state.chart_info.set_ratemod(0.8);
       }
       if ui.add(Button::new("Play chart")).clicked() {

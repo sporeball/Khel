@@ -69,6 +69,7 @@ pub fn gui(state: &mut KhelState) {
       if ui.add(Button::new("Load chart 3")).clicked() {
         let Ok(chart) = Chart::read_from_disk("charts/Nest.khel") else { return };
         state.chart_info = ChartInfo::new(chart);
+        // state.chart_info.set_ratemod(0.8);
       }
       if ui.add(Button::new("Play chart")).clicked() {
         let chart_info = &mut state.chart_info;
@@ -82,7 +83,7 @@ pub fn gui(state: &mut KhelState) {
           warn!("could not play chart, is it empty?");
           return;
         };
-        let start_bpm = first_tick.bpm as f64;
+        let start_bpm = first_tick.bpm as f64 * chart_info.ratemod as f64;
         let one_beat = Duration::from_secs_f64(60f64 / start_bpm);
         let one_bar = one_beat * 4;
         // set chart start time
@@ -91,7 +92,7 @@ pub fn gui(state: &mut KhelState) {
         chart_info.status = ChartStatus::Countdown;
         chart_info.start_time = start_time;
         // set tick info
-        let tick_info = chart.ticks.get_tick_info(chart.metadata.divisors.clone(), start_time);
+        let tick_info = chart.ticks.get_tick_info(chart.metadata.divisors.clone(), start_time, chart_info.ratemod);
         state.tick_info = Some(tick_info);
         // info!("{:?}", state.tick_info);
       }

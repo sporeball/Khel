@@ -433,7 +433,7 @@ impl<'a> KhelState<'a> {
     let ticks = chart.ticks.0.clone();
     let current_tick_u32 = chart_info.tick;
     if matches!(chart_info.status, ChartStatus::Countdown) && self.time > chart_info.start_time {
-      chart.play();
+      chart.play(chart_info.ratemod);
       chart_info.status = ChartStatus::Playing;
     }
     // start to instantiate objects
@@ -441,7 +441,7 @@ impl<'a> KhelState<'a> {
     let Some(current_tick) = ticks.get(current_tick_u32 as usize) else { return; };
     let Some(current_tick_info) = &tick_info.get(current_tick_u32 as usize) else { unreachable!(); };
     if self.time > current_tick_info.instance_time {
-      let time_to_travel = Duration::from_secs_f64((60f64 / current_tick.bpm as f64) * 4.0)
+      let time_to_travel = Duration::from_secs_f64((60f64 / (current_tick.bpm as f64 * chart_info.ratemod as f64)) * 4.0)
         .as_secs_f32();
       let distance_to_travel = self.size.height as f32 * 0.5;
       let yv = distance_to_travel / time_to_travel;

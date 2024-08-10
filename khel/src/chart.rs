@@ -247,11 +247,11 @@ impl Tick {
     Ok(tick)
   }
   /// Return the length of this Tick as a Duration.
-  pub fn duration(&self, divisor: u8) -> Duration {
+  pub fn duration(&self, divisor: u8, ratemod: f32) -> Duration {
     let divisor = divisor as f64;
     // 1-256
     let length = (self.length + 1) as f64;
-    let one_bar = Duration::from_secs_f64((60f64 / self.bpm as f64) * 4.0);
+    let one_bar = Duration::from_secs_f64((60f64 / (self.bpm as f64 * ratemod as f64)) * 4.0);
     one_bar.div_f64(divisor).mul_f64(length)
   }
   /// Return the asset that should be used to render this tick's timing line.
@@ -331,25 +331,26 @@ impl TickList {
     &self,
     divisors: DivisorList,
     start_time: Duration,
+    ratemod: f32,
   ) -> Vec<TickInfo> {
     let ticks = &self.0;
     let mut tick_info: Vec<TickInfo> = vec![];
     // the first tick is known
-    let one_bar = Duration::from_secs_f64((60f64 / ticks[0].bpm as f64) * 4.0);
+    let one_bar = Duration::from_secs_f64((60f64 / (ticks[0].bpm as f64 * ratemod as f64)) * 4.0);
     let divisor = divisors.divisor_at_tick(0);
     tick_info.push(TickInfo {
       instance_time: start_time - one_bar,
       hit_time: start_time,
-      end_time: start_time + ticks[0].duration(divisor.value),
+      end_time: start_time + ticks[0].duration(divisor.value, ratemod),
     });
     for (i, tick) in &mut ticks[1..].iter().enumerate() {
       let last_tick_info = tick_info.last().unwrap();
-      let one_bar = Duration::from_secs_f64((60f64 / ticks[i].bpm as f64) * 4.0);
+      let one_bar = Duration::from_secs_f64((60f64 / (ticks[i].bpm as f64 * ratemod as f64)) * 4.0);
       let divisor = divisors.divisor_at_tick(i as u32);
       tick_info.push(TickInfo {
         instance_time: last_tick_info.end_time - one_bar,
         hit_time: last_tick_info.end_time,
-        end_time: last_tick_info.end_time + tick.duration(divisor.value),
+        end_time: last_tick_info.end_time + tick.duration(divisor.value, ratemod),
       });
     }
     tick_info
@@ -435,11 +436,12 @@ impl Chart {
     }
   }
   /// Begin playing this chart.
-  pub fn play(&self) -> () {
+  pub fn play(&self, ratemod: f32) -> () {
     let Metadata { title, artist, credit, .. } = &self.metadata;
     let ticks = &self.ticks.0;
-    let starting_bpm = ticks[0].bpm as f64;
-    info!("playing chart \"{} - {}\" (mapped by {}) at {}bpm...", artist, title, credit, starting_bpm);
+    let starting_bpm = ticks[0].bpm as f64 * ratemod as f64;
+    info!("playing chart \"{} - {}\" (mapped by {}) at {}bpm ({}x)...", artist, title, credit, starting_bpm, ratemod);
+    self.audio.set_speed(ratemod);
     self.audio.play();
   }
 }
@@ -458,6 +460,7 @@ pub enum ChartStatus {
 pub struct ChartInfo {
   pub chart: Chart,
   pub status: ChartStatus,
+  pub ratemod: f32,
   pub start_time: Duration,
   pub tick: u32,
   pub units_elapsed: u32,
@@ -468,6 +471,7 @@ impl ChartInfo {
     ChartInfo {
       chart,
       status: ChartStatus::None,
+      ratemod: 1.0,
       start_time: Duration::ZERO,
       tick: 0,
       units_elapsed: 0,
@@ -477,10 +481,14 @@ impl ChartInfo {
     ChartInfo {
       chart: Chart::empty(),
       status: ChartStatus::None,
+      ratemod: 1.0,
       start_time: Duration::MAX,
       tick: 0,
       units_elapsed: 0,
     }
+  }
+  pub fn set_ratemod(&mut self, value: f32) {
+    self.ratemod = value;
   }
 }
 

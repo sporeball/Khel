@@ -36,8 +36,8 @@ fn main() -> Result<(), anyhow::Error> {
     1000,
     0.1,
     move |g| {
-      g.game.update();
       g.game.time = now.elapsed();
+      g.game.update();
     },
     |g| {
       let _ = g.game.render();

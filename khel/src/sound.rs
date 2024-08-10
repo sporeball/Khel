@@ -41,4 +41,7 @@ impl Sound {
   pub fn play(&self) {
     self.sink.play();
   }
+  pub fn set_speed(&self, speed: f32) {
+    self.sink.set_speed(speed);
+  }
 }

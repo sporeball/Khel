@@ -4,6 +4,7 @@ use std::path::Path;
 use std::time::Duration;
 use itertools::Itertools;
 use log::info;
+use winit::dpi::PhysicalSize;
 
 pub const CHART_VERSION: u8 = 0;
 
@@ -132,6 +133,10 @@ impl HitObject {
   pub fn lane(&self) -> u8 {
     column(self.keys[0]).unwrap()
   }
+  /// Return the x-coordinate of the lane that this HitObject is in.
+  pub fn lane_x(&self) -> f32 {
+    (0.1f32 * self.lane() as f32) - 0.45
+  }
   /// Return the asset that should be used to render this HitObject.
   pub fn asset(&self) -> &str {
     let rows: u8 = self.keys
@@ -254,6 +259,14 @@ impl Tick {
     let one_bar = Duration::from_secs_f64((60f64 / (self.bpm as f64 * ratemod as f64)) * 4.0);
     one_bar.div_f64(divisor).mul_f64(length)
   }
+  /// Return the length of this tick in quarter notes.
+  pub fn quarter_notes(&self, divisor: u8) -> f32 {
+    let divisor = divisor as f32;
+    // 1-256
+    let length = (self.length + 1) as f32;
+    let bars = length / divisor;
+    bars * 4.0
+  }
   /// Return the asset that should be used to render this tick's timing line.
   // TODO: i think this causes a bug because of units_elapsed across divisor changes
   pub fn timing_line_asset(&self, divisor: u8, units_elapsed: u32) -> &str {
@@ -294,7 +307,7 @@ impl Tick {
 
 #[derive(Debug)]
 /// Info for KhelState about the current tick.
-pub struct TickInfo {
+pub struct TimingInfo {
   pub instance_time: Duration,
   pub hit_time: Duration,
   pub end_time: Duration,
@@ -327,33 +340,37 @@ impl TickList {
     }
     Ok(TickList(v))
   }
-  pub fn get_tick_info(
+  pub fn get_timing_info(
     &self,
+    window_size: PhysicalSize<u32>,
     divisors: DivisorList,
     start_time: Duration,
+    music_time: Duration,
+    travel_time: Duration,
     ratemod: f32,
-  ) -> Vec<TickInfo> {
+  ) -> Vec<TimingInfo> {
     let ticks = &self.0;
-    let mut tick_info: Vec<TickInfo> = vec![];
-    // the first tick is known
+    let mut timing_info: Vec<TimingInfo> = vec![];
+    // first tick
     let one_bar = Duration::from_secs_f64((60f64 / (ticks[0].bpm as f64 * ratemod as f64)) * 4.0);
     let divisor = divisors.divisor_at_tick(0);
-    tick_info.push(TickInfo {
-      instance_time: start_time - one_bar,
-      hit_time: start_time,
-      end_time: start_time + ticks[0].duration(divisor.value, ratemod),
+    timing_info.push(TimingInfo {
+      instance_time: start_time,
+      hit_time: music_time,
+      end_time: music_time + ticks[0].duration(divisor.value, ratemod),
     });
+    // rest of the ticks
     for (i, tick) in &mut ticks[1..].iter().enumerate() {
-      let last_tick_info = tick_info.last().unwrap();
+      let last_tick_info = timing_info.last().unwrap();
       let one_bar = Duration::from_secs_f64((60f64 / (ticks[i].bpm as f64 * ratemod as f64)) * 4.0);
       let divisor = divisors.divisor_at_tick(i as u32);
-      tick_info.push(TickInfo {
-        instance_time: last_tick_info.end_time - one_bar,
+      timing_info.push(TimingInfo {
+        instance_time: last_tick_info.end_time - travel_time,
         hit_time: last_tick_info.end_time,
         end_time: last_tick_info.end_time + tick.duration(divisor.value, ratemod),
       });
     }
-    tick_info
+    timing_info
   }
 }
 
@@ -442,14 +459,14 @@ impl Chart {
     let starting_bpm = ticks[0].bpm as f64 * ratemod as f64;
     info!("playing chart \"{} - {}\" (mapped by {}) at {}bpm ({}x)...", artist, title, credit, starting_bpm, ratemod);
     self.audio.set_speed(ratemod);
-    self.audio.play();
+    // self.audio.play();
   }
 }
 
 /// Status of the currently active chart.
 // #[derive(Default)]
 pub enum ChartStatus {
-  Countdown,
+  // Countdown,
   // #[default]
   None,
   Paused,
@@ -461,6 +478,7 @@ pub struct ChartInfo {
   pub chart: Chart,
   pub status: ChartStatus,
   pub start_time: Duration,
+  pub music_time: Duration,
   pub tick: u32,
   pub units_elapsed: u32,
 }
@@ -471,6 +489,7 @@ impl ChartInfo {
       chart,
       status: ChartStatus::None,
       start_time: Duration::ZERO,
+      music_time: Duration::ZERO,
       tick: 0,
       units_elapsed: 0,
     }
@@ -480,6 +499,7 @@ impl ChartInfo {
       chart: Chart::empty(),
       status: ChartStatus::None,
       start_time: Duration::MAX,
+      music_time: Duration::MAX,
       tick: 0,
       units_elapsed: 0,
     }

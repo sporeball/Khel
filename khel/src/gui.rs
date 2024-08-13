@@ -1,4 +1,4 @@
-use crate::{KhelState, chart::{Chart, ChartInfo, ChartStatus}};
+use crate::{KhelState, zero_to_two, chart::{Chart, ChartInfo, ChartStatus}};
 use std::time::Duration;
 use egui::{epaint::Shadow, Button, Color32, Context, Frame, Label, Margin, Rounding};
 use egui_wgpu::Renderer;
@@ -61,17 +61,17 @@ pub fn gui(state: &mut KhelState) {
       if ui.add(Button::new("Load chart 1")).clicked() {
         let Ok(chart) = Chart::read_from_disk("charts/hyperpops 2023.khel") else { return };
         state.chart_info = ChartInfo::new(chart);
-        state.tick_info = None;
+        state.timing_info = None;
       }
       if ui.add(Button::new("Load chart 2")).clicked() {
         let Ok(chart) = Chart::read_from_disk("charts/amanita.khel") else { return };
         state.chart_info = ChartInfo::new(chart);
-        state.tick_info = None;
+        state.timing_info = None;
       }
       if ui.add(Button::new("Load chart 3")).clicked() {
         let Ok(chart) = Chart::read_from_disk("charts/Nest.khel") else { return };
         state.chart_info = ChartInfo::new(chart);
-        state.tick_info = None;
+        state.timing_info = None;
         // state.chart_info.set_ratemod(0.8);
       }
       if ui.add(Button::new("Play chart")).clicked() {
@@ -87,17 +87,34 @@ pub fn gui(state: &mut KhelState) {
           return;
         };
         let start_bpm = first_tick.bpm as f64 * state.ratemod as f64;
-        let one_beat = Duration::from_secs_f64(60f64 / start_bpm);
+        let start_divisor = chart.metadata.divisors.divisor_at_tick(0).value;
+        let one_minute = Duration::from_secs(60);
+        let one_beat = one_minute.div_f64(start_bpm);
         let one_bar = one_beat * 4;
-        // set chart start time
-        // this will play the chart once the time has passed
-        let start_time = state.time + one_bar;
-        chart_info.status = ChartStatus::Countdown;
+        // calculate travel time
+        let (_, ho_height) = zero_to_two(32, 32, state.size);
+        let heights_to_travel = (1.0 / ho_height);
+        // 1/4 = 1 height to travel
+        let travel_time = one_beat.mul_f32(heights_to_travel).div_f32(state.xmod);
+        // set times
+        let start_time = state.time;
+        // the music should begin playing once the first hit object has finished traveling
+        let music_time = start_time + travel_time;
         chart_info.start_time = start_time;
+        chart_info.music_time = music_time;
         // set tick info
-        let tick_info = chart.ticks.get_tick_info(chart.metadata.divisors.clone(), start_time, state.ratemod);
-        state.tick_info = Some(tick_info);
+        let timing_info = chart.ticks.get_timing_info(
+          state.size,
+          chart.metadata.divisors.clone(),
+          start_time,
+          music_time,
+          travel_time,
+          state.ratemod
+        );
+        state.timing_info = Some(timing_info);
         // info!("{:?}", state.tick_info);
+        chart.play(state.ratemod);
+        chart_info.status = ChartStatus::Playing;
       }
       ui.end_row();
     });

@@ -1,4 +1,4 @@
-use crate::{chart::{ChartInfo, ChartStatus, TickInfo}, object::{DrawObject, Object, Objects}, traits::ZeroToTwo};
+use crate::{chart::{ChartInfo, ChartStatus, TimingInfo}, object::{DrawObject, Object, Objects}, traits::ZeroToTwo};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
@@ -202,7 +202,7 @@ pub struct KhelState<'a> {
   pub sounds: Vec<Sound>,
   pub egui: EguiRenderer,
   pub chart_info: ChartInfo,
-  pub tick_info: Option<Vec<TickInfo>>,
+  pub timing_info: Option<Vec<TimingInfo>>,
   pub xmod: f32,
   pub ratemod: f32,
 }
@@ -323,9 +323,9 @@ impl<'a> KhelState<'a> {
     );
     // info
     let chart_info = ChartInfo::none();
-    let tick_info = None;
+    let timing_info = None;
     // speed mods
-    let xmod = 1.0;
+    let xmod = 4.0;
     let ratemod = 1.0;
     // return value
     Self {
@@ -344,7 +344,7 @@ impl<'a> KhelState<'a> {
       sounds,
       egui,
       chart_info,
-      tick_info,
+      timing_info,
       xmod,
       ratemod,
     }
@@ -441,19 +441,26 @@ impl<'a> KhelState<'a> {
     // TODO: is this expensive enough to avoid?
     let ticks = chart.ticks.0.clone();
     let current_tick_u32 = chart_info.tick;
-    if matches!(chart_info.status, ChartStatus::Countdown) && self.time > chart_info.start_time {
-      chart.play(self.ratemod);
-      chart_info.status = ChartStatus::Playing;
-    }
     // start to instantiate objects
-    let Some(ref tick_info) = self.tick_info else { return; };
+    let Some(ref timing_info) = self.timing_info else { return; };
     let Some(current_tick) = ticks.get(current_tick_u32 as usize) else { return; };
-    let Some(current_tick_info) = &tick_info.get(current_tick_u32 as usize) else { unreachable!(); };
-    if self.time > current_tick_info.instance_time {
-      // let (ho_width, ho_height)
-      let time_to_travel = Duration::from_secs_f64((60f64 / (current_tick.bpm as f64 * self.ratemod as f64)) * 4.0).as_secs_f32();
-      let distance_to_travel = self.size.height as f32 * 0.5;
-      let yv = distance_to_travel / time_to_travel;
+    let Some(current_timing_info) = &timing_info.get(current_tick_u32 as usize) else { unreachable!(); };
+    // TODO: stop repeated calls
+    if self.time > chart_info.music_time {
+      chart.audio.play();
+    }
+    if self.time > current_timing_info.instance_time {
+      let bpm = current_tick.bpm as f64 * self.ratemod as f64;
+      let one_minute = Duration::from_secs(60);
+      let one_beat = one_minute.div_f64(bpm);
+      let one_bar = one_beat * 4;
+      // calculate travel time
+      let (_, ho_height) = zero_to_two(32, 32, self.size);
+      let heights_to_travel = (1.0 / ho_height);
+      // 1/4 = 1 height to travel
+      let travel_time = one_beat.mul_f32(heights_to_travel).div_f32(self.xmod).as_secs_f32();
+      let travel_distance = self.size.height as f32 * 0.5;
+      let yv = travel_distance / travel_time;
       // instantiate timing line
       let line = self.instantiate(
         current_tick.timing_line_asset(
@@ -462,12 +469,14 @@ impl<'a> KhelState<'a> {
         ),
         -1.0,
         -1.0
+        // -1.0 * self.xmod
       );
       self.velocity(line, 0.0, yv);
       // instantiate hit objects
       // TODO: slow down!
       for hit_object in &current_tick.hit_objects.0 {
-        let o = self.instantiate_in_lane(hit_object.lane(), hit_object.asset());
+        // let o = self.instantiate(hit_object.asset(), hit_object.lane_x(), -1.0 * self.xmod);
+        let o = self.instantiate(hit_object.asset(), hit_object.lane_x(), -1.0);
         self.velocity(o, 0.0, yv);
       }
       // move to the next tick
@@ -481,7 +490,7 @@ impl<'a> KhelState<'a> {
     let view = output.texture.create_view(&TextureViewDescriptor::default());
     let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor {
       label: Some("Render Encoder"),
-    });
+     });
     {
       let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
         label: Some("Render Pass"),
@@ -604,10 +613,10 @@ impl<'a> KhelState<'a> {
   }
   /// Instantiate an object at the bottom of the given lane.
   /// Returns the ID of the object instance.
-  pub fn instantiate_in_lane(&mut self, lane: u8, t: &str) -> u32 {
-    let x = (0.1f32 * lane as f32) - 0.45;
-    self.instantiate(t, x, -1.0)
-  }
+  // pub fn instantiate_in_lane(&mut self, lane: u8, t: &str) -> u32 {
+  //   let x = (0.1f32 * lane as f32) - 0.45;
+  //   self.instantiate(t, x, -1.0)
+  // }
   /// Destroy the object instance with the given ID.
   pub fn destroy(&mut self, id: u32) {
     let Some(object) = self.objects.map.values_mut().find(|o| o.instances.contains_key(&id)) else { todo!(); };
@@ -648,4 +657,13 @@ where
 {
   let file = File::open(filename)?;
   Ok(io::BufReader::new(file).lines())
+}
+
+/// Convert an integer width and height into a number between zero and two.
+pub fn zero_to_two(width: u16, height: u16, window_size: PhysicalSize<u32>) -> (f32, f32) {
+  let x_pixel = 2.0 / window_size.width as f32;
+  let y_pixel = 2.0 / window_size.height as f32;
+  let width = width as f32 * x_pixel;
+  let height = height as f32 * y_pixel;
+  (width, height)
 }

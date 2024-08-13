@@ -8,3 +8,6 @@ target/
 
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
+
+# files currently used in testing, but which may present licensing issues if included in the repository
+**/Cardboard Box - Nest.wav

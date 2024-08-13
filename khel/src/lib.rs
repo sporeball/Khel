@@ -1,4 +1,4 @@
-use crate::{chart::{ChartInfo, ChartStatus, TickInfo}, object::{DrawObject, Object, Objects}};
+use crate::{chart::{ChartInfo, ChartStatus, TickInfo}, object::{DrawObject, Object, Objects}, traits::ZeroToTwo};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
@@ -23,6 +23,7 @@ pub mod gui;
 pub mod object;
 pub mod sound;
 pub mod texture;
+pub mod traits;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -202,6 +203,8 @@ pub struct KhelState<'a> {
   pub egui: EguiRenderer,
   pub chart_info: ChartInfo,
   pub tick_info: Option<Vec<TickInfo>>,
+  pub xmod: f32,
+  pub ratemod: f32,
 }
 
 impl<'a> KhelState<'a> {
@@ -318,8 +321,12 @@ impl<'a> KhelState<'a> {
       1,
       &window
     );
+    // info
     let chart_info = ChartInfo::none();
     let tick_info = None;
+    // speed mods
+    let xmod = 1.0;
+    let ratemod = 1.0;
     // return value
     Self {
       window,
@@ -338,6 +345,8 @@ impl<'a> KhelState<'a> {
       egui,
       chart_info,
       tick_info,
+      xmod,
+      ratemod,
     }
   }
   /// Resize this KhelState's surface.
@@ -433,7 +442,7 @@ impl<'a> KhelState<'a> {
     let ticks = chart.ticks.0.clone();
     let current_tick_u32 = chart_info.tick;
     if matches!(chart_info.status, ChartStatus::Countdown) && self.time > chart_info.start_time {
-      chart.play(chart_info.ratemod);
+      chart.play(self.ratemod);
       chart_info.status = ChartStatus::Playing;
     }
     // start to instantiate objects
@@ -441,8 +450,8 @@ impl<'a> KhelState<'a> {
     let Some(current_tick) = ticks.get(current_tick_u32 as usize) else { return; };
     let Some(current_tick_info) = &tick_info.get(current_tick_u32 as usize) else { unreachable!(); };
     if self.time > current_tick_info.instance_time {
-      let time_to_travel = Duration::from_secs_f64((60f64 / (current_tick.bpm as f64 * chart_info.ratemod as f64)) * 4.0)
-        .as_secs_f32();
+      // let (ho_width, ho_height)
+      let time_to_travel = Duration::from_secs_f64((60f64 / (current_tick.bpm as f64 * self.ratemod as f64)) * 4.0).as_secs_f32();
       let distance_to_travel = self.size.height as f32 * 0.5;
       let yv = distance_to_travel / time_to_travel;
       // instantiate timing line

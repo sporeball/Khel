@@ -86,7 +86,7 @@ pub fn gui(state: &mut KhelState) {
           warn!("could not play chart, is it empty?");
           return;
         };
-        let start_bpm = first_tick.bpm as f64 * chart_info.ratemod as f64;
+        let start_bpm = first_tick.bpm as f64 * state.ratemod as f64;
         let one_beat = Duration::from_secs_f64(60f64 / start_bpm);
         let one_bar = one_beat * 4;
         // set chart start time
@@ -95,7 +95,7 @@ pub fn gui(state: &mut KhelState) {
         chart_info.status = ChartStatus::Countdown;
         chart_info.start_time = start_time;
         // set tick info
-        let tick_info = chart.ticks.get_tick_info(chart.metadata.divisors.clone(), start_time, chart_info.ratemod);
+        let tick_info = chart.ticks.get_tick_info(chart.metadata.divisors.clone(), start_time, state.ratemod);
         state.tick_info = Some(tick_info);
         // info!("{:?}", state.tick_info);
       }

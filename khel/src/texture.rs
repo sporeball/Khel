@@ -1,6 +1,6 @@
 use anyhow::*;
 use image::{DynamicImage, GenericImageView};
-// use log::info;
+use log::info;
 use wgpu::{util::{BufferInitDescriptor, DeviceExt}, AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferUsages, Device, Extent3d, FilterMode, ImageCopyTexture, ImageDataLayout, IndexFormat, Origin3d, Queue, RenderPass, SamplerBindingType, SamplerDescriptor, ShaderStages, TextureAspect, TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension};
 use winit::dpi::PhysicalSize;
 
@@ -80,6 +80,8 @@ impl Texture {
       label: Some("diffuse_bind_group"),
     });
     let vertex_buffer = create_vertex_buffer(size, window_size, device);
+    // let (w2, h2) = self.size_zero_to_two(window_size);
+    // info!("(w2, h2) = ({w2}, {h2})");
     let indices = vec![
       0, 1, 3,
       1, 2, 3,
@@ -128,7 +130,7 @@ pub fn bgl_desc() -> BindGroupLayoutDescriptor<'static> {
 pub fn create_vertex_buffer(size: Extent3d, window_size: PhysicalSize<u32>, device: &Device) -> Buffer {
   let w = (size.width as f32 / (window_size.width as f32 / 2.0) - 1.0) * (size.width as f32 / window_size.width as f32);
   let h = (size.height as f32 / (window_size.height as f32 / 2.0) - 1.0) * (size.height as f32 / window_size.height as f32);
-  // info!("{},{}", w, h);
+  // info!("(w, h) = ({}, {})", w, h);
   // TODO: this is upside down!
   let vertices = vec![
     Vertex { position: [-w, h, 0.0], tex_coords: [0.0, 0.0]}, // top left
@@ -163,3 +165,17 @@ where
     self.draw_indexed(0..6, 0, instances);
   }
 }
+
+// pub trait ZeroToTwo {
+//   fn zero_to_two(&self, window_size: PhysicalSize<u32>) -> (f32, f32);
+// }
+
+// impl ZeroToTwo for Extent3d {
+//   fn zero_to_two(&self, window_size: PhysicalSize<u32>) -> (f32, f32) {
+//     let x_pixel = 2.0 / window_size.width as f32;
+//     let y_pixel = 2.0 / window_size.height as f32;
+//     let width = self.width as f32 * x_pixel;
+//     let height = self.height as f32 * y_pixel;
+//     (width, height)
+//   }
+// }

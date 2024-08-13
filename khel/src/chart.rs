@@ -460,7 +460,6 @@ pub enum ChartStatus {
 pub struct ChartInfo {
   pub chart: Chart,
   pub status: ChartStatus,
-  pub ratemod: f32,
   pub start_time: Duration,
   pub tick: u32,
   pub units_elapsed: u32,
@@ -471,7 +470,6 @@ impl ChartInfo {
     ChartInfo {
       chart,
       status: ChartStatus::None,
-      ratemod: 1.0,
       start_time: Duration::ZERO,
       tick: 0,
       units_elapsed: 0,
@@ -481,14 +479,10 @@ impl ChartInfo {
     ChartInfo {
       chart: Chart::empty(),
       status: ChartStatus::None,
-      ratemod: 1.0,
       start_time: Duration::MAX,
       tick: 0,
       units_elapsed: 0,
     }
-  }
-  pub fn set_ratemod(&mut self, value: f32) {
-    self.ratemod = value;
   }
 }
 

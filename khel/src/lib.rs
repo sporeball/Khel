@@ -327,7 +327,7 @@ impl<'a> KhelState<'a> {
     let timing_info = None;
     // speed mods
     let xmod = 4.0;
-    let ratemod = 0.25;
+    let ratemod = 1.0;
     // TODO: remove this field and find a more elegant solution
     let prev_ho_id: Option<u32> = None;
     // return value

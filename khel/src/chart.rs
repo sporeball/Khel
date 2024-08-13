@@ -12,6 +12,7 @@ pub const CHART_VERSION: u8 = 0;
 pub struct Divisor {
   pub value: u8,
   pub start_tick: u32,
+  pub units_elapsed: u32,
 }
 
 impl Divisor {
@@ -33,7 +34,8 @@ impl Divisor {
     let start_tick = v.get(1).expect("missing divisor start tick").parse::<u32>()?;
     Ok(Divisor {
       value,
-      start_tick
+      start_tick,
+      units_elapsed: 0,
     })
   }
 }
@@ -47,6 +49,7 @@ impl DivisorList {
     let divisor = Divisor {
       value,
       start_tick: 0,
+      units_elapsed: 0,
     };
     DivisorList(vec![divisor])
   }
@@ -73,8 +76,13 @@ impl DivisorList {
     Ok(DivisorList(v))
   }
   /// Return a reference to the Divisor from this DivisorList that should be used at a given tick.
-  pub fn divisor_at_tick(&self, tick: u32) -> &Divisor {
+  pub fn at_tick(&self, tick: u32) -> &Divisor {
     self.0.iter().filter(|d| d.start_tick <= tick).last().unwrap()
+  }
+  /// Return a mutable reference to the Divisor from this DivisorList that should be used at a
+  /// given tick.
+  pub fn at_tick_mut(&mut self, tick: u32) -> &mut Divisor {
+    self.0.iter_mut().filter(|d| d.start_tick <= tick).last().unwrap()
   }
 }
 
@@ -353,7 +361,7 @@ impl TickList {
     let mut timing_info: Vec<TimingInfo> = vec![];
     // first tick
     let one_bar = Duration::from_secs_f64((60f64 / (ticks[0].bpm as f64 * ratemod as f64)) * 4.0);
-    let divisor = divisors.divisor_at_tick(0);
+    let divisor = divisors.at_tick(0);
     timing_info.push(TimingInfo {
       instance_time: start_time,
       hit_time: music_time,
@@ -362,8 +370,8 @@ impl TickList {
     // rest of the ticks
     for (i, tick) in &mut ticks[1..].iter().enumerate() {
       let last_tick_info = timing_info.last().unwrap();
-      let one_bar = Duration::from_secs_f64((60f64 / (ticks[i].bpm as f64 * ratemod as f64)) * 4.0);
-      let divisor = divisors.divisor_at_tick(i as u32);
+      let one_bar = Duration::from_secs_f64((60f64 / (tick.bpm as f64 * ratemod as f64)) * 4.0);
+      let divisor = divisors.at_tick(i as u32);
       timing_info.push(TimingInfo {
         instance_time: last_tick_info.end_time - travel_time,
         hit_time: last_tick_info.end_time,
@@ -480,7 +488,7 @@ pub struct ChartInfo {
   pub start_time: Duration,
   pub music_time: Duration,
   pub tick: u32,
-  pub units_elapsed: u32,
+  // pub units_elapsed: u32,
 }
 
 impl ChartInfo {
@@ -491,7 +499,7 @@ impl ChartInfo {
       start_time: Duration::ZERO,
       music_time: Duration::ZERO,
       tick: 0,
-      units_elapsed: 0,
+      // units_elapsed: 0,
     }
   }
   pub fn none() -> Self {
@@ -501,7 +509,7 @@ impl ChartInfo {
       start_time: Duration::MAX,
       music_time: Duration::MAX,
       tick: 0,
-      units_elapsed: 0,
+      // units_elapsed: 0,
     }
   }
 }

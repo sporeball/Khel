@@ -456,7 +456,7 @@ impl<'a> KhelState<'a> {
       let one_bar = one_beat * 4;
       // calculate travel time
       let (_, ho_height) = zero_to_two(32, 32, self.size);
-      let heights_to_travel = (1.0 / ho_height);
+      let heights_to_travel = 1.0 / ho_height;
       // 1/4 = 1 height to travel
       let travel_time = one_beat.mul_f32(heights_to_travel).div_f32(self.xmod).as_secs_f32();
       let travel_distance = self.size.height as f32 * 0.5;
@@ -464,24 +464,22 @@ impl<'a> KhelState<'a> {
       // instantiate timing line
       let line = self.instantiate(
         current_tick.timing_line_asset(
-          self.chart_info.chart.metadata.divisors.divisor_at_tick(current_tick_u32).value,
-          self.chart_info.units_elapsed
+          self.chart_info.chart.metadata.divisors.at_tick(current_tick_u32).value,
+          self.chart_info.chart.metadata.divisors.at_tick(current_tick_u32).units_elapsed
         ),
         -1.0,
         -1.0
-        // -1.0 * self.xmod
       );
       self.velocity(line, 0.0, yv);
       // instantiate hit objects
-      // TODO: slow down!
       for hit_object in &current_tick.hit_objects.0 {
-        // let o = self.instantiate(hit_object.asset(), hit_object.lane_x(), -1.0 * self.xmod);
         let o = self.instantiate(hit_object.asset(), hit_object.lane_x(), -1.0);
         self.velocity(o, 0.0, yv);
       }
       // move to the next tick
       self.chart_info.tick += 1;
-      self.chart_info.units_elapsed += (current_tick.length + 1) as u32;
+      // self.chart_info.units_elapsed += (current_tick.length + 1) as u32;
+      self.chart_info.chart.metadata.divisors.at_tick_mut(current_tick_u32).units_elapsed += (current_tick.length + 1) as u32;
     }
   }
   /// Use this KhelState to perform a render pass.

@@ -87,13 +87,13 @@ pub fn gui(state: &mut KhelState) {
           return;
         };
         let start_bpm = first_tick.bpm as f64 * state.ratemod as f64;
-        let start_divisor = chart.metadata.divisors.divisor_at_tick(0).value;
+        let start_divisor = chart.metadata.divisors.at_tick(0).value;
         let one_minute = Duration::from_secs(60);
         let one_beat = one_minute.div_f64(start_bpm);
         let one_bar = one_beat * 4;
         // calculate travel time
         let (_, ho_height) = zero_to_two(32, 32, state.size);
-        let heights_to_travel = (1.0 / ho_height);
+        let heights_to_travel = 1.0 / ho_height;
         // 1/4 = 1 height to travel
         let travel_time = one_beat.mul_f32(heights_to_travel).div_f32(state.xmod);
         // set times

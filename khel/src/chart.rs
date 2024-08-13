@@ -275,6 +275,12 @@ impl Tick {
     let bars = length / divisor;
     bars * 4.0
   }
+  /// Return the distance between zero and two from this tick to the next.
+  pub fn distance(&self, ho_height: f32, divisor: u8, xmod: f32) -> f32 {
+    // 1/4 = one height
+    info!("distance: {:?}", self.quarter_notes(divisor) * ho_height);
+    self.quarter_notes(divisor) * ho_height * xmod
+  }
   /// Return the asset that should be used to render this tick's timing line.
   // TODO: i think this causes a bug because of units_elapsed across divisor changes
   pub fn timing_line_asset(&self, divisor: u8, units_elapsed: u32) -> &str {

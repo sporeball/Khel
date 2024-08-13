@@ -205,6 +205,7 @@ pub struct KhelState<'a> {
   pub timing_info: Option<Vec<TimingInfo>>,
   pub xmod: f32,
   pub ratemod: f32,
+  pub prev_ho_id: Option<u32>,
 }
 
 impl<'a> KhelState<'a> {
@@ -326,7 +327,9 @@ impl<'a> KhelState<'a> {
     let timing_info = None;
     // speed mods
     let xmod = 4.0;
-    let ratemod = 1.0;
+    let ratemod = 0.25;
+    // TODO: remove this field and find a more elegant solution
+    let prev_ho_id: Option<u32> = None;
     // return value
     Self {
       window,
@@ -347,6 +350,7 @@ impl<'a> KhelState<'a> {
       timing_info,
       xmod,
       ratemod,
+      prev_ho_id,
     }
   }
   /// Resize this KhelState's surface.
@@ -442,6 +446,7 @@ impl<'a> KhelState<'a> {
     let ticks = chart.ticks.0.clone();
     let current_tick_u32 = chart_info.tick;
     // start to instantiate objects
+    // let mut prev_ho_id: Option<u32> = None;
     let Some(ref timing_info) = self.timing_info else { return; };
     let Some(current_tick) = ticks.get(current_tick_u32 as usize) else { return; };
     let Some(current_timing_info) = &timing_info.get(current_tick_u32 as usize) else { unreachable!(); };
@@ -450,16 +455,31 @@ impl<'a> KhelState<'a> {
       chart.audio.play();
     }
     if self.time > current_timing_info.instance_time {
+      // durations
       let bpm = current_tick.bpm as f64 * self.ratemod as f64;
       let one_minute = Duration::from_secs(60);
       let one_beat = one_minute.div_f64(bpm);
       let one_bar = one_beat * 4;
       // calculate travel time
       let (_, ho_height) = zero_to_two(32, 32, self.size);
-      let heights_to_travel = 1.0 / ho_height;
+      let mut instance_y = match current_tick_u32 {
+        0 => -1.0,
+        _ => {
+          // previous hit object's current y coordinate minus the distance from the previous tick
+          // to the current one
+          let prev_ho_id = self.prev_ho_id.unwrap();
+          let prev_ho_instance = self.get_instance(prev_ho_id);
+          let prev_ho_y = prev_ho_instance.position.y;
+          let prev_tick = &ticks[current_tick_u32 as usize - 1];
+          prev_ho_y - prev_tick.distance(ho_height, self.chart_info.chart.metadata.divisors.at_tick(current_tick_u32 - 1).value, self.xmod)
+        },
+      };
+      info!("instance_y: {instance_y}");
+      let heights_to_travel = (0.0 - instance_y) / ho_height;
       // 1/4 = 1 height to travel
       let travel_time = one_beat.mul_f32(heights_to_travel).div_f32(self.xmod).as_secs_f32();
-      let travel_distance = self.size.height as f32 * 0.5;
+      // let travel_distance = self.size.height as f32 * 0.5;
+      let travel_distance = self.size.height as f32 * ((0.0 - instance_y) / 2.0);
       let yv = travel_distance / travel_time;
       // instantiate timing line
       let line = self.instantiate(
@@ -468,17 +488,19 @@ impl<'a> KhelState<'a> {
           self.chart_info.chart.metadata.divisors.at_tick(current_tick_u32).units_elapsed
         ),
         -1.0,
-        -1.0
+        instance_y
       );
       self.velocity(line, 0.0, yv);
       // instantiate hit objects
       for hit_object in &current_tick.hit_objects.0 {
-        let o = self.instantiate(hit_object.asset(), hit_object.lane_x(), -1.0);
+        let o = self.instantiate(hit_object.asset(), hit_object.lane_x(), instance_y);
         self.velocity(o, 0.0, yv);
+        // we can set prev_ho_id here even in the presence of multiple hit objects because they
+        // should be synced
+        self.prev_ho_id = Some(o);
       }
       // move to the next tick
       self.chart_info.tick += 1;
-      // self.chart_info.units_elapsed += (current_tick.length + 1) as u32;
       self.chart_info.chart.metadata.divisors.at_tick_mut(current_tick_u32).units_elapsed += (current_tick.length + 1) as u32;
     }
   }

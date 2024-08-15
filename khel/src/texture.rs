@@ -1,6 +1,6 @@
 use anyhow::*;
 use image::{DynamicImage, GenericImageView};
-use log::info;
+// use log::info;
 use wgpu::{util::{BufferInitDescriptor, DeviceExt}, AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferUsages, Device, Extent3d, FilterMode, ImageCopyTexture, ImageDataLayout, IndexFormat, Origin3d, Queue, RenderPass, SamplerBindingType, SamplerDescriptor, ShaderStages, TextureAspect, TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension};
 use winit::dpi::PhysicalSize;
 

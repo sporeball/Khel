@@ -1,5 +1,4 @@
-use crate::{chart::{ChartInfo, ChartStatus, TimingInfo}, object::{DrawObject, Object, Objects}, traits::ZeroToTwo};
-use std::collections::HashMap;
+use crate::{chart::{ChartInfo, TimingInfo}, object::{DrawObject, Object, Objects}};
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::mem;
@@ -101,7 +100,7 @@ impl InstanceRaw {
 /// An object instance.
 #[derive(Clone)]
 pub struct Instance {
-  t: String,
+  // t: String,
   position: Vector3<f32>,
   velocity: Vector2<f32>,
   // create_time: Duration,
@@ -201,6 +200,7 @@ pub struct KhelState<'a> {
   pub min_available_object_id: u32,
   pub sounds: Vec<Sound>,
   pub egui: EguiRenderer,
+  pub chart_path: String,
   pub chart_info: ChartInfo,
   pub timing_info: Option<Vec<TimingInfo>>,
   pub xmod: f32,
@@ -322,6 +322,7 @@ impl<'a> KhelState<'a> {
       1,
       &window
     );
+    let chart_path = String::new();
     // info
     let chart_info = ChartInfo::none();
     let timing_info = None;
@@ -346,6 +347,7 @@ impl<'a> KhelState<'a> {
       min_available_object_id,
       sounds,
       egui,
+      chart_path,
       chart_info,
       timing_info,
       xmod,
@@ -394,9 +396,9 @@ impl<'a> KhelState<'a> {
         } = event;
         match state {
           ElementState::Pressed => {
-            if let winit::keyboard::Key::Character(c) = logical_key {
-              info!("the {} key was pressed", c);
-            }
+            // if let winit::keyboard::Key::Character(c) = logical_key {
+            //   info!("the {} key was pressed", c);
+            // }
           },
           ElementState::Released => {},
         };
@@ -459,10 +461,9 @@ impl<'a> KhelState<'a> {
       let bpm = current_tick.bpm as f64 * self.ratemod as f64;
       let one_minute = Duration::from_secs(60);
       let one_beat = one_minute.div_f64(bpm);
-      let one_bar = one_beat * 4;
       // calculate travel time
       let (_, ho_height) = zero_to_two(32, 32, self.size);
-      let mut instance_y = match current_tick_u32 {
+      let instance_y = match current_tick_u32 {
         0 => -1.0,
         _ => {
           // previous hit object's current y coordinate minus the distance from the previous tick
@@ -474,7 +475,6 @@ impl<'a> KhelState<'a> {
           prev_ho_y - prev_tick.distance(ho_height, self.chart_info.chart.metadata.divisors.at_tick(current_tick_u32 - 1).value, self.xmod)
         },
       };
-      info!("instance_y: {instance_y}");
       let heights_to_travel = (0.0 - instance_y) / ho_height;
       // 1/4 = 1 height to travel
       let travel_time = one_beat.mul_f32(heights_to_travel).div_f32(self.xmod).as_secs_f32();
@@ -618,7 +618,7 @@ impl<'a> KhelState<'a> {
     let object = self.objects.map.get_mut(t).unwrap();
     let id = self.min_available_object_id;
     let instance = Instance {
-      t: t.to_string(),
+      // t: t.to_string(),
       position: Vector3 { x, y, z: 0.0 },
       velocity: Vector2 { x: 0.0, y: 0.0 },
       // create_time: self.time,

@@ -4,7 +4,6 @@ use std::path::Path;
 use std::time::Duration;
 use itertools::Itertools;
 use log::info;
-use winit::dpi::PhysicalSize;
 
 pub const CHART_VERSION: u8 = 0;
 
@@ -278,7 +277,6 @@ impl Tick {
   /// Return the distance between zero and two from this tick to the next.
   pub fn distance(&self, ho_height: f32, divisor: u8, xmod: f32) -> f32 {
     // 1/4 = one height
-    info!("distance: {:?}", self.quarter_notes(divisor) * ho_height);
     self.quarter_notes(divisor) * ho_height * xmod
   }
   /// Return the asset that should be used to render this tick's timing line.
@@ -356,7 +354,6 @@ impl TickList {
   }
   pub fn get_timing_info(
     &self,
-    window_size: PhysicalSize<u32>,
     divisors: DivisorList,
     start_time: Duration,
     music_time: Duration,
@@ -366,7 +363,6 @@ impl TickList {
     let ticks = &self.0;
     let mut timing_info: Vec<TimingInfo> = vec![];
     // first tick
-    let one_bar = Duration::from_secs_f64((60f64 / (ticks[0].bpm as f64 * ratemod as f64)) * 4.0);
     let divisor = divisors.at_tick(0);
     timing_info.push(TimingInfo {
       instance_time: start_time,
@@ -376,7 +372,6 @@ impl TickList {
     // rest of the ticks
     for (i, tick) in &mut ticks[1..].iter().enumerate() {
       let last_tick_info = timing_info.last().unwrap();
-      let one_bar = Duration::from_secs_f64((60f64 / (tick.bpm as f64 * ratemod as f64)) * 4.0);
       let divisor = divisors.at_tick(i as u32);
       timing_info.push(TimingInfo {
         instance_time: last_tick_info.end_time - travel_time,
@@ -548,10 +543,10 @@ fn row(c: char) -> Option<u8> {
 }
 
 /// Serialize a key-value pair from a (String, String) into .khel format.
-fn serialize_kv(_raw: (String, String)) -> Result<String, anyhow::Error> {
-  // TODO
-  Ok(String::new())
-}
+// fn serialize_kv(_raw: (String, String)) -> Result<String, anyhow::Error> {
+//   // TODO
+//   Ok(String::new())
+// }
 
 /// Deserialize a key-value pair from .khel format into a (String, String).
 fn deserialize_kv(raw: String) -> Result<(String, String), anyhow::Error> {

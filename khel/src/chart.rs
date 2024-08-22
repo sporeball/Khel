@@ -298,7 +298,6 @@ impl HitObjectList {
 #[derive(Clone, Debug)]
 pub struct Tick {
   pub length: u8,
-  // pub bpm: f64,
   pub hit_objects: HitObjectList,
 }
 
@@ -315,18 +314,15 @@ impl Tick {
     if s.is_empty() {
       panic!("attempted to create tick from an empty string");
     }
-    // TODO: stricter split
     let v: Vec<&str> = s.split(":").collect();
     if v.len() > 2 {
       panic!("attempted to create tick with too many parts");
     }
     let head = v.get(0).unwrap();
     let length = v.get(1).expect("missing tick length").parse::<u8>()?;
-    // let bpm = v.get(2).expect("missing tick bpm").parse::<f64>()?;
     let hit_objects = HitObjectList::from_string(head.to_string());
     let tick = Tick {
       length,
-      // bpm,
       hit_objects,
     };
     Ok(tick)
@@ -336,7 +332,7 @@ impl Tick {
     let divisor = divisor as f64;
     // 1-256
     let length = (self.length + 1) as f64;
-    let one_bar = Duration::from_secs_f64((60f64 / (bpm as f64 * ratemod as f64)) * 4.0);
+    let one_bar = Duration::from_secs_f64((60f64 / (bpm * ratemod as f64)) * 4.0);
     one_bar.div_f64(divisor).mul_f64(length)
   }
   /// Return the length of this tick in quarter notes.
@@ -577,8 +573,9 @@ pub struct ChartInfo {
   pub status: ChartStatus,
   pub start_time: Duration,
   pub music_time: Duration,
-  pub tick: u32,
-  // pub units_elapsed: u32,
+  pub instance_tick: u32,
+  pub hit_tick: u32,
+  pub end_tick: u32,
 }
 
 impl ChartInfo {
@@ -588,8 +585,9 @@ impl ChartInfo {
       status: ChartStatus::None,
       start_time: Duration::ZERO,
       music_time: Duration::ZERO,
-      tick: 0,
-      // units_elapsed: 0,
+      instance_tick: 0,
+      hit_tick: 0,
+      end_tick: 0,
     }
   }
   pub fn none() -> Self {
@@ -598,8 +596,9 @@ impl ChartInfo {
       status: ChartStatus::None,
       start_time: Duration::MAX,
       music_time: Duration::MAX,
-      tick: 0,
-      // units_elapsed: 0,
+      instance_tick: 0,
+      hit_tick: 0,
+      end_tick: 0,
     }
   }
 }

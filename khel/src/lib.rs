@@ -446,25 +446,26 @@ impl<'a> KhelState<'a> {
     // let ticks = &chart.ticks.0;
     // TODO: is this expensive enough to avoid?
     let ticks = chart.ticks.0.clone();
-    let current_tick_u32 = chart_info.tick;
+    let instance_tick_u32 = chart_info.instance_tick;
+    let hit_tick_u32 = chart_info.hit_tick;
+    let end_tick_u32 = chart_info.end_tick;
     // start to instantiate objects
     // let mut prev_ho_id: Option<u32> = None;
     let Some(ref timing_info) = self.timing_info else { return; };
-    let Some(current_tick) = ticks.get(current_tick_u32 as usize) else { return; };
-    let Some(current_timing_info) = &timing_info.get(current_tick_u32 as usize) else { unreachable!(); };
+    let Some(instance_tick) = ticks.get(instance_tick_u32 as usize) else { return; };
+    let Some(instance_tick_timing_info) = &timing_info.get(instance_tick_u32 as usize) else { unreachable!(); };
     // TODO: stop repeated calls
     if self.time > chart_info.music_time {
       chart.audio.play();
     }
-    if self.time > current_timing_info.instance_time {
+    if self.time > instance_tick_timing_info.instance_time {
       // durations
-      // let bpm = current_tick.bpm as f64 * self.ratemod as f64;
-      let bpm = chart.metadata.bpms.at_tick(current_tick_u32).value * self.ratemod as f64;
+      let bpm = chart.metadata.bpms.at_tick(instance_tick_u32).value * self.ratemod as f64;
       let one_minute = Duration::from_secs(60);
       let one_beat = one_minute.div_f64(bpm);
       // calculate travel time
       let (_, ho_height) = zero_to_two(32, 32, self.size);
-      let instance_y = match current_tick_u32 {
+      let instance_y = match instance_tick_u32 {
         0 => -1.0,
         _ => {
           // previous hit object's current y coordinate minus the distance from the previous tick
@@ -472,8 +473,8 @@ impl<'a> KhelState<'a> {
           let prev_ho_id = self.prev_ho_id.unwrap();
           let prev_ho_instance = self.get_instance(prev_ho_id);
           let prev_ho_y = prev_ho_instance.position.y;
-          let prev_tick = &ticks[current_tick_u32 as usize - 1];
-          prev_ho_y - prev_tick.distance(ho_height, self.chart_info.chart.metadata.divisors.at_tick(current_tick_u32 - 1).value, self.xmod)
+          let prev_tick = &ticks[instance_tick_u32 as usize - 1];
+          prev_ho_y - prev_tick.distance(ho_height, self.chart_info.chart.metadata.divisors.at_tick(instance_tick_u32 - 1).value, self.xmod)
         },
       };
       let heights_to_travel = (0.0 - instance_y) / ho_height;
@@ -484,16 +485,16 @@ impl<'a> KhelState<'a> {
       let yv = travel_distance / travel_time;
       // instantiate timing line
       let line = self.instantiate(
-        current_tick.timing_line_asset(
-          self.chart_info.chart.metadata.divisors.at_tick(current_tick_u32).value,
-          self.chart_info.chart.metadata.divisors.at_tick(current_tick_u32).units_elapsed
+        instance_tick.timing_line_asset(
+          self.chart_info.chart.metadata.divisors.at_tick(instance_tick_u32).value,
+          self.chart_info.chart.metadata.divisors.at_tick(instance_tick_u32).units_elapsed
         ),
         -1.0,
         instance_y
       );
       self.velocity(line, 0.0, yv);
       // instantiate hit objects
-      for hit_object in &current_tick.hit_objects.0 {
+      for hit_object in &instance_tick.hit_objects.0 {
         let o = self.instantiate(hit_object.asset(), hit_object.lane_x(), instance_y);
         self.velocity(o, 0.0, yv);
         // we can set prev_ho_id here even in the presence of multiple hit objects because they
@@ -501,8 +502,14 @@ impl<'a> KhelState<'a> {
         self.prev_ho_id = Some(o);
       }
       // move to the next tick
-      self.chart_info.tick += 1;
-      self.chart_info.chart.metadata.divisors.at_tick_mut(current_tick_u32).units_elapsed += (current_tick.length + 1) as u32;
+      self.chart_info.instance_tick += 1;
+      self.chart_info.chart.metadata.divisors.at_tick_mut(instance_tick_u32).units_elapsed += (instance_tick.length + 1) as u32;
+    }
+    let Some(ref timing_info) = self.timing_info else { return; };
+    let Some(hit_tick) = ticks.get(hit_tick_u32 as usize) else { return; };
+    let Some(hit_tick_timing_info) = &timing_info.get(hit_tick_u32 as usize) else { unreachable!(); };
+    if self.time > hit_tick_timing_info.hit_time {
+      self.chart_info.hit_tick += 1;
     }
   }
   /// Use this KhelState to perform a render pass.

@@ -87,7 +87,6 @@ pub fn gui(state: &mut KhelState) {
         //   return;
         // };
         // let Some(first_tick) = ticks.get(0) else { unreachable!(); };
-        // let start_bpm = first_tick.bpm as f64 * state.ratemod as f64;
         let start_bpm = chart.metadata.bpms.at_tick(0).value;
         let one_minute = Duration::from_secs(60);
         let one_beat = one_minute.div_f64(start_bpm);
@@ -130,11 +129,10 @@ pub fn gui(state: &mut KhelState) {
           let current_bpm_string = match state.chart_info.chart.metadata.bpms.0.len() {
             0 => String::new(),
             _ => {
-              // TODO: updates bpm early (at instance time)
-              // TODO: might need to add an extra tick(s) to ++ because of this
-              let current_tick_u32 = state.chart_info.tick;
-              let current_bpm = state.chart_info.chart.metadata.bpms.at_tick(current_tick_u32).value;
-              current_bpm.to_string()
+              // TODO: is this a bug?
+              let hit_tick_u32 = state.chart_info.hit_tick.checked_sub(1).unwrap_or(0);
+              let current_bpm = state.chart_info.chart.metadata.bpms.at_tick(hit_tick_u32).value * state.ratemod as f64;
+              format!("{:.2}", current_bpm)
             },
           };
           ui.vertical_centered(|ui| ui.label(RichText::new(current_bpm_string).size(20.0)));

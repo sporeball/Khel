@@ -1,9 +1,9 @@
 use crate::{KhelState, zero_to_two, chart::{Chart, ChartInfo, ChartStatus}};
 use std::time::Duration;
-use egui::{epaint::Shadow, style::{Spacing, Style}, Button, Color32, Context, Frame, Label, Margin, Rounding, Slider, TextEdit, Vec2};
+use egui::{epaint::Shadow, style::{Spacing, Style}, Button, Color32, Context, Frame, Label, Margin, RichText, Rounding, Slider, TextEdit, Vec2};
 use egui_wgpu::Renderer;
 use log::error;
-// use log::info;
+use log::info;
 // use log::warn;
 use wgpu::{Device, TextureFormat};
 use winit::{event::WindowEvent, window::Window};
@@ -86,8 +86,9 @@ pub fn gui(state: &mut KhelState) {
         //   warn!("could not play chart, is it empty?");
         //   return;
         // };
-        let Some(first_tick) = ticks.get(0) else { unreachable!(); };
-        let start_bpm = first_tick.bpm as f64 * state.ratemod as f64;
+        // let Some(first_tick) = ticks.get(0) else { unreachable!(); };
+        // let start_bpm = first_tick.bpm as f64 * state.ratemod as f64;
+        let start_bpm = chart.metadata.bpms.at_tick(0).value;
         let one_minute = Duration::from_secs(60);
         let one_beat = one_minute.div_f64(start_bpm);
         // calculate travel time
@@ -103,6 +104,7 @@ pub fn gui(state: &mut KhelState) {
         chart_info.music_time = music_time;
         // set tick info
         let timing_info = chart.ticks.get_timing_info(
+          chart.metadata.bpms.clone(),
           chart.metadata.divisors.clone(),
           start_time,
           music_time,
@@ -121,6 +123,22 @@ pub fn gui(state: &mut KhelState) {
       ui.add_enabled(
         !matches!(state.chart_info.status, ChartStatus::Playing),
         Slider::new(&mut state.ratemod, 0.5..=2.0).step_by(0.1).text("Ratemod")
+      );
+      ui.add_visible_ui(
+        matches!(state.chart_info.status, ChartStatus::Playing),
+        |ui| {
+          let current_bpm_string = match state.chart_info.chart.metadata.bpms.0.len() {
+            0 => String::new(),
+            _ => {
+              // TODO: updates bpm early (at instance time)
+              // TODO: might need to add an extra tick(s) to ++ because of this
+              let current_tick_u32 = state.chart_info.tick;
+              let current_bpm = state.chart_info.chart.metadata.bpms.at_tick(current_tick_u32).value;
+              current_bpm.to_string()
+            },
+          };
+          ui.vertical_centered(|ui| ui.label(RichText::new(current_bpm_string).size(20.0)));
+        }
       );
     });
 }

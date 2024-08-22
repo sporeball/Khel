@@ -458,7 +458,8 @@ impl<'a> KhelState<'a> {
     }
     if self.time > current_timing_info.instance_time {
       // durations
-      let bpm = current_tick.bpm as f64 * self.ratemod as f64;
+      // let bpm = current_tick.bpm as f64 * self.ratemod as f64;
+      let bpm = chart.metadata.bpms.at_tick(current_tick_u32).value * self.ratemod as f64;
       let one_minute = Duration::from_secs(60);
       let one_beat = one_minute.div_f64(bpm);
       // calculate travel time

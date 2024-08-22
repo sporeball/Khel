@@ -8,6 +8,76 @@ use log::info;
 pub const CHART_VERSION: u8 = 0;
 
 #[derive(Clone, Debug, Default)]
+pub struct Bpm {
+  pub value: f64,
+  pub start_tick: u32,
+}
+
+impl Bpm {
+  /// Create a Bpm from a String.
+  /// When possible, prefer creating a BpmList instead.
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// // 120bpm starting at tick 0
+  /// let bpm = Bpm::from_string(String::from("120@0"));
+  /// ```
+  pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
+    let v: Vec<&str> = s.split("@").collect();
+    if v.len() > 2 {
+      panic!("attempted to create divisor with too many parts");
+    }
+    let value = v.get(0).unwrap().parse::<f64>()?;
+    let start_tick = v.get(1).expect("missing bpm start tick").parse::<u32>()?;
+    Ok(Bpm {
+      value,
+      start_tick,
+    })
+  }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct BpmList(pub Vec<Bpm>);
+
+impl BpmList {
+  /// Create a BpmList from a single f64.
+  pub fn from_f64(value: f64) -> Self {
+    let bpm = Bpm {
+      value,
+      start_tick: 0,
+    };
+    BpmList(vec![bpm])
+  }
+  /// Create a BpmList froma  string.
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// // single bpm
+  /// let bpm_list = BpmList::from_string(String::from("120@0"));
+  /// // multiple bpms
+  /// let bpm_list = BpmList::from_string(String:from("120@0,140@16"));
+  /// ```
+  pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
+    if s.is_empty() {
+      panic!("attempted to create bpm list from an empty string");
+    }
+    let mut v: Vec<Bpm> = vec![];
+    let bpms: Vec<&str> = s.split(",").collect();
+    for bpm in bpms {
+      let bpm = Bpm::from_string(bpm.to_string())?;
+      v.push(bpm);
+    }
+    Ok(BpmList(v))
+  }
+  /// Return a reference to the Bpm from this BpmList that should be used at a given tick.
+  pub fn at_tick(&self, tick: u32) -> &Bpm {
+    self.0.iter().filter(|d| d.start_tick <= tick).last().unwrap()
+  }
+}
+
+#[derive(Clone, Debug, Default)]
 pub struct Divisor {
   pub value: u8,
   pub start_tick: u32,
@@ -92,6 +162,7 @@ pub struct Metadata {
   pub subtitle: String,
   pub artist: String,
   pub credit: String,
+  pub bpms: BpmList,
   pub divisors: DivisorList,
 }
 
@@ -102,6 +173,7 @@ impl Metadata {
     subtitle: String,
     artist: String,
     credit: String,
+    bpms: BpmList,
     divisors: DivisorList,
   ) -> Self {
     Metadata {
@@ -110,6 +182,7 @@ impl Metadata {
       subtitle,
       artist,
       credit,
+      bpms,
       divisors,
     }
   }
@@ -225,7 +298,7 @@ impl HitObjectList {
 #[derive(Clone, Debug)]
 pub struct Tick {
   pub length: u8,
-  pub bpm: f64,
+  // pub bpm: f64,
   pub hit_objects: HitObjectList,
 }
 
@@ -243,27 +316,27 @@ impl Tick {
       panic!("attempted to create tick from an empty string");
     }
     // TODO: stricter split
-    let v: Vec<&str> = s.split(&[':', '@']).collect();
-    if v.len() > 3 {
+    let v: Vec<&str> = s.split(":").collect();
+    if v.len() > 2 {
       panic!("attempted to create tick with too many parts");
     }
     let head = v.get(0).unwrap();
     let length = v.get(1).expect("missing tick length").parse::<u8>()?;
-    let bpm = v.get(2).expect("missing tick bpm").parse::<f64>()?;
+    // let bpm = v.get(2).expect("missing tick bpm").parse::<f64>()?;
     let hit_objects = HitObjectList::from_string(head.to_string());
     let tick = Tick {
       length,
-      bpm,
+      // bpm,
       hit_objects,
     };
     Ok(tick)
   }
   /// Return the length of this Tick as a Duration.
-  pub fn duration(&self, divisor: u8, ratemod: f32) -> Duration {
+  pub fn duration(&self, bpm: f64, divisor: u8, ratemod: f32) -> Duration {
     let divisor = divisor as f64;
     // 1-256
     let length = (self.length + 1) as f64;
-    let one_bar = Duration::from_secs_f64((60f64 / (self.bpm as f64 * ratemod as f64)) * 4.0);
+    let one_bar = Duration::from_secs_f64((60f64 / (bpm as f64 * ratemod as f64)) * 4.0);
     one_bar.div_f64(divisor).mul_f64(length)
   }
   /// Return the length of this tick in quarter notes.
@@ -354,6 +427,7 @@ impl TickList {
   }
   pub fn get_timing_info(
     &self,
+    bpms: BpmList,
     divisors: DivisorList,
     start_time: Duration,
     music_time: Duration,
@@ -363,20 +437,22 @@ impl TickList {
     let ticks = &self.0;
     let mut timing_info: Vec<TimingInfo> = vec![];
     // first tick
+    let bpm = bpms.at_tick(0);
     let divisor = divisors.at_tick(0);
     timing_info.push(TimingInfo {
       instance_time: start_time,
       hit_time: music_time,
-      end_time: music_time + ticks[0].duration(divisor.value, ratemod),
+      end_time: music_time + ticks[0].duration(bpm.value, divisor.value, ratemod),
     });
     // rest of the ticks
     for (i, tick) in &mut ticks[1..].iter().enumerate() {
       let last_tick_info = timing_info.last().unwrap();
+      let bpm = bpms.at_tick(i as u32);
       let divisor = divisors.at_tick(i as u32);
       timing_info.push(TimingInfo {
         instance_time: last_tick_info.end_time - travel_time,
         hit_time: last_tick_info.end_time,
-        end_time: last_tick_info.end_time + tick.duration(divisor.value, ratemod),
+        end_time: last_tick_info.end_time + tick.duration(bpm.value, divisor.value, ratemod),
       });
     }
     timing_info
@@ -419,8 +495,14 @@ impl Chart {
     let subtitle = map.get("subtitle").expect("missing key-value pair: subtitle").to_string();
     let artist = map.get("artist").expect("missing key-value pair: artist").to_string();
     let credit = map.get("credit").expect("missing key-value pair: credit").to_string();
-    // let divisor = map.get("divisor").expect("missing key-value pair: divisor").parse::<u8>()?;
     let ticks = map.get("ticks").expect("missing key-value pair: ticks").to_string();
+    // bpms
+    let bpms = match (map.get("bpm"), map.get("bpms")) {
+      (Some(bpm), None) => BpmList::from_f64(bpm.parse::<f64>()?),
+      (None, Some(bpms)) => BpmList::from_string(bpms.to_string())?,
+      (Some(_), Some(_)) => panic!("found conflicting bpm information"),
+      (None, None) => panic!("missing bpm information"),
+    };
     // divisor(s)
     let divisors = match (map.get("divisor"), map.get("divisors")) {
       (Some(divisor), None) => DivisorList::from_u8(divisor.parse::<u8>()?),
@@ -430,7 +512,15 @@ impl Chart {
     };
     // metadata
     info!("creating metadata...");
-    let metadata = Metadata::new(version, title.clone(), subtitle.clone(), artist.clone(), credit, divisors);
+    let metadata = Metadata::new(
+      version,
+      title.clone(),
+      subtitle.clone(),
+      artist.clone(),
+      credit,
+      bpms,
+      divisors,
+    );
     // audio
     info!("creating audio object...");
     let audio_filename = match subtitle.as_str() {
@@ -464,9 +554,8 @@ impl Chart {
   /// Begin playing this chart.
   pub fn play(&self, ratemod: f32) -> () {
     let Metadata { title, artist, credit, .. } = &self.metadata;
-    let ticks = &self.ticks.0;
-    let starting_bpm = ticks[0].bpm as f64 * ratemod as f64;
-    info!("playing chart \"{} - {}\" (mapped by {}) at {}bpm ({}x)...", artist, title, credit, starting_bpm, ratemod);
+    // info!("playing chart \"{} - {}\" (mapped by {}) at {}bpm ({}x)...", artist, title, credit, starting_bpm, ratemod);
+    info!("playing chart \"{} - {}\" (mapped by {})...", artist, title, credit);
     self.audio.set_speed(ratemod);
     // self.audio.play();
   }

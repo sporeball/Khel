@@ -132,10 +132,10 @@ pub fn create_vertex_buffer(size: Extent3d, window_size: PhysicalSize<u32>, devi
   let h = (size.height as f32 / (window_size.height as f32 / 2.0) - 1.0) * (size.height as f32 / window_size.height as f32);
   // info!("(w, h) = ({}, {})", w, h);
   let vertices = vec![
-    Vertex { position: [-w, h, 0.0], tex_coords: [0.0, 1.0]}, // top left
-    Vertex { position: [-w, -h, 0.0], tex_coords: [0.0, 0.0]}, // bottom left
-    Vertex { position: [w, -h, 0.0], tex_coords: [1.0, 0.0]}, // bottom right
-    Vertex { position: [w, h, 0.0], tex_coords: [1.0, 1.0]}, // top right
+    Vertex { position: [-w, h, 0.0], tex_coords: [1.0, 1.0]}, // top left
+    Vertex { position: [-w, -h, 0.0], tex_coords: [1.0, 0.0]}, // bottom left
+    Vertex { position: [w, -h, 0.0], tex_coords: [0.0, 0.0]}, // bottom right
+    Vertex { position: [w, h, 0.0], tex_coords: [0.0, 1.0]}, // top right
   ];
   let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
     label: Some("Vertex Buffer"),

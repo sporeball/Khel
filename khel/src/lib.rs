@@ -438,7 +438,6 @@ impl<'a> KhelState<'a> {
         instance.position.x += instance.velocity.x / self.size.width as f32 / 1000.0 * 2.0;
         instance.position.y += instance.velocity.y / self.size.height as f32 / 1000.0 * 2.0;
       }
-      object.instance_buffer = object::create_instance_buffer(&object.instances, &self.device);
     }
     // try to play chart
     let chart_info = &mut self.chart_info;
@@ -535,6 +534,9 @@ impl<'a> KhelState<'a> {
         timestamp_writes: None,
       });
       render_pass.set_pipeline(&self.render_pipeline);
+      for object in self.objects.map.values_mut() {
+        object.instance_buffer = object::create_instance_buffer(&object.instances, &self.device);
+      }
       for object in self.objects.map.values() {
         render_pass.draw_object_instanced(object);
       }

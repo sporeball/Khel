@@ -1,4 +1,4 @@
-use crate::{read_lines, sound::Sound};
+use crate::{read_lines, sound::Sound, traits::KeyboardPosition};
 use std::collections::HashMap;
 use std::path::Path;
 use std::time::Duration;
@@ -211,7 +211,7 @@ impl HitObject {
   }
   /// Return the lane that this HitObject is in.
   pub fn lane(&self) -> u8 {
-    column(self.keys[0]).unwrap()
+    self.keys[0].column().unwrap()
   }
   /// Return the x-coordinate of the lane that this HitObject is in.
   pub fn lane_x(&self) -> f32 {
@@ -221,7 +221,7 @@ impl HitObject {
   pub fn asset(&self) -> &str {
     let rows: u8 = self.keys
       .iter()
-      .map(|&c| row(c).expect("found invalid key in hit object"))
+      .map(|&c| c.row().expect("found invalid key in hit object"))
       .sum();
     match rows {
       1 => "circle_red",
@@ -266,7 +266,7 @@ impl HitObjectList {
       if !hit.chars().all_unique() {
         panic!("found duplicate hit char");
       }
-      if !hit.chars().map(column).all_equal() {
+      if !hit.chars().map(|c| c.column()).all_equal() {
         panic!("attempted to create hit across multiple columns");
       }
       v.push(HitObject::from_keys(
@@ -282,7 +282,7 @@ impl HitObjectList {
       if !hold.chars().all_unique() {
         panic!("found duplicate hold char");
       }
-      if !hold.chars().map(column).all_equal() {
+      if !hold.chars().map(|c| c.column()).all_equal() {
         panic!("attempted to create hold across multiple columns");
       }
       v.push(HitObject::from_keys(
@@ -600,33 +600,6 @@ impl ChartInfo {
       hit_tick: 0,
       end_tick: 0,
     }
-  }
-}
-
-/// Return the column that a key is in.
-fn column(c: char) -> Option<u8> {
-  match c {
-    'q' | 'a' | 'z' => Some(0),
-    'w' | 's' | 'x' => Some(1),
-    'e' | 'd' | 'c' => Some(2),
-    'r' | 'f' | 'v' => Some(3),
-    't' | 'g' | 'b' => Some(4),
-    'y' | 'h' | 'n' => Some(5),
-    'u' | 'j' | 'm' => Some(6),
-    'i' | 'k' | ',' => Some(7),
-    'o' | 'l' | '.' => Some(8),
-    'p' | ';' | '/' => Some(9),
-    _ => None,
-  }
-}
-
-/// Return the row that a key is in.
-fn row(c: char) -> Option<u8> {
-  match c {
-    'q' | 'w' | 'e' | 'r' | 't' | 'y' | 'u' | 'i' | 'o' | 'p' => Some(1),
-    'a' | 's' | 'd' | 'f' | 'g' | 'h' | 'j' | 'k' | 'l' | ';' => Some(2),
-    'z' | 'x' | 'c' | 'v' | 'b' | 'n' | 'm' | ',' | '.' | '/' => Some(4),
-    _ => None,
   }
 }
 

@@ -26,7 +26,7 @@ impl Bpm {
   pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
     let v: Vec<&str> = s.split("@").collect();
     if v.len() > 2 {
-      panic!("attempted to create divisor with too many parts");
+      panic!("attempted to create bpm with too many parts");
     }
     let value = v.get(0).unwrap().parse::<f64>()?;
     let start_tick = v.get(1).expect("missing bpm start tick").parse::<u32>()?;

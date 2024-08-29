@@ -549,9 +549,12 @@ impl Chart {
   }
   /// Begin playing this chart.
   pub fn play(&self, ratemod: f32) -> () {
-    let Metadata { title, artist, credit, .. } = &self.metadata;
+    let Metadata { title, subtitle, artist, credit, .. } = &self.metadata;
     // info!("playing chart \"{} - {}\" (mapped by {}) at {}bpm ({}x)...", artist, title, credit, starting_bpm, ratemod);
-    info!("playing chart \"{} - {}\" (mapped by {})...", artist, title, credit);
+    match subtitle.as_str() {
+      "" => info!("playing chart \"{} - {}\" (mapped by {})...", artist, title, credit),
+      _ => info!("playing chart \"{} - {} ({})\" (mapped by {})...", artist, title, subtitle, credit),
+    };
     self.audio.set_speed(ratemod);
     // self.audio.play();
   }

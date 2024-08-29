@@ -442,6 +442,10 @@ impl<'a> KhelState<'a> {
     // try to play chart
     let chart_info = &mut self.chart_info;
     let chart = &chart_info.chart;
+    // TODO: stop repeated calls
+    if self.time > chart_info.music_time {
+      chart.audio.play();
+    }
     // let ticks = &chart.ticks.0;
     // TODO: is this expensive enough to avoid?
     let ticks = chart.ticks.0.clone();
@@ -453,10 +457,6 @@ impl<'a> KhelState<'a> {
     let Some(ref timing_info) = self.timing_info else { return; };
     let Some(instance_tick) = ticks.get(instance_tick_u32 as usize) else { return; };
     let Some(instance_tick_timing_info) = &timing_info.get(instance_tick_u32 as usize) else { unreachable!(); };
-    // TODO: stop repeated calls
-    if self.time > chart_info.music_time {
-      chart.audio.play();
-    }
     if self.time > instance_tick_timing_info.instance_time {
       // durations
       let bpm = chart.metadata.bpms.at_tick(instance_tick_u32).value * self.ratemod as f64;

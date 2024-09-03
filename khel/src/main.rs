@@ -45,11 +45,14 @@ fn main() -> Result<(), anyhow::Error> {
       g.game.fps.tick();
     },
     |g, event| {
-      match event {
-        Event::WindowEvent { event, .. } => {
-          if !g.game.input(event) { g.exit(); }
-        },
-        _ => {},
+      // match event {
+      //   Event::WindowEvent { event, .. } => {
+      //     if !g.game.input(event) { g.exit(); }
+      //   },
+      //   _ => {},
+      // }
+      if let Event::WindowEvent { event, .. } = event {
+        if !g.game.input(event) { g.exit(); }
       }
     }
   ).unwrap();

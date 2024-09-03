@@ -24,11 +24,11 @@ impl Bpm {
   /// let bpm = Bpm::from_string(String::from("120@0"));
   /// ```
   pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
-    let v: Vec<&str> = s.split("@").collect();
+    let v: Vec<&str> = s.split('@').collect();
     if v.len() > 2 {
       panic!("attempted to create bpm with too many parts");
     }
-    let value = v.get(0).unwrap().parse::<f64>()?;
+    let value = v.first().unwrap().parse::<f64>()?;
     let start_tick = v.get(1).expect("missing bpm start tick").parse::<u32>()?;
     Ok(Bpm {
       value,
@@ -64,7 +64,7 @@ impl BpmList {
       panic!("attempted to create bpm list from an empty string");
     }
     let mut v: Vec<Bpm> = vec![];
-    let bpms: Vec<&str> = s.split(",").collect();
+    let bpms: Vec<&str> = s.split(',').collect();
     for bpm in bpms {
       let bpm = Bpm::from_string(bpm.to_string())?;
       v.push(bpm);
@@ -95,11 +95,11 @@ impl Divisor {
   /// let divisor = Divisor::from_string(String::from("16@0"));
   /// ```
   pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
-    let v: Vec<&str> = s.split("@").collect();
+    let v: Vec<&str> = s.split('@').collect();
     if v.len() > 2 {
       panic!("attempted to create divisor with too many parts");
     }
-    let value = v.get(0).unwrap().parse::<u8>()?;
+    let value = v.first().unwrap().parse::<u8>()?;
     let start_tick = v.get(1).expect("missing divisor start tick").parse::<u32>()?;
     Ok(Divisor {
       value,
@@ -137,7 +137,7 @@ impl DivisorList {
       panic!("attempted to create divisor list from an empty string");
     }
     let mut v: Vec<Divisor> = vec![];
-    let divisors: Vec<&str> = s.split(",").collect();
+    let divisors: Vec<&str> = s.split(',').collect();
     for divisor in divisors {
       let divisor = Divisor::from_string(divisor.to_string())?;
       v.push(divisor);
@@ -254,10 +254,10 @@ impl HitObjectList {
   /// let hit_object_list = HitObjectList::from_string(String::from("a/b"));
   /// ```
   pub fn from_string(s: String) -> Self {
-    let s: Vec<&str> = s.split("/").collect();
+    let s: Vec<&str> = s.split('/').collect();
     let mut v: Vec<HitObject> = vec![];
-    let hits: Vec<String> = s.get(0).unwrap_or(&"").split("+").map(String::from).collect();
-    let holds: Vec<String> = s.get(1).unwrap_or(&"").split("+").map(String::from).collect();
+    let hits: Vec<String> = s.first().unwrap_or(&"").split('+').map(String::from).collect();
+    let holds: Vec<String> = s.get(1).unwrap_or(&"").split('+').map(String::from).collect();
     // hits
     for hit in hits.iter() {
       if hit.is_empty() {
@@ -314,11 +314,11 @@ impl Tick {
     if s.is_empty() {
       panic!("attempted to create tick from an empty string");
     }
-    let v: Vec<&str> = s.split(":").collect();
+    let v: Vec<&str> = s.split(':').collect();
     if v.len() > 2 {
       panic!("attempted to create tick with too many parts");
     }
-    let head = v.get(0).unwrap();
+    let head = v.first().unwrap();
     let length = v.get(1).expect("missing tick length").parse::<u8>()?;
     let hit_objects = HitObjectList::from_string(head.to_string());
     let tick = Tick {
@@ -413,7 +413,7 @@ impl TickList {
   /// ```
   pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
     let mut v: Vec<Tick> = vec![];
-    let ticks: Vec<&str> = s.split(",").collect();
+    let ticks: Vec<&str> = s.split(',').collect();
     for tick in ticks {
       let tick = Tick::from_string(tick.to_string())?;
       v.push(tick);
@@ -476,7 +476,7 @@ impl Chart {
     info!("reading {:?} from disk...", filename);
     let mut map: HashMap<String, String> = HashMap::new();
     let lines = read_lines(filename)?;
-    for line in lines.flatten() { // maps Result<String> to String
+    for line in lines.map_while(Result::ok) { // maps Result<String> to String
       if line.is_empty() {
         continue;
       }
@@ -547,7 +547,7 @@ impl Chart {
     }
   }
   /// Begin playing this chart.
-  pub fn play(&self, ratemod: f32) -> () {
+  pub fn play(&self, ratemod: f32) {
     let Metadata { title, subtitle, artist, credit, .. } = &self.metadata;
     // info!("playing chart \"{} - {}\" (mapped by {}) at {}bpm ({}x)...", artist, title, credit, starting_bpm, ratemod);
     match subtitle.as_str() {
@@ -613,10 +613,10 @@ impl ChartInfo {
 
 /// Deserialize a key-value pair from .khel format into a (String, String).
 fn deserialize_kv(raw: String) -> Result<(String, String), anyhow::Error> {
-  let equals = raw.find("=");
+  let equals = raw.find('=');
   let Some(equals) = equals else { panic!("malformed key-value pair"); };
   let key = &raw[0..equals];
-  if !raw.ends_with(";") {
+  if !raw.ends_with(';') {
     panic!("malformed key-value pair: {}", key);
   }
   let value = &raw[equals+1..raw.len()-1];

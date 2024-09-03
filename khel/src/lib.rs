@@ -387,7 +387,7 @@ impl<'a> KhelState<'a> {
       WindowEvent::KeyboardInput { device_id: _, event, is_synthetic: _ } => {
         let KeyEvent {
           physical_key: _,
-          logical_key,
+          logical_key: _,
           text: _,
           location: _,
           state,
@@ -426,7 +426,7 @@ impl<'a> KhelState<'a> {
       _ => (),
     }
     // egui
-    self.egui.handle_input(&mut self.window, &event);
+    self.egui.handle_input(&self.window, event);
     // return value
     true
   }
@@ -451,7 +451,7 @@ impl<'a> KhelState<'a> {
     let ticks = chart.ticks.0.clone();
     let instance_tick_u32 = chart_info.instance_tick;
     let hit_tick_u32 = chart_info.hit_tick;
-    let end_tick_u32 = chart_info.end_tick;
+    // let end_tick_u32 = chart_info.end_tick;
     // start to instantiate objects
     let Some(ref timing_info) = self.timing_info else { return; };
     let Some(instance_tick) = ticks.get(instance_tick_u32 as usize) else { return; };
@@ -504,7 +504,7 @@ impl<'a> KhelState<'a> {
       self.chart_info.chart.metadata.divisors.at_tick_mut(instance_tick_u32).units_elapsed += (instance_tick.length + 1) as u32;
     }
     let Some(ref timing_info) = self.timing_info else { return; };
-    let Some(hit_tick) = ticks.get(hit_tick_u32 as usize) else { return; };
+    // let Some(hit_tick) = ticks.get(hit_tick_u32 as usize) else { return; };
     let Some(hit_tick_timing_info) = &timing_info.get(hit_tick_u32 as usize) else { unreachable!(); };
     if self.time > hit_tick_timing_info.hit_time {
       self.chart_info.hit_tick += 1;
@@ -585,12 +585,12 @@ impl<'a> KhelState<'a> {
     let tris = self.egui.context
       .tessellate(full_output.shapes, full_output.pixels_per_point);
     for (id, image_delta) in &full_output.textures_delta.set {
-      self.egui.renderer.update_texture(&self.device, &self.queue, *id, &image_delta);
+      self.egui.renderer.update_texture(&self.device, &self.queue, *id, image_delta);
     }
     self.egui.renderer.update_buffers(&self.device, &self.queue, encoder, &tris, &screen_descriptor);
     let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
       color_attachments: &[Some(RenderPassColorAttachment {
-        view: &window_surface_view,
+        view: window_surface_view,
         resolve_target: None,
         ops: wgpu::Operations {
           load: wgpu::LoadOp::Load,
@@ -613,7 +613,7 @@ impl<'a> KhelState<'a> {
   /// Returns the ID of the object instance.
   pub fn instantiate(&mut self, t: &str, x: f32, y: f32) -> u32 {
     // create an entry in objects if none exists
-    if self.objects.map.get(t).is_none() {
+    if !self.objects.map.contains_key(t) {
       let filename = format!("{}.png", t);
       let object = Object::from_file(
         filename.as_str(),

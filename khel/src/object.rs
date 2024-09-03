@@ -13,7 +13,7 @@ pub struct Object {
 impl Object {
   pub fn from_file(filename: &str, window_size: PhysicalSize<u32>, device: &Device, queue: &Queue) -> Result<Self, anyhow::Error> {
     let bytes = load_binary(filename).unwrap();
-    let texture = texture::Texture::from_bytes(window_size, &device, &queue, &bytes, filename).unwrap();
+    let texture = texture::Texture::from_bytes(window_size, device, queue, &bytes, filename).unwrap();
     // let instances = vec![];
     let instances: HashMap<u32, Instance> = HashMap::new();
     let instance_buffer = create_instance_buffer(&instances, device);

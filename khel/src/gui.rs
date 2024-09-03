@@ -3,7 +3,7 @@ use std::time::Duration;
 use egui::{epaint::Shadow, style::{Spacing, Style}, Button, Color32, Context, Frame, Label, Margin, RichText, Rounding, Slider, TextEdit, Vec2};
 use egui_wgpu::Renderer;
 use log::error;
-use log::info;
+// use log::info;
 // use log::warn;
 use wgpu::{Device, TextureFormat};
 use winit::{event::WindowEvent, window::Window};
@@ -64,7 +64,7 @@ pub fn gui(state: &mut KhelState) {
       // stroke: Stroke::NONE,
       ..Default::default()
     })
-    .show(&ctx, |ui| {
+    .show(ctx, |ui| {
       ui.add(Label::new(format!("{:.0} fps", state.fps.avg())));
       ui.add(Label::new(format!(
         "itick: {} htick: {} etick: {}",
@@ -86,7 +86,7 @@ pub fn gui(state: &mut KhelState) {
         //   return;
         // }
         let chart = &chart_info.chart;
-        let ticks = &chart.ticks.0;
+        // let ticks = &chart.ticks.0;
         // let Some(first_tick) = ticks.get(0) else {
         //   warn!("could not play chart, is it empty?");
         //   return;
@@ -138,7 +138,7 @@ pub fn gui(state: &mut KhelState) {
             0 => String::new(),
             _ => {
               // TODO: is this a bug?
-              let hit_tick_u32 = state.chart_info.hit_tick.checked_sub(1).unwrap_or(0);
+              let hit_tick_u32 = state.chart_info.hit_tick.saturating_sub(1);
               let current_bpm = state.chart_info.chart.metadata.bpms.at_tick(hit_tick_u32).value * state.ratemod as f64;
               format!("{:.2}", current_bpm)
             },

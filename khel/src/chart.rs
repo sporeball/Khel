@@ -4,6 +4,7 @@ use std::path::Path;
 use std::time::Duration;
 use itertools::Itertools;
 use log::info;
+use thiserror::Error;
 
 pub const CHART_VERSION: u8 = 0;
 
@@ -26,15 +27,24 @@ impl Bpm {
   pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
     let v: Vec<&str> = s.split('@').collect();
     if v.len() > 2 {
-      panic!("attempted to create bpm with too many parts");
+      return Err(BpmError::TooManyParts.into());
     }
     let value = v.first().unwrap().parse::<f64>()?;
-    let start_tick = v.get(1).expect("missing bpm start tick").parse::<u32>()?;
+    let Some(start_tick) = v.get(1) else { return Err(BpmError::MissingStartTick.into()); };
+    let start_tick = start_tick.parse::<u32>()?;
     Ok(Bpm {
       value,
       start_tick,
     })
   }
+}
+
+#[derive(Debug, Error)]
+pub enum BpmError {
+  #[error("attempted to create bpm with too many parts")]
+  TooManyParts,
+  #[error("missing bpm start tick")]
+  MissingStartTick,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -61,7 +71,7 @@ impl BpmList {
   /// ```
   pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
     if s.is_empty() {
-      panic!("attempted to create bpm list from an empty string");
+      return Err(BpmListError::EmptyString.into());
     }
     let mut v: Vec<Bpm> = vec![];
     let bpms: Vec<&str> = s.split(',').collect();
@@ -75,6 +85,12 @@ impl BpmList {
   pub fn at_tick(&self, tick: u32) -> &Bpm {
     self.0.iter().filter(|d| d.start_tick <= tick).last().unwrap()
   }
+}
+
+#[derive(Debug, Error)]
+pub enum BpmListError {
+  #[error("attempted to create bpm list from an empty string")]
+  EmptyString,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -97,16 +113,25 @@ impl Divisor {
   pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
     let v: Vec<&str> = s.split('@').collect();
     if v.len() > 2 {
-      panic!("attempted to create divisor with too many parts");
+      return Err(DivisorError::TooManyParts.into());
     }
     let value = v.first().unwrap().parse::<u8>()?;
-    let start_tick = v.get(1).expect("missing divisor start tick").parse::<u32>()?;
+    let Some(start_tick) = v.get(1) else { return Err(DivisorError::MissingStartTick.into()); };
+    let start_tick = start_tick.parse::<u32>()?;
     Ok(Divisor {
       value,
       start_tick,
       units_elapsed: 0,
     })
   }
+}
+
+#[derive(Debug, Error)]
+pub enum DivisorError {
+  #[error("attempted to create divisor with too many parts")]
+  TooManyParts,
+  #[error("missing divisor start tick")]
+  MissingStartTick,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -134,7 +159,7 @@ impl DivisorList {
   /// ```
   pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
     if s.is_empty() {
-      panic!("attempted to create divisor list from an empty string");
+      return Err(DivisorListError::EmptyString.into());
     }
     let mut v: Vec<Divisor> = vec![];
     let divisors: Vec<&str> = s.split(',').collect();
@@ -153,6 +178,12 @@ impl DivisorList {
   pub fn at_tick_mut(&mut self, tick: u32) -> &mut Divisor {
     self.0.iter_mut().filter(|d| d.start_tick <= tick).last().unwrap()
   }
+}
+
+#[derive(Debug, Error)]
+pub enum DivisorListError {
+  #[error("attempted to create divisor list from an empty string")]
+  EmptyString,
 }
 
 #[derive(Debug, Default)]
@@ -253,7 +284,7 @@ impl HitObjectList {
   /// // one hit and one hold
   /// let hit_object_list = HitObjectList::from_string(String::from("a/b"));
   /// ```
-  pub fn from_string(s: String) -> Self {
+  pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
     let s: Vec<&str> = s.split('/').collect();
     let mut v: Vec<HitObject> = vec![];
     let hits: Vec<String> = s.first().unwrap_or(&"").split('+').map(String::from).collect();
@@ -264,10 +295,10 @@ impl HitObjectList {
         continue;
       }
       if !hit.chars().all_unique() {
-        panic!("found duplicate hit char");
+        return Err(HitObjectListError::DuplicateHitChar.into());
       }
       if !hit.chars().map(|c| c.column()).all_equal() {
-        panic!("attempted to create hit across multiple columns");
+        return Err(HitObjectListError::MultiColumnHit.into());
       }
       v.push(HitObject::from_keys(
         hit.chars().collect(),
@@ -280,18 +311,30 @@ impl HitObjectList {
         continue;
       }
       if !hold.chars().all_unique() {
-        panic!("found duplicate hold char");
+        return Err(HitObjectListError::DuplicateHoldChar.into());
       }
       if !hold.chars().map(|c| c.column()).all_equal() {
-        panic!("attempted to create hold across multiple columns");
+        return Err(HitObjectListError::MultiColumnHold.into());
       }
       v.push(HitObject::from_keys(
         hold.chars().collect(),
         HitObjectType::Hold
       ));
     }
-    HitObjectList(v)
+    Ok(HitObjectList(v))
   }
+}
+
+#[derive(Debug, Error)]
+pub enum HitObjectListError {
+  #[error("found duplicate hit char")]
+  DuplicateHitChar,
+  #[error("attempted to create hit across multiple columns")]
+  MultiColumnHit,
+  #[error("found duplicate hold char")]
+  DuplicateHoldChar,
+  #[error("attempted to create hold across multiple columns")]
+  MultiColumnHold,
 }
 
 // #[derive(Debug, Default)]
@@ -312,15 +355,16 @@ impl Tick {
   /// ```
   pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
     if s.is_empty() {
-      panic!("attempted to create tick from an empty string");
+      return Err(TickError::EmptyString.into());
     }
     let v: Vec<&str> = s.split(':').collect();
     if v.len() > 2 {
-      panic!("attempted to create tick with too many parts");
+      return Err(TickError::TooManyParts.into());
     }
     let head = v.first().unwrap();
-    let length = v.get(1).expect("missing tick length").parse::<u8>()?;
-    let hit_objects = HitObjectList::from_string(head.to_string());
+    let Some(length) = v.get(1) else { return Err(TickError::MissingTickLength.into()); };
+    let length = length.parse::<u8>()?;
+    let hit_objects = HitObjectList::from_string(head.to_string())?;
     let tick = Tick {
       length,
       hit_objects,
@@ -349,8 +393,8 @@ impl Tick {
     self.quarter_notes(divisor) * ho_height * xmod
   }
   /// Return the asset that should be used to render this tick's timing line.
-  pub fn timing_line_asset(&self, divisor: u8, units_elapsed: u32) -> &str {
-    match divisor {
+  pub fn timing_line_asset(&self, divisor: u8, units_elapsed: u32) -> Result<&str, TickError> {
+    let asset = match divisor {
       1 | 2 | 4 => "line_red",
       6 => match units_elapsed % 6 {
         0 | 3 => "line_red",
@@ -380,9 +424,22 @@ impl Tick {
         2 | 6 | 10 | 14 | 18 | 22 | 26 | 30 => "line_yellow",
         _ => "line_green",
       },
-      _ => panic!("unsupported divisor"),
-    }
+      _ => return Err(TickError::UnsupportedDivisor),
+    };
+    Ok(asset)
   }
+}
+
+#[derive(Debug, Error)]
+pub enum TickError {
+  #[error("attempted to create tick from an empty string")]
+  EmptyString,
+  #[error("attempted to create tick with too many parts")]
+  TooManyParts,
+  #[error("missing tick length")]
+  MissingTickLength,
+  #[error("unsupported divisor")]
+  UnsupportedDivisor,
 }
 
 #[derive(Debug)]
@@ -485,25 +542,31 @@ impl Chart {
     }
     info!("found {} key-value pairs", map.keys().len());
     // required key-value pairs
-    let version = map.get("version").expect("missing key-value pair: version").parse::<u8>()?;
-    let title = map.get("title").expect("missing key-value pair: title").to_string();
-    let subtitle = map.get("subtitle").expect("missing key-value pair: subtitle").to_string();
-    let artist = map.get("artist").expect("missing key-value pair: artist").to_string();
-    let credit = map.get("credit").expect("missing key-value pair: credit").to_string();
-    let ticks = map.get("ticks").expect("missing key-value pair: ticks").to_string();
+    let Some(version) = map.get("version") else { return Err(ChartError::MissingKeyValuePair(String::from("version")).into()); };
+    let version = version.parse::<u8>()?;
+    let Some(title) = map.get("title") else { return Err(ChartError::MissingKeyValuePair(String::from("title")).into()); };
+    let title = title.to_string();
+    let Some(subtitle) = map.get("subtitle") else { return Err(ChartError::MissingKeyValuePair(String::from("subtitle")).into()); };
+    let subtitle = subtitle.to_string();
+    let Some(artist) = map.get("artist") else { return Err(ChartError::MissingKeyValuePair(String::from("artist")).into()); };
+    let artist = artist.to_string();
+    let Some(credit) = map.get("credit") else { return Err(ChartError::MissingKeyValuePair(String::from("credit")).into()); };
+    let credit = credit.to_string();
+    let Some(ticks) = map.get("ticks") else { return Err(ChartError::MissingKeyValuePair(String::from("ticks")).into()); };
+    let ticks = ticks.to_string();
     // bpms
     let bpms = match (map.get("bpm"), map.get("bpms")) {
       (Some(bpm), None) => BpmList::from_f64(bpm.parse::<f64>()?),
       (None, Some(bpms)) => BpmList::from_string(bpms.to_string())?,
-      (Some(_), Some(_)) => panic!("found conflicting bpm information"),
-      (None, None) => panic!("missing bpm information"),
+      (Some(_), Some(_)) => { return Err(ChartError::ConflictingBpmInformation.into()); },
+      (None, None) => { return Err(ChartError::MissingBpmInformation.into()); },
     };
     // divisor(s)
     let divisors = match (map.get("divisor"), map.get("divisors")) {
       (Some(divisor), None) => DivisorList::from_u8(divisor.parse::<u8>()?),
       (None, Some(divisors)) => DivisorList::from_string(divisors.to_string())?,
-      (Some(_), Some(_)) => panic!("found conflicting divisor information"),
-      (None, None) => panic!("missing divisor information"),
+      (Some(_), Some(_)) => { return Err(ChartError::ConflictingDivisorInformation.into()); },
+      (None, None) => { return Err(ChartError::MissingDivisorInformation.into()); },
     };
     // metadata
     info!("creating metadata...");
@@ -557,6 +620,20 @@ impl Chart {
     self.audio.set_speed(ratemod);
     // self.audio.play();
   }
+}
+
+#[derive(Debug, Error)]
+pub enum ChartError {
+  #[error("missing key-value pair: {0}")]
+  MissingKeyValuePair(String),
+  #[error("found conflicting bpm information")]
+  ConflictingBpmInformation,
+  #[error("missing bpm information")]
+  MissingBpmInformation,
+  #[error("found conflicting divisor information")]
+  ConflictingDivisorInformation,
+  #[error("missing divisor information")]
+  MissingDivisorInformation,
 }
 
 /// Status of the currently active chart.

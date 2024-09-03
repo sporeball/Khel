@@ -74,11 +74,14 @@ pub fn gui(state: &mut KhelState) {
       )));
       ui.add(TextEdit::singleline(&mut state.chart_path).hint_text("Chart"));
       if ui.add(Button::new("Play")).clicked() {
-        let Ok(chart) = Chart::read_from_disk(&state.chart_path) else {
-          error!("could not read chart, does it exist?");
+        let chart = Chart::read_from_disk(&state.chart_path);
+        if let Err(chart_error) = chart {
+          error!("{}", chart_error);
+          state.error = Some(chart_error);
           return;
         };
-        state.chart_info = ChartInfo::new(chart);
+        state.error = None;
+        state.chart_info = ChartInfo::new(chart.unwrap());
         // state.timing_info = None;
         let chart_info = &mut state.chart_info;
         // if let ChartStatus::Playing = chart_info.status {
@@ -131,6 +134,9 @@ pub fn gui(state: &mut KhelState) {
         !matches!(state.chart_info.status, ChartStatus::Playing),
         Slider::new(&mut state.ratemod, 0.5..=2.0).step_by(0.1).text("Ratemod")
       );
+      if state.error.is_some() {
+        ui.add(Label::new(RichText::new(format!("error: {}", state.error.as_ref().unwrap())).color(Color32::RED)));
+      }
       ui.add_visible_ui(
         matches!(state.chart_info.status, ChartStatus::Playing),
         |ui| {

@@ -206,6 +206,7 @@ pub struct KhelState<'a> {
   pub xmod: f32,
   pub ratemod: f32,
   pub prev_ho_id: Option<u32>,
+  pub error: Option<anyhow::Error>,
 }
 
 impl<'a> KhelState<'a> {
@@ -331,6 +332,8 @@ impl<'a> KhelState<'a> {
     let ratemod = 1.0;
     // TODO: remove this field and find a more elegant solution
     let prev_ho_id: Option<u32> = None;
+    // misc
+    let error = None;
     // return value
     Self {
       window,
@@ -353,6 +356,7 @@ impl<'a> KhelState<'a> {
       xmod,
       ratemod,
       prev_ho_id,
+      error,
     }
   }
   /// Resize this KhelState's surface.
@@ -486,7 +490,7 @@ impl<'a> KhelState<'a> {
         instance_tick.timing_line_asset(
           self.chart_info.chart.metadata.divisors.at_tick(instance_tick_u32).value,
           self.chart_info.chart.metadata.divisors.at_tick(instance_tick_u32).units_elapsed
-        ),
+        ).unwrap(), // TODO: safety
         -1.0,
         instance_y
       );

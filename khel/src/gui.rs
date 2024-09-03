@@ -55,7 +55,6 @@ pub fn gui(state: &mut KhelState) {
     },
     ..Default::default()
   });
-  // egui::Window::new("Khel")
   egui::CentralPanel::default()
     .frame(Frame {
       outer_margin: Margin::same(10.0),
@@ -67,6 +66,12 @@ pub fn gui(state: &mut KhelState) {
     })
     .show(&ctx, |ui| {
       ui.add(Label::new(format!("{:.0} fps", state.fps.avg())));
+      ui.add(Label::new(format!(
+        "itick: {} htick: {} etick: {}",
+        state.chart_info.instance_tick,
+        state.chart_info.hit_tick,
+        state.chart_info.end_tick,
+      )));
       ui.add(TextEdit::singleline(&mut state.chart_path).hint_text("Chart"));
       if ui.add(Button::new("Play")).clicked() {
         let Ok(chart) = Chart::read_from_disk(&state.chart_path) else {
@@ -110,6 +115,9 @@ pub fn gui(state: &mut KhelState) {
           travel_time,
           state.ratemod
         );
+        // info!("start_time: {:?}", start_time);
+        // info!("music_time: {:?}", music_time);
+        // info!("travel_time: {:?}", travel_time);
         state.timing_info = Some(timing_info);
         // info!("{:?}", state.tick_info);
         chart.play(state.ratemod);

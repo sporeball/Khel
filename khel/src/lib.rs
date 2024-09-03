@@ -453,7 +453,6 @@ impl<'a> KhelState<'a> {
     let hit_tick_u32 = chart_info.hit_tick;
     let end_tick_u32 = chart_info.end_tick;
     // start to instantiate objects
-    // let mut prev_ho_id: Option<u32> = None;
     let Some(ref timing_info) = self.timing_info else { return; };
     let Some(instance_tick) = ticks.get(instance_tick_u32 as usize) else { return; };
     let Some(instance_tick_timing_info) = &timing_info.get(instance_tick_u32 as usize) else { unreachable!(); };

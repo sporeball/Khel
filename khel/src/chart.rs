@@ -49,7 +49,7 @@ impl BpmList {
     };
     BpmList(vec![bpm])
   }
-  /// Create a BpmList froma  string.
+  /// Create a BpmList from a string.
   ///
   /// # Examples
   ///
@@ -349,7 +349,6 @@ impl Tick {
     self.quarter_notes(divisor) * ho_height * xmod
   }
   /// Return the asset that should be used to render this tick's timing line.
-  // TODO: i think this causes a bug because of units_elapsed across divisor changes
   pub fn timing_line_asset(&self, divisor: u8, units_elapsed: u32) -> &str {
     match divisor {
       1 | 2 | 4 => "line_red",

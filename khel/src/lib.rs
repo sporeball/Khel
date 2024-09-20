@@ -1,4 +1,4 @@
-use crate::{chart::{ChartInfo, TimingInfo}, object::{DrawObject, Object, Objects}};
+use crate::{chart::{ChartInfo, TimingInfoList}, object::{DrawObject, Object, Objects}};
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::mem;
@@ -202,7 +202,7 @@ pub struct KhelState<'a> {
   pub egui: EguiRenderer,
   pub chart_path: String,
   pub chart_info: ChartInfo,
-  pub timing_info: Option<Vec<TimingInfo>>,
+  pub timing_info_list: Option<TimingInfoList>,
   pub xmod: f32,
   pub ratemod: f32,
   pub prev_ho_id: Option<u32>,
@@ -326,7 +326,7 @@ impl<'a> KhelState<'a> {
     let chart_path = String::new();
     // info
     let chart_info = ChartInfo::none();
-    let timing_info = None;
+    let timing_info_list = None;
     // speed mods
     let xmod = 4.0;
     let ratemod = 1.0;
@@ -352,7 +352,7 @@ impl<'a> KhelState<'a> {
       egui,
       chart_path,
       chart_info,
-      timing_info,
+      timing_info_list,
       xmod,
       ratemod,
       prev_ho_id,
@@ -450,9 +450,9 @@ impl<'a> KhelState<'a> {
     let hit_tick_u32 = chart_info.hit_tick;
     // let end_tick_u32 = chart_info.end_tick;
     // start to instantiate objects
-    let Some(ref timing_info) = self.timing_info else { return; };
+    let Some(ref timing_info_list) = self.timing_info_list else { return; };
     let Some(instance_tick) = ticks.get(instance_tick_u32 as usize) else { return; };
-    let Some(instance_tick_timing_info) = &timing_info.get(instance_tick_u32 as usize) else { unreachable!(); };
+    let Some(instance_tick_timing_info) = &timing_info_list.0.get(instance_tick_u32 as usize) else { unreachable!(); };
     if self.time > instance_tick_timing_info.instance_time {
       // durations
       let bpm = chart.metadata.bpms.at_tick(instance_tick_u32).value * self.ratemod as f64;
@@ -500,9 +500,9 @@ impl<'a> KhelState<'a> {
       self.chart_info.instance_tick += 1;
       self.chart_info.chart.metadata.divisors.at_tick_mut(instance_tick_u32).units_elapsed += (instance_tick.length + 1) as u32;
     }
-    let Some(ref timing_info) = self.timing_info else { return; };
+    let Some(ref timing_info_list) = self.timing_info_list else { return; };
     // let Some(hit_tick) = ticks.get(hit_tick_u32 as usize) else { return; };
-    let Some(hit_tick_timing_info) = &timing_info.get(hit_tick_u32 as usize) else { unreachable!(); };
+    let Some(hit_tick_timing_info) = &timing_info_list.0.get(hit_tick_u32 as usize) else { unreachable!(); };
     if self.time > hit_tick_timing_info.hit_time {
       self.chart_info.hit_tick += 1;
     }

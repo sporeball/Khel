@@ -450,10 +450,13 @@ pub struct TimingInfo {
   pub end_time: Duration,
 }
 
-// pub struct TickInfoList(pub Vec<TickInfo>);
+pub struct TimingInfoList(pub Vec<TimingInfo>);
 
-// impl TickInfoList {
-// }
+impl TimingInfoList {
+  pub fn new(v: Vec<TimingInfo>) -> Self {
+    TimingInfoList(v)
+  }
+}
 
 #[derive(Debug, Default)]
 /// Wrapper over Vec<Tick>.
@@ -477,7 +480,7 @@ impl TickList {
     }
     Ok(TickList(v))
   }
-  pub fn get_timing_info(
+  pub fn get_timing_info_list(
     &self,
     bpms: BpmList,
     divisors: DivisorList,
@@ -485,29 +488,31 @@ impl TickList {
     music_time: Duration,
     travel_time: Duration,
     ratemod: f32,
-  ) -> Vec<TimingInfo> {
+  ) -> TimingInfoList {
     let ticks = &self.0;
-    let mut timing_info: Vec<TimingInfo> = vec![];
+    let mut v: Vec<TimingInfo> = vec![];
     // first tick
     let bpm = bpms.at_tick(0);
     let divisor = divisors.at_tick(0);
-    timing_info.push(TimingInfo {
+    // FIXME
+    v.push(TimingInfo {
       instance_time: start_time,
       hit_time: music_time,
       end_time: music_time + ticks[0].duration(bpm.value, divisor.value, ratemod),
     });
     // rest of the ticks
     for (i, tick) in &mut ticks[1..].iter().enumerate() {
-      let last_tick_info = timing_info.last().unwrap();
+      let prev_timing_info = v.last().unwrap();
       let bpm = bpms.at_tick(i as u32);
       let divisor = divisors.at_tick(i as u32);
-      timing_info.push(TimingInfo {
-        instance_time: last_tick_info.end_time - travel_time,
-        hit_time: last_tick_info.end_time,
-        end_time: last_tick_info.end_time + tick.duration(bpm.value, divisor.value, ratemod),
+      // FIXME
+      v.push(TimingInfo {
+        instance_time: prev_timing_info.end_time - travel_time,
+        hit_time: prev_timing_info.end_time,
+        end_time: prev_timing_info.end_time + tick.duration(bpm.value, divisor.value, ratemod),
       });
     }
-    timing_info
+    TimingInfoList::new(v)
   }
 }
 

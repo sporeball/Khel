@@ -110,7 +110,7 @@ pub fn gui(state: &mut KhelState) {
         chart_info.start_time = start_time;
         chart_info.music_time = music_time;
         // set tick info
-        let timing_info = chart.ticks.get_timing_info(
+        let timing_info_list = chart.ticks.get_timing_info_list(
           chart.metadata.bpms.clone(),
           chart.metadata.divisors.clone(),
           start_time,
@@ -121,7 +121,7 @@ pub fn gui(state: &mut KhelState) {
         // info!("start_time: {:?}", start_time);
         // info!("music_time: {:?}", music_time);
         // info!("travel_time: {:?}", travel_time);
-        state.timing_info = Some(timing_info);
+        state.timing_info_list = Some(timing_info_list);
         // info!("{:?}", state.tick_info);
         chart.play(state.ratemod);
         chart_info.status = ChartStatus::Playing;

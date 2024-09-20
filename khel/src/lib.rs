@@ -435,14 +435,7 @@ impl<'a> KhelState<'a> {
     true
   }
   pub fn update(&mut self) {
-    // move objects
-    for object in self.objects.map.values_mut() {
-      for instance in &mut object.instances.values_mut() {
-        // window coordinates are [-1.0, 1.0], so we have to multiply by 2
-        instance.position.x += instance.velocity.x / self.size.width as f32 / 1000.0 * 2.0;
-        instance.position.y += instance.velocity.y / self.size.height as f32 / 1000.0 * 2.0;
-      }
-    }
+    self.objects.move_all(self.size);
     // try to play chart
     let chart_info = &mut self.chart_info;
     let chart = &chart_info.chart;

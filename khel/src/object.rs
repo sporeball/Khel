@@ -32,6 +32,18 @@ pub struct Objects {
   pub to_be_destroyed: HashMap<u32, Duration>,
 }
 
+impl Objects {
+  pub fn move_all(&mut self, size: PhysicalSize<u32>) {
+    for object in self.map.values_mut() {
+      for instance in &mut object.instances.values_mut() {
+        // window coordinates are [-1.0, 1.0], so we have to multiply by 2
+        instance.position.x += instance.velocity.x / size.width as f32 / 1000.0 * 2.0;
+        instance.position.y += instance.velocity.y / size.height as f32 / 1000.0 * 2.0;
+      }
+    }
+  }
+}
+
 // TODO: is it possible to put this on Object? i forgot...
 // pub fn create_instance_buffer(instances: &Vec<Instance>, device: &Device) -> Buffer {
 pub fn create_instance_buffer(instances: &HashMap<u32, Instance>, device: &Device) -> Buffer {

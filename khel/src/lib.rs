@@ -481,8 +481,7 @@ impl<'a> KhelState<'a> {
         // instantiate timing line
         let line = self.instantiate(
           instance_tick.timing_line_asset(
-            self.chart_info.chart.metadata.divisors.at_tick(instance_tick_u32).value,
-            self.chart_info.chart.metadata.divisors.at_tick(instance_tick_u32).units_elapsed
+            self.chart_info.chart.metadata.divisors.at_tick(instance_tick_u32)
           ).unwrap(), // TODO: safety
           -1.0,
           instance_y

@@ -393,32 +393,32 @@ impl Tick {
     self.quarter_notes(divisor) * ho_height * xmod
   }
   /// Return the asset that should be used to render this tick's timing line.
-  pub fn timing_line_asset(&self, divisor: u8, units_elapsed: u32) -> Result<&str, TickError> {
-    let asset = match divisor {
+  pub fn timing_line_asset(&self, divisor: &Divisor) -> Result<&str, TickError> {
+    let asset = match divisor.value {
       1 | 2 | 4 => "line_red",
-      6 => match units_elapsed % 6 {
+      6 => match divisor.units_elapsed % 6 {
         0 | 3 => "line_red",
         _ => "line_magenta",
       },
-      8 => match units_elapsed % 8 {
+      8 => match divisor.units_elapsed % 8 {
         0 | 4 => "line_red",
         _ => "line_blue",
       },
-      12 => match units_elapsed % 12 {
+      12 => match divisor.units_elapsed % 12 {
         0 | 3 | 6 | 9 => "line_red",
         _ => "line_magenta",
       }
-      16 => match units_elapsed % 16 {
+      16 => match divisor.units_elapsed % 16 {
         0 | 4 | 8 | 12 => "line_red",
         2 | 6 | 10 | 14 => "line_blue",
         _ => "line_yellow",
       },
-      24 => match units_elapsed % 24 {
+      24 => match divisor.units_elapsed % 24 {
         0 | 6 | 12 | 18 => "line_red",
         3 | 9 | 15 | 21 => "line_magenta",
         _ => "line_cyan",
       },
-      32 => match units_elapsed % 32 {
+      32 => match divisor.units_elapsed % 32 {
         0 | 8 | 16 | 24 => "line_red",
         4 | 12 | 20 | 28 => "line_blue",
         2 | 6 | 10 | 14 | 18 | 22 | 26 | 30 => "line_yellow",

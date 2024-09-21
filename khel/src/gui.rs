@@ -95,7 +95,7 @@ pub fn gui(state: &mut KhelState) {
         //   return;
         // };
         // let Some(first_tick) = ticks.get(0) else { unreachable!(); };
-        let start_bpm = chart.metadata.bpms.at_tick(0).value;
+        let start_bpm = chart.metadata.bpms.at_tick(0).value * state.ratemod as f64;
         let one_minute = Duration::from_secs(60);
         let one_beat = one_minute.div_f64(start_bpm);
         // calculate travel time

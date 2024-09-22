@@ -184,6 +184,11 @@ impl Instance {
 //   }
 // }
 
+// pub enum SpeedMod {
+//   Cmod(f32), // TODO
+//   Xmod(f32),
+// }
+
 pub struct KhelState<'a> {
   pub window: Arc<Window>,
   pub surface: Surface<'a>,
@@ -203,7 +208,8 @@ pub struct KhelState<'a> {
   pub chart_path: String,
   pub chart_info: ChartInfo,
   pub timing_info_list: Option<TimingInfoList>,
-  pub xmod: f32,
+  // pub xmod: f32,
+  pub av: u32,
   pub ratemod: f32,
   pub prev_ho_id: Option<u32>,
   pub error: Option<anyhow::Error>,
@@ -328,7 +334,8 @@ impl<'a> KhelState<'a> {
     let chart_info = ChartInfo::none();
     let timing_info_list = None;
     // speed mods
-    let xmod = 4.0;
+    // let xmod = 4.0;
+    let av = 300;
     let ratemod = 1.0;
     // TODO: remove this field and find a more elegant solution
     let prev_ho_id: Option<u32> = None;
@@ -353,7 +360,8 @@ impl<'a> KhelState<'a> {
       chart_path,
       chart_info,
       timing_info_list,
-      xmod,
+      // xmod,
+      av,
       ratemod,
       prev_ho_id,
       error,
@@ -437,47 +445,65 @@ impl<'a> KhelState<'a> {
   pub fn update(&mut self) {
     self.objects.move_all(self.size);
     // try to play chart
-    let chart_info = &mut self.chart_info;
-    let chart = &chart_info.chart;
+    // let chart_info = &mut self.chart_info;
+    let chart = &self.chart_info.chart;
     // TODO: stop repeated calls
-    if self.time > chart_info.music_time {
+    if self.time > self.chart_info.music_time {
       chart.audio.play();
     }
     // let ticks = &chart.ticks.0;
     // TODO: is this expensive enough to avoid?
     let ticks = chart.ticks.0.clone();
-    let instance_tick_u32 = chart_info.instance_tick;
-    let hit_tick_u32 = chart_info.hit_tick;
+    let instance_tick_u32 = self.chart_info.instance_tick;
+    let hit_tick_u32 = self.chart_info.hit_tick;
     // let end_tick_u32 = chart_info.end_tick;
     // instance tick
     let Some(ref timing_info_list) = self.timing_info_list else { return; };
     if let Some(instance_tick) = ticks.get(instance_tick_u32 as usize) {
       let instance_tick_timing_info = &timing_info_list.0.get(instance_tick_u32 as usize).unwrap();
       if self.time > instance_tick_timing_info.instance_time {
+        info!("instance_tick: {:?}", instance_tick);
         // durations
         let bpm = chart.metadata.bpms.at_tick(instance_tick_u32).value * self.ratemod as f64;
         let one_minute = Duration::from_secs(60);
         let one_beat = one_minute.div_f64(bpm);
         // calculate travel time
-        let (_, ho_height) = zero_to_two(32, 32, self.size);
+        let (_, ho_height) = zero_to_two(32.0, 32.0, self.size);
         let instance_y = match instance_tick_u32 {
           0 => -1.0,
           _ => {
+            let late = self.time - instance_tick_timing_info.instance_time;
             // previous hit object's current y coordinate minus the distance from the previous tick
             // to the current one
             let prev_ho_id = self.prev_ho_id.unwrap();
             let prev_ho_instance = self.get_instance(prev_ho_id);
             let prev_ho_y = prev_ho_instance.position.y;
             let prev_tick = &ticks[instance_tick_u32 as usize - 1];
-            prev_ho_y - prev_tick.distance(ho_height, self.chart_info.chart.metadata.divisors.at_tick(instance_tick_u32 - 1).value, self.xmod)
+            let prev_tick_duration = prev_tick.duration(
+              chart.metadata.bpms.at_tick(instance_tick_u32 - 1).value,
+              chart.metadata.divisors.at_tick(instance_tick_u32 - 1).value,
+              self.ratemod
+            );
+            info!("prev_tick_duration: {:?}", prev_tick_duration);
+            let (_, prev_tick_distance) = zero_to_two(
+              0.0,
+              prev_tick_duration.as_secs_f32() * self.av as f32,
+              self.size
+            );
+            info!("prev_tick_distance: {prev_tick_distance}");
+            // prev_ho_y - prev_tick.distance(ho_height, self.chart_info.chart.metadata.divisors.at_tick(instance_tick_u32 - 1).value, self.xmod)
+            prev_ho_y - prev_tick_distance
           },
         };
-        let heights_to_travel = (0.0 - instance_y) / ho_height;
+        info!("instance_y: {instance_y}");
         // 1/4 = 1 height to travel
-        let travel_time = one_beat.mul_f32(heights_to_travel).div_f32(self.xmod).as_secs_f32();
+        // let travel_time = one_beat.mul_f32(heights_to_travel).div_f32(self.xmod).as_secs_f32();
+        let travel_time = (self.size.height as f32 * 0.5) / self.av as f32;
         // let travel_distance = self.size.height as f32 * 0.5;
         let travel_distance = self.size.height as f32 * ((0.0 - instance_y) / 2.0);
-        let yv = travel_distance / travel_time;
+        // let yv = travel_distance / travel_time;
+        let yv = self.av as f32;
+        info!("yv: {yv}");
         // instantiate timing line
         let line = self.instantiate(
           instance_tick.timing_line_asset(
@@ -687,11 +713,11 @@ where
   Ok(io::BufReader::new(file).lines())
 }
 
-/// Convert an integer width and height into a number between zero and two.
-pub fn zero_to_two(width: u16, height: u16, window_size: PhysicalSize<u32>) -> (f32, f32) {
+/// Convert a width and height into a number between zero and two.
+pub fn zero_to_two(width: f32, height: f32, window_size: PhysicalSize<u32>) -> (f32, f32) {
   let x_pixel = 2.0 / window_size.width as f32;
   let y_pixel = 2.0 / window_size.height as f32;
-  let width = width as f32 * x_pixel;
-  let height = height as f32 * y_pixel;
+  let width = width * x_pixel;
+  let height = height * y_pixel;
   (width, height)
 }

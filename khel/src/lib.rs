@@ -505,7 +505,7 @@ impl<'a> KhelState<'a> {
         };
         // info!("instance_y: {instance_y}");
         let yv = self.av.at_tick(instance_tick_u32, &chart.metadata.bpms);
-        info!("yv: {yv}");
+        // info!("yv: {yv}");
         // instantiate timing line
         let line = self.instantiate(
           instance_tick.timing_line_asset(

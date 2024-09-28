@@ -506,10 +506,11 @@ impl TickList {
       end_time: music_time + ticks[0].duration(bpm.value, divisor.value, ratemod),
     });
     // rest of the ticks
+    // i starts at 0
     for (i, tick) in &mut ticks[1..].iter().enumerate() {
       let prev_timing_info = v.last().unwrap();
-      let bpm = bpms.at_tick(i as u32);
-      let divisor = divisors.at_tick(i as u32);
+      let bpm = bpms.at_tick((i + 1) as u32);
+      let divisor = divisors.at_tick((i + 1) as u32);
       // FIXME
       v.push(TimingInfo {
         instance_time: prev_timing_info.end_time - travel_time,
@@ -700,6 +701,7 @@ impl ChartInfo {
 
 /// Deserialize a key-value pair from .khel format into a (String, String).
 fn deserialize_kv(raw: String) -> Result<(String, String), anyhow::Error> {
+  // TODO: create error enum here.
   let equals = raw.find('=');
   let Some(equals) = equals else { panic!("malformed key-value pair"); };
   let key = &raw[0..equals];

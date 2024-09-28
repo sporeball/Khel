@@ -1,4 +1,4 @@
-use crate::{chart::{ChartInfo, TimingInfoList}, object::{DrawObject, Object, Objects}};
+use crate::{chart::{BpmList, ChartInfo, TimingInfoList}, object::{DrawObject, Object, Objects}};
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::mem;
@@ -189,6 +189,16 @@ impl Instance {
 //   Xmod(f32),
 // }
 
+pub struct AutoVelocity {
+  pub value: f32,
+}
+
+impl AutoVelocity {
+  pub fn at_tick(&self, tick: u32, bpms: &BpmList) -> f32 {
+    self.value * (bpms.at_tick(tick).value as f32 / bpms.max().value as f32)
+  }
+}
+
 pub struct KhelState<'a> {
   pub window: Arc<Window>,
   pub surface: Surface<'a>,
@@ -209,7 +219,7 @@ pub struct KhelState<'a> {
   pub chart_info: ChartInfo,
   pub timing_info_list: Option<TimingInfoList>,
   // pub xmod: f32,
-  pub av: u32,
+  pub av: AutoVelocity,
   pub ratemod: f32,
   pub prev_ho_id: Option<u32>,
   pub error: Option<anyhow::Error>,
@@ -335,7 +345,7 @@ impl<'a> KhelState<'a> {
     let timing_info_list = None;
     // speed mods
     // let xmod = 4.0;
-    let av = 300;
+    let av = AutoVelocity { value: 300.0 };
     let ratemod = 1.0;
     // TODO: remove this field and find a more elegant solution
     let prev_ho_id: Option<u32> = None;
@@ -464,15 +474,13 @@ impl<'a> KhelState<'a> {
       if self.time > instance_tick_timing_info.instance_time {
         info!("instance_tick: {:?}", instance_tick);
         // durations
-        let bpm = chart.metadata.bpms.at_tick(instance_tick_u32).value * self.ratemod as f64;
-        let one_minute = Duration::from_secs(60);
-        let one_beat = one_minute.div_f64(bpm);
+        // let bpm = chart.metadata.bpms.at_tick(instance_tick_u32).value * self.ratemod as f64;
         // calculate travel time
-        let (_, ho_height) = zero_to_two(32.0, 32.0, self.size);
+        // let (_, ho_height) = zero_to_two(32.0, 32.0, self.size);
         let instance_y = match instance_tick_u32 {
           0 => -1.0,
           _ => {
-            let late = self.time - instance_tick_timing_info.instance_time;
+            // let late = self.time - instance_tick_timing_info.instance_time;
             // previous hit object's current y coordinate minus the distance from the previous tick
             // to the current one
             let prev_ho_id = self.prev_ho_id.unwrap();
@@ -484,25 +492,19 @@ impl<'a> KhelState<'a> {
               chart.metadata.divisors.at_tick(instance_tick_u32 - 1).value,
               self.ratemod
             );
-            info!("prev_tick_duration: {:?}", prev_tick_duration);
+            // info!("prev_tick_duration: {:?}", prev_tick_duration);
             let (_, prev_tick_distance) = zero_to_two(
               0.0,
-              prev_tick_duration.as_secs_f32() * self.av as f32,
-              self.size
+              prev_tick_duration.as_secs_f32() * self.av.at_tick(instance_tick_u32, &chart.metadata.bpms),
+              self.size,
             );
-            info!("prev_tick_distance: {prev_tick_distance}");
+            // info!("prev_tick_distance: {prev_tick_distance}");
             // prev_ho_y - prev_tick.distance(ho_height, self.chart_info.chart.metadata.divisors.at_tick(instance_tick_u32 - 1).value, self.xmod)
             prev_ho_y - prev_tick_distance
           },
         };
-        info!("instance_y: {instance_y}");
-        // 1/4 = 1 height to travel
-        // let travel_time = one_beat.mul_f32(heights_to_travel).div_f32(self.xmod).as_secs_f32();
-        let travel_time = (self.size.height as f32 * 0.5) / self.av as f32;
-        // let travel_distance = self.size.height as f32 * 0.5;
-        let travel_distance = self.size.height as f32 * ((0.0 - instance_y) / 2.0);
-        // let yv = travel_distance / travel_time;
-        let yv = self.av as f32;
+        // info!("instance_y: {instance_y}");
+        let yv = self.av.at_tick(instance_tick_u32, &chart.metadata.bpms);
         info!("yv: {yv}");
         // instantiate timing line
         let line = self.instantiate(

@@ -1,4 +1,4 @@
-use crate::{KhelState, zero_to_two, chart::{Chart, ChartInfo, ChartStatus}};
+use crate::{KhelState, chart::{Chart, ChartInfo, ChartStatus}};
 use std::time::Duration;
 use egui::{epaint::Shadow, style::{Spacing, Style}, Button, Color32, Context, Frame, Label, Margin, RichText, Rounding, Slider, TextEdit, Vec2};
 use egui_wgpu::Renderer;
@@ -101,7 +101,7 @@ pub fn gui(state: &mut KhelState) {
         // let (_, ho_height) = zero_to_two(32, 32, state.size);
         // let heights_to_travel = 1.0 / ho_height;
         // let travel_time = one_beat.mul_f32(heights_to_travel).div_f32(state.xmod);
-        let travel_time = Duration::from_secs_f32((state.size.height as f32 * 0.5) / state.av as f32);
+        let travel_time = Duration::from_secs_f32((state.size.height as f32 * 0.5) / state.av.at_tick(0, &chart.metadata.bpms));
         // set times
         let start_time = state.time;
         // the music should begin playing once the first hit object has finished traveling
@@ -131,7 +131,7 @@ pub fn gui(state: &mut KhelState) {
       // );
       ui.add_enabled(
         !matches!(state.chart_info.status, ChartStatus::Playing),
-        Slider::new(&mut state.av, 300..=1200).step_by(1.0).text("AV")
+        Slider::new(&mut state.av.value, 300.0..=1000.0).step_by(1.0).text("AV")
       );
       ui.add_enabled(
         !matches!(state.chart_info.status, ChartStatus::Playing),

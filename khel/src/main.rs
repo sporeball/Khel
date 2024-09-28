@@ -27,6 +27,7 @@ fn main() -> Result<(), anyhow::Error> {
   let mut state = KhelState::new(window.clone(), args.gl);
 
   state.instantiate("line_white", -1.0, 0.0);
+  // state.instantiate("hold_tick_white", 0.0, 0.0);
 
   let now = Instant::now();
 

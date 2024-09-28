@@ -85,6 +85,10 @@ impl BpmList {
   pub fn at_tick(&self, tick: u32) -> &Bpm {
     self.0.iter().filter(|d| d.start_tick <= tick).last().unwrap()
   }
+  /// Return a reference to the maximum Bpm from this BpmList.
+  pub fn max(&self) -> &Bpm {
+    self.0.iter().sorted_by(|a, b| a.value.partial_cmp(&b.value).unwrap()).last().unwrap()
+  }
 }
 
 #[derive(Debug, Error)]
@@ -285,6 +289,7 @@ impl HitObjectList {
   /// let hit_object_list = HitObjectList::from_string(String::from("a/b"));
   /// ```
   pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
+    // TODO: need to check how this behaves if you want to include a slash hit.
     let s: Vec<&str> = s.split('/').collect();
     let mut v: Vec<HitObject> = vec![];
     let hits: Vec<String> = s.first().unwrap_or(&"").split('+').map(String::from).collect();
@@ -374,9 +379,10 @@ impl Tick {
   /// Return the length of this Tick as a Duration.
   pub fn duration(&self, bpm: f64, divisor: u8, ratemod: f32) -> Duration {
     let divisor = divisor as f64;
+    let ratemod = ratemod as f64;
     // 1-256
     let length = (self.length + 1) as f64;
-    let one_bar = Duration::from_secs_f64((60f64 / (bpm * ratemod as f64)) * 4.0);
+    let one_bar = Duration::from_secs_f64((60f64 / (bpm * ratemod)) * 4.0);
     one_bar.div_f64(divisor).mul_f64(length)
   }
   /// Return the length of this tick in quarter notes.

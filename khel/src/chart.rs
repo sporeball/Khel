@@ -284,16 +284,15 @@ impl HitObjectList {
   /// // one hit
   /// let hit_object_list = HitObjectList::from_string(String::from("az"));
   /// // three hits
-  /// let hit_object_list = HitObjectList::from_string(String::from("a+b+c"));
+  /// let hit_object_list = HitObjectList::from_string(String::from("a-b-c"));
   /// // one hit and one hold
-  /// let hit_object_list = HitObjectList::from_string(String::from("a/b"));
+  /// let hit_object_list = HitObjectList::from_string(String::from("a+b"));
   /// ```
   pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
-    // TODO: need to check how this behaves if you want to include a slash hit.
-    let s: Vec<&str> = s.split('/').collect();
+    let s: Vec<&str> = s.split('+').collect();
     let mut v: Vec<HitObject> = vec![];
-    let hits: Vec<String> = s.first().unwrap_or(&"").split('+').map(String::from).collect();
-    let holds: Vec<String> = s.get(1).unwrap_or(&"").split('+').map(String::from).collect();
+    let hits: Vec<String> = s.first().unwrap_or(&"").split('-').map(String::from).collect();
+    let holds: Vec<String> = s.get(1).unwrap_or(&"").split('-').map(String::from).collect();
     // hits
     for hit in hits.iter() {
       if hit.is_empty() {

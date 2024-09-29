@@ -266,7 +266,26 @@ impl HitObject {
       5 => "circle_magenta",
       6 => "circle_cyan",
       7 => "circle_white",
-      _ => unreachable!(), // i hope
+      _ => unreachable!(),
+    }
+  }
+  /// Return the asset that should be used to render a hold tick of the same color as this
+  /// HitObject.
+  // TODO: better split
+  pub fn hold_tick_asset(&self) -> &str {
+    let rows: u8 = self.keys
+      .iter()
+      .map(|&c| c.row().expect("found invalid key in hit object"))
+      .sum();
+    match rows {
+      1 => "hold_tick_red",
+      2 => "hold_tick_green",
+      3 => "hold_tick_yellow",
+      4 => "hold_tick_blue",
+      5 => "hold_tick_magenta",
+      6 => "hold_tick_cyan",
+      7 => "hold_tick_white",
+      _ => unreachable!(),
     }
   }
 }

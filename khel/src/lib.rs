@@ -1,4 +1,4 @@
-use crate::{chart::{BpmList, ChartInfo, TimingInfoList}, object::{DrawObject, Object, Objects}};
+use crate::{chart::{BpmList, ChartInfo, HitObjectType, TimingInfoList}, object::{DrawObject, Object, Objects}};
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::mem;
@@ -490,7 +490,7 @@ impl<'a> KhelState<'a> {
             let prev_tick_duration = prev_tick.duration(
               chart.metadata.bpms.at_tick(instance_tick_u32 - 1).value,
               chart.metadata.divisors.at_tick(instance_tick_u32 - 1).value,
-              self.ratemod
+              self.ratemod,
             );
             // info!("prev_tick_duration: {:?}", prev_tick_duration);
             let (_, prev_tick_distance) = zero_to_two(
@@ -506,6 +506,16 @@ impl<'a> KhelState<'a> {
         // info!("instance_y: {instance_y}");
         let yv = self.av.at_tick(instance_tick_u32, &chart.metadata.bpms);
         // info!("yv: {yv}");
+        let tick_duration = instance_tick.duration(
+          chart.metadata.bpms.at_tick(instance_tick_u32).value,
+          chart.metadata.divisors.at_tick(instance_tick_u32).value,
+          self.ratemod,
+        );
+        let (_, tick_distance) = zero_to_two(
+          0.0,
+          tick_duration.as_secs_f32() * self.av.at_tick(instance_tick_u32, &chart.metadata.bpms),
+          self.size,
+        );
         // instantiate timing line
         let line = self.instantiate(
           instance_tick.timing_line_asset(
@@ -522,6 +532,17 @@ impl<'a> KhelState<'a> {
           // we can set prev_ho_id here even in the presence of multiple hit objects because they
           // should be synced
           self.prev_ho_id = Some(o);
+          // if applicable, instantiate hold ticks
+          if matches!(hit_object.t, HitObjectType::Hold) {
+            let mut i = 0;
+            let mut tick_y = instance_y - (tick_distance / (instance_tick.length + 1) as f32);
+            while i <= instance_tick.length - 1 {
+              let t = self.instantiate(hit_object.hold_tick_asset(), hit_object.lane_x(), tick_y);
+              self.velocity(t, 0.0, yv);
+              tick_y -= tick_distance / (instance_tick.length + 1) as f32;
+              i += 1;
+            }
+          }
         }
         // move to the next tick
         self.chart_info.instance_tick += 1;

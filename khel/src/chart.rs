@@ -719,14 +719,21 @@ impl ChartInfo {
 // }
 
 /// Deserialize a key-value pair from .khel format into a (String, String).
-fn deserialize_kv(raw: String) -> Result<(String, String), anyhow::Error> {
-  // TODO: create error enum here.
+fn deserialize_kv(raw: String) -> Result<(String, String), DeserializationError> {
   let equals = raw.find('=');
-  let Some(equals) = equals else { panic!("malformed key-value pair"); };
+  let Some(equals) = equals else { return Err(DeserializationError::MalformedKeyValuePair); };
   let key = &raw[0..equals];
   if !raw.ends_with(';') {
-    panic!("malformed key-value pair: {}", key);
+    return Err(DeserializationError::MalformedKeyValuePairWithValidKey(key.to_string()));
   }
   let value = &raw[equals+1..raw.len()-1];
   Ok((key.to_string(), value.to_string()))
+}
+
+#[derive(Debug, Error)]
+pub enum DeserializationError {
+  #[error("malformed key-value pair")]
+  MalformedKeyValuePair,
+  #[error("malformed key-value pair: {0}")]
+  MalformedKeyValuePairWithValidKey(String),
 }

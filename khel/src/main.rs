@@ -29,6 +29,8 @@ fn main() -> Result<(), anyhow::Error> {
   state.instantiate("line_white", -1.0, 0.0);
   // state.instantiate("hold_tick_white", 0.0, 0.0);
 
+  state.groups.insert("yv_scale".to_string(), vec![]);
+
   let now = Instant::now();
 
   game_loop(

@@ -1,4 +1,4 @@
-use crate::{chart::{BpmList, ChartInfo, HitObjectType, TimingInfoList}, object::{DrawObject, Object, Objects}};
+use crate::{chart::{BpmList, ChartInfo, HitObjectType, TimingInfoList}, object::{DrawObject, Groups, Object, Objects}};
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::mem;
@@ -212,6 +212,7 @@ pub struct KhelState<'a> {
   pub time: Duration,
   // pub objects: HashMap<String, Object>,
   pub objects: Objects,
+  pub groups: Groups,
   pub min_available_object_id: u32,
   pub sounds: Vec<Sound>,
   pub egui: EguiRenderer,
@@ -279,6 +280,7 @@ impl<'a> KhelState<'a> {
     // objects!
     // let objects: HashMap<String, Object> = HashMap::new();
     let objects = Objects::default();
+    let groups = Groups::default();
     let min_available_object_id = 0;
     // shader module
     let shader = device.create_shader_module(include_wgsl!("shader.wgsl"));
@@ -364,6 +366,7 @@ impl<'a> KhelState<'a> {
       fps,
       time,
       objects,
+      groups,
       min_available_object_id,
       sounds,
       egui,
@@ -484,7 +487,7 @@ impl<'a> KhelState<'a> {
             // previous hit object's current y coordinate minus the distance from the previous tick
             // to the current one
             let prev_ho_id = self.prev_ho_id.unwrap();
-            let prev_ho_instance = self.get_instance(prev_ho_id);
+            let prev_ho_instance = self.objects.get_instance(prev_ho_id);
             let prev_ho_y = prev_ho_instance.position.y;
             let prev_tick = &ticks[instance_tick_u32 as usize - 1];
             let prev_tick_duration = prev_tick.duration(
@@ -525,10 +528,12 @@ impl<'a> KhelState<'a> {
           instance_y
         );
         self.velocity(line, 0.0, yv);
+        self.groups.insert_into_group("yv_scale".to_string(), line);
         // instantiate hit objects
         for hit_object in &instance_tick.hit_objects.0 {
           let o = self.instantiate(hit_object.asset(), hit_object.lane_x(), instance_y);
           self.velocity(o, 0.0, yv);
+          self.groups.insert_into_group("yv_scale".to_string(), o);
           // we can set prev_ho_id here even in the presence of multiple hit objects because they
           // should be synced
           self.prev_ho_id = Some(o);
@@ -539,6 +544,7 @@ impl<'a> KhelState<'a> {
             while i <= instance_tick.length - 1 {
               let t = self.instantiate(hit_object.hold_tick_asset(), hit_object.lane_x(), tick_y);
               self.velocity(t, 0.0, yv);
+              self.groups.insert_into_group("yv_scale".to_string(), t);
               tick_y -= tick_distance / (instance_tick.length + 1) as f32;
               i += 1;
             }
@@ -554,6 +560,12 @@ impl<'a> KhelState<'a> {
     if let Some(_hit_tick) = ticks.get(hit_tick_u32 as usize) {
       let hit_tick_timing_info = &timing_info_list.0.get(hit_tick_u32 as usize).unwrap();
       if self.time > hit_tick_timing_info.hit_time {
+        // TODO: did the thing really need to be done here
+        self.groups.get_mut("yv_scale".to_string())
+          .for_each_instance(
+            |instance| instance.velocity.y = self.av.at_tick(hit_tick_u32, &self.chart_info.chart.metadata.bpms),
+            &mut self.objects
+          );
         self.chart_info.hit_tick += 1;
       }
     }
@@ -688,35 +700,28 @@ impl<'a> KhelState<'a> {
     self.min_available_object_id += 1;
     id
   }
-  /// Instantiate an object at the bottom of the given lane.
-  /// Returns the ID of the object instance.
-  // pub fn instantiate_in_lane(&mut self, lane: u8, t: &str) -> u32 {
-  //   let x = (0.1f32 * lane as f32) - 0.45;
-  //   self.instantiate(t, x, -1.0)
-  // }
   /// Destroy the object instance with the given ID.
   pub fn destroy(&mut self, id: u32) {
     let Some(object) = self.objects.map.values_mut().find(|o| o.instances.contains_key(&id)) else { todo!(); };
     object.instances.remove(&id);
     info!("destroyed object instance (id: {})", id);
   }
+  /// Set the x velocity of the object instance with the given ID.
+  pub fn x_velocity(&mut self, id: u32, xv: f32) {
+    let instance = self.objects.get_instance_mut(id);
+    instance.velocity.x = xv;
+  }
+  /// Set the y velocity of the object instance with the given ID.
+  pub fn y_velocity(&mut self, id: u32, yv: f32) {
+    let instance = self.objects.get_instance_mut(id);
+    instance.velocity.y = yv;
+  }
   /// Set the x and y velocity of the object instance with the given ID.
   pub fn velocity(&mut self, id: u32, x: f32, y: f32) {
-    let instance = self.get_instance_mut(id);
-    instance.velocity = Vector2 { x, y };
+    let instance = self.objects.get_instance_mut(id);
+    instance.velocity.x = x;
+    instance.velocity.y = y;
     // info!("set {} instance velocity (pps) (id: {}, x: {}, y: {})", instance.t, id, x, y);
-  }
-  /// Get a reference to the object instance with the given ID.
-  fn get_instance(&self, id: u32) -> &Instance {
-    let Some(object) = self.objects.map.values().find(|o| o.instances.contains_key(&id)) else { todo!(); };
-    let Some(instance) = object.instances.get(&id) else { todo!(); };
-    instance
-  }
-  /// Get a mutable reference to the object instance with the given ID.
-  fn get_instance_mut(&mut self, id: u32) -> &mut Instance {
-    let Some(object) = self.objects.map.values_mut().find(|o| o.instances.contains_key(&id)) else { todo!(); };
-    let Some(instance) = object.instances.get_mut(&id) else { todo!(); };
-    instance
   }
 }
 

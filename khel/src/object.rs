@@ -26,6 +26,7 @@ impl Object {
 }
 
 #[derive(Default)]
+/// A collection of all types of game objects created by Khel.
 pub struct Objects {
   pub map: HashMap<String, Object>,
   // TODO
@@ -33,6 +34,19 @@ pub struct Objects {
 }
 
 impl Objects {
+  /// Get a reference to the object instance with the given ID.
+  pub fn get_instance(&self, id: u32) -> &Instance {
+    let Some(object) = self.map.values().find(|o| o.instances.contains_key(&id)) else { todo!(); };
+    let Some(instance) = object.instances.get(&id) else { todo!(); };
+    instance
+  }
+  /// Get a mutable reference to the object instance with the given ID.
+  pub fn get_instance_mut(&mut self, id: u32) -> &mut Instance {
+    let Some(object) = self.map.values_mut().find(|o| o.instances.contains_key(&id)) else { todo!(); };
+    let Some(instance) = object.instances.get_mut(&id) else { todo!(); };
+    instance
+  }
+  /// Move all object instances according to their velocity.
   pub fn move_all(&mut self, size: PhysicalSize<u32>) {
     for object in self.map.values_mut() {
       for instance in &mut object.instances.values_mut() {
@@ -41,6 +55,65 @@ impl Objects {
         instance.position.y += instance.velocity.y / size.height as f32 / 1000.0 * 2.0;
       }
     }
+  }
+}
+
+#[derive(Default)]
+/// A collection of object IDs, able to be manipulated together.
+pub struct Group {
+  pub vec: Vec<u32>,
+}
+
+impl Group {
+  /// Add the object instance with the given ID to this group.
+  pub fn insert(&mut self, id: u32) {
+    self.vec.push(id);
+  }
+  /// Remove the object instance with the given ID from this group.
+  pub fn remove(&mut self, id: u32) {
+    self.vec.retain(|&x| x != id);
+  }
+  pub fn for_each_id<F: Fn(u32)>(&mut self, f: F) {
+    for id in self.vec.iter() {
+      f(*id);
+    }
+  }
+  pub fn for_each_instance<F: Fn(&mut Instance)>(&mut self, f: F, objects: &mut Objects) {
+    for id in self.vec.iter() {
+      let instance = objects.get_instance_mut(*id);
+      f(instance);
+    }
+  }
+}
+
+#[derive(Default)]
+pub struct Groups {
+  pub map: HashMap<String, Group>,
+}
+
+impl Groups {
+  /// Create a new group.
+  pub fn insert(&mut self, name: String, vec: Vec<u32>) {
+    let group = Group { vec };
+    self.map.insert(name, group);
+  }
+  /// Add the instance with the given ID to the group with the given name.
+  pub fn insert_into_group(&mut self, name: String, id: u32) {
+    self.get_mut(name).insert(id);
+  }
+  /// Remove the instance with the given ID from the group with the given name.
+  pub fn remove_from_group(&mut self, name: String, id: u32) {
+    self.get_mut(name).remove(id);
+  }
+  /// Get a reference to the group with the given name.
+  pub fn get(&self, name: String) -> &Group {
+    let Some(group) = self.map.get(&name) else { todo!(); };
+    group
+  }
+  /// Get a mutable reference to the group with the given name.
+  pub fn get_mut(&mut self, name: String) -> &mut Group {
+    let Some(group) = self.map.get_mut(&name) else { todo!(); };
+    group
   }
 }
 

@@ -577,9 +577,6 @@ impl Chart {
     for bpm in self.metadata.bpms.0.iter_mut() {
       bpm.value *= ratemod;
     }
-    for hit_object in self.hit_objects.0.iter_mut() {
-      hit_object.beat.0 /= ratemod;
-    }
   }
   /// Begin playing this chart.
   pub fn play(&self, ratemod: f64) {
@@ -604,6 +601,7 @@ pub enum ChartError {
 
 /// Status of the currently active chart.
 // #[derive(Default)]
+#[derive(Debug)]
 pub enum ChartStatus {
   // Countdown,
   // #[default]
@@ -612,6 +610,7 @@ pub enum ChartStatus {
   Playing,
 }
 
+#[derive(Debug)]
 /// Info for KhelState about the currently active chart.
 pub struct ChartInfo {
   pub chart: Chart,

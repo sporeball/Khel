@@ -573,16 +573,16 @@ impl Chart {
     }
   }
   /// Mutate this Chart according to the specified ratemod.
-  pub fn set_ratemod(&mut self, ratemod: f32) {
+  pub fn set_ratemod(&mut self, ratemod: f64) {
     for bpm in self.metadata.bpms.0.iter_mut() {
-      bpm.value *= ratemod as f64;
+      bpm.value *= ratemod;
     }
     for hit_object in self.hit_objects.0.iter_mut() {
-      hit_object.beat.0 /= ratemod as f64;
+      hit_object.beat.0 /= ratemod;
     }
   }
   /// Begin playing this chart.
-  pub fn play(&self, ratemod: f32) {
+  pub fn play(&self, ratemod: f64) {
     let Metadata { title, subtitle, artist, credit, .. } = &self.metadata;
     match subtitle.as_str() {
       "" => info!("playing chart \"{} - {}\" (mapped by {})...", artist, title, credit),

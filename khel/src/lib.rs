@@ -103,12 +103,7 @@ impl InstanceRaw {
 /// An object instance.
 #[derive(Clone)]
 pub struct Instance {
-  // t: String,
   position: Vector3<f32>,
-  // velocity: Vector2<f32>,
-  // create_time: Duration,
-  // destroy_time: Duration,
-  // rotation: Quaternion<f32>,
 }
 
 impl Instance {
@@ -249,7 +244,7 @@ pub struct KhelState<'a> {
   pub chart_info: ChartInfo,
   // pub xmod: f32,
   pub av: AutoVelocity,
-  pub ratemod: f32,
+  pub ratemod: f64,
   pub error: Option<anyhow::Error>,
 }
 

@@ -481,50 +481,14 @@ impl<'a> KhelState<'a> {
     true
   }
   pub fn update(&mut self) {
-    // try to play chart
-    if !matches!(self.chart_info.status, ChartStatus::Playing) {
-      return;
-    }
-    let one_minute = 60.0;
-    let bpm_at_zero = self.chart_info.chart.metadata.bpms.at_exact_time(0.0);
-    let one_beat_at_zero = one_minute / bpm_at_zero.value;
-    let one_bar_at_zero = one_beat_at_zero * 4.0;
-    // subtracting chart_info.start_time from time yields a value 0 or greater
-    // subtracting two bars at zero yields a value -3.33333 or greater for I'M STILL HERE
-    let exact_time = self.time - self.chart_info.start_time - one_bar_at_zero - one_bar_at_zero;
-    // calculate y position for every object in the chart
-    self.groups.get_mut("hit_objects".to_string())
-      .for_each_instance_enumerated(
-        |i, instance| {
-          // pure calculation
-          let mut y = 0.0;
-          let hit_object = &self.chart_info.chart.hit_objects.0[i];
-          let (_, distance_until_exact) = zero_to_two(
-            0.0,
-            self.av.over_time(hit_object.exact_time - exact_time, &self.chart_info.chart.metadata.bpms) as f32,
-            self.size,
-          );
-          y -= distance_until_exact * (self.av.at_exact_time(exact_time, &self.chart_info.chart.metadata.bpms) as f32 / self.av.value as f32);
-          // }
-          // set y position
-          instance.position.y = y;
-        },
-        &mut self.objects
-      );
-    //   // if applicable, instantiate hold ticks
-    //   if matches!(hit_object.t, HitObjectType::Hold) {
-    //     // let mut i = 0;
-    //     // let mut tick_y = instance_y - (tick_distance / (instance_tick.length + 1) as f32);
-    //     // while i <= instance_tick.length - 1 {
-    //     //   let t = self.instantiate(hit_object.hold_tick_asset(), hit_object.lane_x(), tick_y);
-    //     //   self.groups.insert_into_group("yv_scale".to_string(), t);
-    //     //   tick_y -= tick_distance / (instance_tick.length + 1) as f32;
-    //     //   i += 1;
-    //     // }
-    //   }
-    // }
-    if exact_time > 0.0 {
-      self.chart_info.chart.audio.play();
+    if matches!(self.chart_info.status, ChartStatus::Playing) {
+      let one_minute = 60.0;
+      let bpm_at_zero = self.chart_info.chart.metadata.bpms.at_exact_time(0.0);
+      let one_beat_at_zero = one_minute / bpm_at_zero.value;
+      let exact_time = self.time - self.chart_info.start_time - (one_beat_at_zero * 8.0);
+      if exact_time > 0.0 {
+        self.chart_info.chart.audio.play();
+      }
     }
   }
   /// Use this KhelState to perform a render pass.
@@ -550,9 +514,49 @@ impl<'a> KhelState<'a> {
         timestamp_writes: None,
       });
       render_pass.set_pipeline(&self.render_pipeline);
+      if matches!(self.chart_info.status, ChartStatus::Playing) {
+        // exact time
+        let one_minute = 60.0;
+        let bpm_at_zero = self.chart_info.chart.metadata.bpms.at_exact_time(0.0);
+        let one_beat_at_zero = one_minute / bpm_at_zero.value;
+        let exact_time = self.time - self.chart_info.start_time - (one_beat_at_zero * 8.0);
+        // calculate y position for every object in the chart
+        self.groups.get_mut("hit_objects".to_string())
+          .for_each_instance_enumerated(
+            |i, instance| {
+              // pure calculation
+              let mut y = 0.0;
+              let hit_object = &self.chart_info.chart.hit_objects.0[i];
+              let (_, distance_until_exact) = zero_to_two(
+                0.0,
+                self.av.over_time(hit_object.exact_time - exact_time, &self.chart_info.chart.metadata.bpms) as f32,
+                self.size,
+              );
+              y -= distance_until_exact * (self.av.at_exact_time(exact_time, &self.chart_info.chart.metadata.bpms) as f32 / self.av.value as f32);
+              // }
+              // set y position
+              instance.position.y = y;
+            },
+            &mut self.objects
+          );
+        //   // if applicable, instantiate hold ticks
+        //   if matches!(hit_object.t, HitObjectType::Hold) {
+        //     // let mut i = 0;
+        //     // let mut tick_y = instance_y - (tick_distance / (instance_tick.length + 1) as f32);
+        //     // while i <= instance_tick.length - 1 {
+        //     //   let t = self.instantiate(hit_object.hold_tick_asset(), hit_object.lane_x(), tick_y);
+        //     //   self.groups.insert_into_group("yv_scale".to_string(), t);
+        //     //   tick_y -= tick_distance / (instance_tick.length + 1) as f32;
+        //     //   i += 1;
+        //     // }
+        //   }
+        // }
+      }
+      // create instance buffers
       for object in self.objects.map.values_mut() {
         object.instance_buffer = object::create_instance_buffer(&object.instances, &self.device);
       }
+      // draw all instances of every type of object
       for object in self.objects.map.values() {
         render_pass.draw_object_instanced(object);
       }

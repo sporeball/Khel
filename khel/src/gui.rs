@@ -2,7 +2,7 @@ use crate::{KhelState, chart::{Chart, ChartInfo, ChartStatus}};
 use egui::{epaint::Shadow, style::{Spacing, Style}, Button, Color32, Context, Frame, Label, Margin, RichText, Rounding, Slider, TextEdit, Vec2};
 use egui_wgpu::Renderer;
 use log::error;
-use log::info;
+// use log::info;
 // use log::warn;
 use wgpu::{Device, TextureFormat};
 use winit::{event::WindowEvent, window::Window};
@@ -88,10 +88,13 @@ pub fn gui(state: &mut KhelState) {
           // instantiate all of the timing lines in the chart
           // TODO
           // instantiate all of the objects in the chart
-          let id = state.instantiate(
+          let id = state.objects.instantiate(
             hit_object.asset(),
             hit_object.lane_x(),
-            -1.5 // dummy value, gets updated after the fact
+            -1.5, // dummy value, gets updated after the fact
+            state.size,
+            &state.device,
+            &state.queue
           );
           state.groups.insert_into_group("hit_objects".to_string(), id);
         }

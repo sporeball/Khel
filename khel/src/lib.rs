@@ -1,4 +1,4 @@
-use crate::{chart::{BpmList, ChartInfo, ChartStatus}, object::{DrawObject, Groups, Object, Objects}};
+use crate::{chart::{BpmList, ChartInfo, ChartStatus}, object::{DrawObject, Groups, Objects}};
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::mem;
@@ -12,7 +12,7 @@ use gui::EguiRenderer;
 use sound::Sound;
 // use cgmath::{Vector2, Vector3};
 use cgmath::Vector3;
-use log::info;
+// use log::info;
 use pollster::block_on;
 use wgpu::{include_wgsl, BlendState, ColorTargetState, ColorWrites, CommandEncoder, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, InstanceDescriptor, MultisampleState, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureView, TextureViewDescriptor, VertexBufferLayout, VertexState};
 // use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::ActiveEventLoop, window::{Window, WindowId}};
@@ -243,7 +243,6 @@ pub struct KhelState<'a> {
   pub time: f64,
   pub objects: Objects,
   pub groups: Groups,
-  pub min_available_object_id: u32,
   pub sounds: Vec<Sound>,
   pub egui: EguiRenderer,
   pub chart_path: String,
@@ -309,7 +308,6 @@ impl<'a> KhelState<'a> {
     // let objects: HashMap<String, Object> = HashMap::new();
     let objects = Objects::default();
     let groups = Groups::default();
-    let min_available_object_id = 0;
     // shader module
     let shader = device.create_shader_module(include_wgsl!("shader.wgsl"));
     // render pipeline
@@ -393,7 +391,6 @@ impl<'a> KhelState<'a> {
       time,
       objects,
       groups,
-      min_available_object_id,
       sounds,
       egui,
       chart_path,
@@ -562,15 +559,6 @@ impl<'a> KhelState<'a> {
       }
     }
 
-    // self.egui.draw(
-    //   &self.device,
-    //   &self.queue,
-    //   &mut encoder,
-    //   &self.window,
-    //   &view,
-    //   // screen_descriptor,
-    //   |ctx| gui::gui(ctx),
-    // );
     self.render_gui(
       &mut encoder,
       &view,
@@ -630,42 +618,6 @@ impl<'a> KhelState<'a> {
     for x in &full_output.textures_delta.free {
       self.egui.renderer.free_texture(x)
     }
-  }
-  /// Instantiate an object at the given coordinates.
-  /// Returns the ID of the object instance.
-  pub fn instantiate(&mut self, t: &str, x: f32, y: f32) -> u32 {
-    // create an entry in objects if none exists
-    if !self.objects.map.contains_key(t) {
-      let filename = format!("{}.png", t);
-      let object = Object::from_file(
-        filename.as_str(),
-        self.window.inner_size(),
-        &self.device,
-        &self.queue
-      ).unwrap();
-      self.objects.map.insert(t.to_string(), object);
-    }
-    // create an instance
-    let object = self.objects.map.get_mut(t).unwrap();
-    let id = self.min_available_object_id;
-    let instance = Instance {
-      // t: t.to_string(),
-      position: Vector3 { x, y, z: 0.0 },
-      // create_time: self.time,
-      // destroy_time: Duration::MAX,
-    };
-    // push the instance
-    object.instances.insert(id, instance.clone());
-    object.instance_buffer = object::create_instance_buffer(&object.instances, &self.device);
-    // info!("created {} instance (id: {})", t, id);
-    self.min_available_object_id += 1;
-    id
-  }
-  /// Destroy the object instance with the given ID.
-  pub fn destroy(&mut self, id: u32) {
-    let Some(object) = self.objects.map.values_mut().find(|o| o.instances.contains_key(&id)) else { todo!(); };
-    object.instances.remove(&id);
-    info!("destroyed object instance (id: {})", id);
   }
 }
 

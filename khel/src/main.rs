@@ -26,7 +26,14 @@ fn main() -> Result<(), anyhow::Error> {
   info!("created window (inner size = {:?})", window.inner_size());
   let mut state = KhelState::new(window.clone(), args.gl);
 
-  state.instantiate("line_white", -1.0, 0.0);
+  state.objects.instantiate(
+    "line_white",
+    -1.0,
+    0.0,
+    state.size,
+    &state.device,
+    &state.queue,
+  );
   // state.instantiate("hold_tick_white", 0.0, 0.0);
 
   state.groups.insert("hit_objects".to_string(), vec![]);

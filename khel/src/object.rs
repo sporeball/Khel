@@ -1,6 +1,8 @@
 use crate::{load_binary, texture::{self, DrawTexture, Texture}, Instance};
 use std::collections::HashMap;
 use std::time::Duration;
+use cgmath::Vector3;
+use log::info;
 use wgpu::{util::{BufferInitDescriptor, DeviceExt}, Buffer, BufferUsages, Device, Queue, RenderPass};
 use winit::dpi::PhysicalSize;
 
@@ -29,11 +31,56 @@ impl Object {
 /// A collection of all types of game objects created by Khel.
 pub struct Objects {
   pub map: HashMap<String, Object>,
+  pub min_available_id: u32,
   // TODO
   pub to_be_destroyed: HashMap<u32, Duration>,
 }
 
 impl Objects {
+  /// Instantiate an object at the given coordinates.
+  /// Returns the ID of the object instance.
+  pub fn instantiate(
+    &mut self,
+    t: &str,
+    x: f32,
+    y: f32,
+    window_size: PhysicalSize<u32>,
+    device: &Device,
+    queue: &Queue,
+  ) -> u32 {
+    // create an entry in objects if none exists
+    if !self.map.contains_key(t) {
+      let filename = format!("{}.png", t);
+      let object = Object::from_file(
+        filename.as_str(),
+        window_size,
+        device,
+        queue,
+      ).unwrap();
+      self.map.insert(t.to_string(), object);
+    }
+    // create an instance
+    let object = self.map.get_mut(t).unwrap();
+    let id = self.min_available_id;
+    let instance = Instance {
+      // t: t.to_string(),
+      position: Vector3 { x, y, z: 0.0 },
+      // create_time: self.time,
+      // destroy_time: Duration::MAX,
+    };
+    // push the instance
+    object.instances.insert(id, instance.clone());
+    object.instance_buffer = create_instance_buffer(&object.instances, device);
+    // info!("created {} instance (id: {})", t, id);
+    self.min_available_id += 1;
+    id
+  }
+  /// Destroy the object instance with the given ID.
+  pub fn destroy(&mut self, id: u32) {
+    let Some(object) = self.map.values_mut().find(|o| o.instances.contains_key(&id)) else { todo!(); };
+    object.instances.remove(&id);
+    info!("destroyed object instance (id: {})", id);
+  }
   /// Get a reference to the object instance with the given ID.
   pub fn get_instance(&self, id: u32) -> &Instance {
     let Some(object) = self.map.values().find(|o| o.instances.contains_key(&id)) else { todo!(); };

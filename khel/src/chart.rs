@@ -275,8 +275,7 @@ impl HitObjectList {
   /// // multiple hit objects
   /// let hit_object_list = HitObjectList::from_string(String::from("a@0,b@4"));
   /// ```
-  pub fn from_string(s: String, bpms: BpmList) -> Result<Self, anyhow::Error> {
-    // let bpms = bpms.0;
+  pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
     let mut v: Vec<HitObject> = vec![];
     // Vec of what would have been `Tick`s in the old system.
     // each element consists of one or more hit objects which should have the same exact_time.
@@ -552,10 +551,7 @@ impl Chart {
     let audio = Sound::new(&audio_filename);
     // ticks
     info!("creating hit object list...");
-    let hit_objects = HitObjectList::from_string(
-      hit_objects,
-      bpms,
-    )?;
+    let hit_objects = HitObjectList::from_string(hit_objects)?;
     info!("parsed {} ticks", hit_objects.0.len());
     info!("finished!");
     // chart

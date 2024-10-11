@@ -2,7 +2,7 @@ use crate::{KhelState, chart::{Chart, ChartInfo, ChartStatus}};
 use egui::{epaint::Shadow, style::{Spacing, Style}, Button, Color32, Context, Frame, Label, Margin, RichText, Rounding, Slider, TextEdit, Vec2};
 use egui_wgpu::Renderer;
 use log::error;
-// use log::info;
+use log::info;
 // use log::warn;
 use wgpu::{Device, TextureFormat};
 use winit::{event::WindowEvent, window::Window};
@@ -95,6 +95,9 @@ pub fn gui(state: &mut KhelState) {
           );
           state.groups.insert_into_group("hit_objects".to_string(), id);
         }
+        // update bpms based on ratemod
+        state.chart_info.chart.set_ratemod(state.ratemod);
+        info!("{:?}", state.chart_info.chart.metadata.bpms);
         // start playing the chart
         state.chart_info.chart.play(state.ratemod); // does not immediately play the audio
         state.chart_info.status = ChartStatus::Playing;
@@ -125,7 +128,7 @@ pub fn gui(state: &mut KhelState) {
               let bpm_at_zero = state.chart_info.chart.metadata.bpms.at_exact_time(0.0);
               let one_beat_at_zero = one_minute / bpm_at_zero.value;
               let one_bar_at_zero = one_beat_at_zero * 4.0;
-              let current_bpm = state.chart_info.chart.metadata.bpms.at_exact_time(state.time - state.chart_info.start_time - one_bar_at_zero - one_bar_at_zero).value * state.ratemod as f64;
+              let current_bpm = state.chart_info.chart.metadata.bpms.at_exact_time(state.time - state.chart_info.start_time - one_bar_at_zero - one_bar_at_zero).value;
               format!("{:.2}", current_bpm)
             },
           };

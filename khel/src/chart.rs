@@ -560,6 +560,15 @@ impl Chart {
       hit_objects: HitObjectList::default(),
     }
   }
+  /// Mutate this Chart according to the specified ratemod.
+  pub fn set_ratemod(&mut self, ratemod: f32) {
+    for bpm in self.metadata.bpms.0.iter_mut() {
+      bpm.value *= ratemod as f64;
+    }
+    for hit_object in self.hit_objects.0.iter_mut() {
+      hit_object.exact_time /= ratemod as f64;
+    }
+  }
   /// Begin playing this chart.
   pub fn play(&self, ratemod: f32) {
     let Metadata { title, subtitle, artist, credit, .. } = &self.metadata;

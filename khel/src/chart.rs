@@ -232,7 +232,13 @@ impl HitObjectList {
   /// Create a HitObjectList from a String.
   ///
   /// # Examples
-  /// // TODO
+  ///
+  /// ```
+  /// use khel::chart::HitObjectList;
+  /// // single hit object
+  /// let hit_object_list = HitObjectList::from_string(String::from("a@0"));
+  /// // multiple hit objects
+  /// let hit_object_list = HitObjectList::from_string(String::from("a@0,b@4"));
   /// ```
   pub fn from_string(s: String, bpms: BpmList) -> Result<Self, anyhow::Error> {
     let bpms = bpms.0;

@@ -9,10 +9,43 @@ use thiserror::Error;
 
 pub const CHART_VERSION: u8 = 0;
 
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Beat(pub f64);
+
+impl Beat {
+  /// Create a Beat from an f64.
+  pub fn from_f64(f: f64) -> Self {
+    Beat(f)
+  }
+  /// Convert this Beat to an exact time in seconds.
+  pub fn to_exact_time(&self, bpms: &BpmList) -> f64 {
+    let bpms = &bpms.0;
+    let mut beats_remaining = self.0;
+    let mut exact_time = 0.0;
+    for (i, bpm) in bpms.iter().enumerate() {
+      let one_minute = 60.0;
+      let one_beat = one_minute / bpm.value;
+      let Some(next_bpm) = bpms.get(i + 1) else {
+        exact_time += one_beat * beats_remaining;
+        break;
+      };
+      let length = bpm.length(Some(next_bpm));
+      if beats_remaining < length / one_beat {
+        exact_time += one_beat * beats_remaining;
+        break;
+      } else {
+        exact_time += length;
+        beats_remaining -= length / one_beat;
+      }
+    }
+    exact_time
+  }
+}
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Bpm {
   pub value: f64,
-  pub start_beat: f64,
+  pub start_beat: Beat,
 }
 
 impl Bpm {
@@ -34,6 +67,7 @@ impl Bpm {
     let value = v.first().unwrap().parse::<f64>()?;
     let Some(start_beat) = v.get(1) else { return Err(BpmError::MissingStartBeat.into()); };
     let start_beat = start_beat.parse::<f64>()?;
+    let start_beat = Beat::from_f64(start_beat);
     Ok(Bpm {
       value,
       start_beat,
@@ -42,7 +76,7 @@ impl Bpm {
   /// Return the length of this Bpm in seconds.
   pub fn length(&self, next_bpm: Option<&Bpm>) -> f64 {
     let Some(next_bpm) = next_bpm else { return f64::MAX; };
-    let beats = next_bpm.start_beat - self.start_beat;
+    let beats = next_bpm.start_beat.0 - self.start_beat.0;
     let one_minute = 60.0;
     let one_beat = one_minute / self.value;
     beats * one_beat
@@ -65,7 +99,7 @@ impl BpmList {
   pub fn from_f64(value: f64) -> Self {
     let bpm = Bpm {
       value,
-      start_beat: 0.0,
+      start_beat: Beat::from_f64(0.0),
     };
     BpmList(vec![bpm])
   }
@@ -165,17 +199,18 @@ pub enum HitObjectType {
 pub struct HitObject {
   pub t: HitObjectType,
   pub keys: Vec<char>,
-  pub exact_time: f64,
+  pub beat: Beat,
 }
 
 impl HitObject {
-  /// Create a new HitObject with the given exact time.
+  /// Create a new HitObject at the given beat.
+  /// The beat can be fractional.
   /// When possible, prefer creating a HitObjectList instead.
-  pub fn with_exact_time(exact_time: f64, t: HitObjectType, keys: Vec<char>) -> Self {
+  pub fn at_beat(beat: Beat, t: HitObjectType, keys: Vec<char>) -> Self {
     HitObject {
       t,
       keys,
-      exact_time,
+      beat,
     }
   }
   /// Return the lane that this HitObject is in.
@@ -241,7 +276,7 @@ impl HitObjectList {
   /// let hit_object_list = HitObjectList::from_string(String::from("a@0,b@4"));
   /// ```
   pub fn from_string(s: String, bpms: BpmList) -> Result<Self, anyhow::Error> {
-    let bpms = bpms.0;
+    // let bpms = bpms.0;
     let mut v: Vec<HitObject> = vec![];
     // Vec of what would have been `Tick`s in the old system.
     // each element consists of one or more hit objects which should have the same exact_time.
@@ -258,26 +293,7 @@ impl HitObjectList {
         panic!("missing beat value");
       };
       let beat = beat.parse::<f64>()?;
-      // determine exact time
-      let mut beats_remaining = beat;
-      let mut exact_time = 0.0;
-      for (i, bpm) in bpms.iter().enumerate() {
-        // TODO: RATEMOD
-        let one_minute = 60.0;
-        let one_beat = one_minute / bpm.value;
-        let Some(next_bpm) = bpms.get(i + 1) else {
-          exact_time += one_beat * beats_remaining;
-          break;
-        };
-        let length = bpm.length(Some(next_bpm));
-        if beats_remaining < length / one_beat {
-          exact_time += one_beat * beats_remaining;
-          break;
-        } else {
-          exact_time += length;
-          beats_remaining -= length / one_beat;
-        }
-      }
+      let beat = Beat::from_f64(beat);
       // create hit objects
       let h: Vec<&str> = hit_objects.split('+').collect();
       // e.g. ["a", "f", "k"]
@@ -294,8 +310,8 @@ impl HitObjectList {
         if !hit.chars().map(|c| c.column()).all_equal() {
           return Err(HitObjectListError::MultiColumnHit.into());
         }
-        let hit_object = HitObject::with_exact_time(
-          exact_time,
+        let hit_object = HitObject::at_beat(
+          beat,
           HitObjectType::Hit,
           hit.chars().collect(),
         );
@@ -312,8 +328,8 @@ impl HitObjectList {
         if !hold.chars().map(|c| c.column()).all_equal() {
           return Err(HitObjectListError::MultiColumnHold.into());
         }
-        let hit_object = HitObject::with_exact_time(
-          exact_time,
+        let hit_object = HitObject::at_beat(
+          beat,
           HitObjectType::Hold,
           hold.chars().collect(),
         );
@@ -566,7 +582,7 @@ impl Chart {
       bpm.value *= ratemod as f64;
     }
     for hit_object in self.hit_objects.0.iter_mut() {
-      hit_object.exact_time /= ratemod as f64;
+      hit_object.beat.0 /= ratemod as f64;
     }
   }
   /// Begin playing this chart.

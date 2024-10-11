@@ -97,7 +97,6 @@ pub fn gui(state: &mut KhelState) {
         }
         // update bpms based on ratemod
         state.chart_info.chart.set_ratemod(state.ratemod);
-        info!("{:?}", state.chart_info.chart.metadata.bpms);
         // start playing the chart
         state.chart_info.chart.play(state.ratemod); // does not immediately play the audio
         state.chart_info.status = ChartStatus::Playing;

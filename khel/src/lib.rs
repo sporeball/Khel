@@ -529,7 +529,7 @@ impl<'a> KhelState<'a> {
               let hit_object = &self.chart_info.chart.hit_objects.0[i];
               let (_, distance_until_exact) = zero_to_two(
                 0.0,
-                self.av.over_time(hit_object.exact_time - exact_time, &self.chart_info.chart.metadata.bpms) as f32,
+                self.av.over_time(hit_object.beat.to_exact_time(&self.chart_info.chart.metadata.bpms) - exact_time, &self.chart_info.chart.metadata.bpms) as f32,
                 self.size,
               );
               y -= distance_until_exact * (self.av.at_exact_time(exact_time, &self.chart_info.chart.metadata.bpms) as f32 / self.av.value as f32);

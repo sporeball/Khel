@@ -1,5 +1,4 @@
 use crate::{KhelState, chart::{Chart, ChartInfo, ChartStatus}};
-use std::time::Duration;
 use egui::{epaint::Shadow, style::{Spacing, Style}, Button, Color32, Context, Frame, Label, Margin, RichText, Rounding, Slider, TextEdit, Vec2};
 use egui_wgpu::Renderer;
 use log::error;
@@ -46,7 +45,7 @@ impl EguiRenderer {
 /// This function is defined outside EguiRenderer so that the closure passed
 /// to CentralPanel::show can access the methods on KhelState directly.
 pub fn gui(state: &mut KhelState) {
-  let ctx = &state.egui.context;
+  let ctx = &state.egui.context.clone();
   // TODO: parameterize
   ctx.set_style(Style {
     spacing: Spacing {
@@ -66,64 +65,39 @@ pub fn gui(state: &mut KhelState) {
     })
     .show(ctx, |ui| {
       ui.add(Label::new(format!("{:.0} fps", state.fps.avg())));
-      ui.add(Label::new(format!(
-        "itick: {} htick: {} etick: {}",
-        state.chart_info.instance_tick,
-        state.chart_info.hit_tick,
-        state.chart_info.end_tick,
-      )));
       ui.add(TextEdit::singleline(&mut state.chart_path).hint_text("Chart"));
       if ui.add(Button::new("Play")).clicked() {
-        let chart = Chart::read_from_disk(&state.chart_path);
-        if let Err(chart_error) = chart {
-          error!("{}", chart_error);
-          state.error = Some(chart_error);
-          return;
+        let chart = match Chart::read_from_disk(&state.chart_path) {
+          Ok(chart) => {
+            state.error = None;
+            chart
+          },
+          Err(chart_error) => {
+            error!("{}", chart_error);
+            state.error = Some(chart_error);
+            return;
+          }
         };
-        state.error = None;
-        state.chart_info = ChartInfo::new(chart.unwrap());
-        // state.timing_info = None;
-        let chart_info = &mut state.chart_info;
-        // if let ChartStatus::Playing = chart_info.status {
-        //   warn!("chart is already playing");
-        //   return;
-        // }
-        let chart = &chart_info.chart;
-        // let ticks = &chart.ticks.0;
-        // let Some(first_tick) = ticks.get(0) else {
-        //   warn!("could not play chart, is it empty?");
-        //   return;
-        // };
-        // let Some(first_tick) = ticks.get(0) else { unreachable!(); };
-        // let start_bpm = chart.metadata.bpms.at_tick(0).value * state.ratemod as f64;
-        // let one_minute = Duration::from_secs(60);
-        // let one_beat = one_minute.div_f64(start_bpm);
-        // let (_, ho_height) = zero_to_two(32, 32, state.size);
-        // let heights_to_travel = 1.0 / ho_height;
-        // let travel_time = one_beat.mul_f32(heights_to_travel).div_f32(state.xmod);
-        let travel_time = Duration::from_secs_f32((state.size.height as f32 * 0.5) / state.av.at_tick(0, &chart.metadata.bpms));
-        // set times
-        let start_time = state.time;
-        // the music should begin playing once the first hit object has finished traveling
-        let music_time = start_time + travel_time;
-        chart_info.start_time = start_time;
-        chart_info.music_time = music_time;
-        // set tick info
-        let timing_info_list = chart.ticks.get_timing_info_list(
-          chart.metadata.bpms.clone(),
-          chart.metadata.divisors.clone(),
-          start_time,
-          music_time,
-          travel_time,
-          state.ratemod
-        );
-        // info!("start_time: {:?}", start_time);
-        // info!("music_time: {:?}", music_time);
-        // info!("travel_time: {:?}", travel_time);
-        state.timing_info_list = Some(timing_info_list);
-        // info!("{:?}", state.tick_info);
-        chart.play(state.ratemod);
-        chart_info.status = ChartStatus::Playing;
+        state.chart_info = ChartInfo::new(chart);
+        // need to do this to stop egui from getting anxious
+        if state.chart_info.chart.metadata.bpms.0.is_empty() {
+          return;
+        }
+        state.chart_info.start_time = state.time;
+        for hit_object in state.chart_info.chart.hit_objects.0.clone().iter() {
+          // instantiate all of the timing lines in the chart
+          // TODO
+          // instantiate all of the objects in the chart
+          let id = state.instantiate(
+            hit_object.asset(),
+            hit_object.lane_x(),
+            -1.5 // dummy value, gets updated after the fact
+          );
+          state.groups.insert_into_group("hit_objects".to_string(), id);
+        }
+        // start playing the chart
+        state.chart_info.chart.play(state.ratemod); // does not immediately play the audio
+        state.chart_info.status = ChartStatus::Playing;
       }
       // ui.add_enabled(
       //   !matches!(state.chart_info.status, ChartStatus::Playing),
@@ -132,6 +106,7 @@ pub fn gui(state: &mut KhelState) {
       ui.add_enabled(
         !matches!(state.chart_info.status, ChartStatus::Playing),
         Slider::new(&mut state.av.value, 300.0..=1000.0).step_by(1.0).text("AV")
+        // egui::DragValue::new(&mut state.av.value).speed(1.0).clamp_range(300..=1000)
       );
       ui.add_enabled(
         !matches!(state.chart_info.status, ChartStatus::Playing),
@@ -146,9 +121,11 @@ pub fn gui(state: &mut KhelState) {
           let current_bpm_string = match state.chart_info.chart.metadata.bpms.0.len() {
             0 => String::new(),
             _ => {
-              // TODO: is this a bug?
-              let hit_tick_u32 = state.chart_info.hit_tick.saturating_sub(1);
-              let current_bpm = state.chart_info.chart.metadata.bpms.at_tick(hit_tick_u32).value * state.ratemod as f64;
+              let one_minute = 60.0;
+              let bpm_at_zero = state.chart_info.chart.metadata.bpms.at_exact_time(0.0);
+              let one_beat_at_zero = one_minute / bpm_at_zero.value;
+              let one_bar_at_zero = one_beat_at_zero * 4.0;
+              let current_bpm = state.chart_info.chart.metadata.bpms.at_exact_time(state.time - state.chart_info.start_time - one_bar_at_zero - one_bar_at_zero).value * state.ratemod as f64;
               format!("{:.2}", current_bpm)
             },
           };

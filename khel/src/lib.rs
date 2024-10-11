@@ -1,16 +1,17 @@
-use crate::{chart::{BpmList, ChartInfo, HitObjectType, TimingInfoList}, object::{DrawObject, Groups, Object, Objects}};
+use crate::{chart::{BpmList, ChartInfo, ChartStatus}, object::{DrawObject, Groups, Object, Objects}};
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::mem;
 use std::path::Path;
 use std::sync::Arc;
-use std::time::Duration;
+// use std::time::Duration;
 // use egui::Context;
 use egui_wgpu::ScreenDescriptor;
 use fps_ticker::Fps;
 use gui::EguiRenderer;
 use sound::Sound;
-use cgmath::{Vector2, Vector3};
+// use cgmath::{Vector2, Vector3};
+use cgmath::Vector3;
 use log::info;
 use pollster::block_on;
 use wgpu::{include_wgsl, BlendState, ColorTargetState, ColorWrites, CommandEncoder, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, InstanceDescriptor, MultisampleState, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureView, TextureViewDescriptor, VertexBufferLayout, VertexState};
@@ -21,6 +22,8 @@ pub mod chart;
 pub mod gui;
 pub mod object;
 pub mod sound;
+#[cfg(test)]
+pub mod tests;
 pub mod texture;
 pub mod traits;
 
@@ -102,7 +105,7 @@ impl InstanceRaw {
 pub struct Instance {
   // t: String,
   position: Vector3<f32>,
-  velocity: Vector2<f32>,
+  // velocity: Vector2<f32>,
   // create_time: Duration,
   // destroy_time: Duration,
   // rotation: Quaternion<f32>,
@@ -189,13 +192,41 @@ impl Instance {
 //   Xmod(f32),
 // }
 
+#[derive(Clone)]
 pub struct AutoVelocity {
-  pub value: f32,
+  pub value: f64,
 }
 
 impl AutoVelocity {
-  pub fn at_tick(&self, tick: u32, bpms: &BpmList) -> f32 {
-    self.value * (bpms.at_tick(tick).value as f32 / bpms.max().value as f32)
+  /// Return the auto velocity value that should be used at a given exact time.
+  /// Scales around `self.value`.
+  pub fn at_exact_time(&self, exact_time: f64, bpms: &BpmList) -> f64 {
+    self.value * (bpms.at_exact_time(exact_time).value / bpms.max().value)
+  }
+  /// Return the cumulative auto velocity over some amount of time in seconds.
+  pub fn over_time(&self, time: f64, bpms: &BpmList) -> f64 {
+    let mut time_elapsed = 0.0;
+    let mut time_remaining = time;
+    let mut cumulative = 0.0;
+    for (i, bpm) in bpms.0.iter().enumerate() {
+      let av = self.at_exact_time(time_elapsed, bpms);
+      let Some(next_bpm) = bpms.0.get(i + 1) else {
+        cumulative += av * time_remaining;
+        break;
+      };
+      let length = bpm.length(Some(next_bpm));
+      if time_remaining < length {
+        // av at the elapsed time * the time remaining
+        cumulative += av * time_remaining;
+        break;
+      } else {
+        // av at the elapsed time * the length of the bpm
+        cumulative += av * length;
+        time_elapsed += length;
+        time_remaining -= length;
+      }
+    }
+    cumulative
   }
 }
 
@@ -209,8 +240,7 @@ pub struct KhelState<'a> {
   pub clear_color: wgpu::Color,
   pub render_pipeline: RenderPipeline,
   pub fps: Fps,
-  pub time: Duration,
-  // pub objects: HashMap<String, Object>,
+  pub time: f64,
   pub objects: Objects,
   pub groups: Groups,
   pub min_available_object_id: u32,
@@ -218,11 +248,9 @@ pub struct KhelState<'a> {
   pub egui: EguiRenderer,
   pub chart_path: String,
   pub chart_info: ChartInfo,
-  pub timing_info_list: Option<TimingInfoList>,
   // pub xmod: f32,
   pub av: AutoVelocity,
   pub ratemod: f32,
-  pub prev_ho_id: Option<u32>,
   pub error: Option<anyhow::Error>,
 }
 
@@ -327,7 +355,7 @@ impl<'a> KhelState<'a> {
       multiview: None,
     });
     let fps = Fps::default();
-    let time = Duration::ZERO;
+    let time = 0.0;
     // sounds
     // let sound = Sound::new("sound.wav");
     let sounds = vec![
@@ -344,13 +372,11 @@ impl<'a> KhelState<'a> {
     let chart_path = String::new();
     // info
     let chart_info = ChartInfo::none();
-    let timing_info_list = None;
+    // let timing_info_list = None;
     // speed mods
     // let xmod = 4.0;
     let av = AutoVelocity { value: 300.0 };
     let ratemod = 1.0;
-    // TODO: remove this field and find a more elegant solution
-    let prev_ho_id: Option<u32> = None;
     // misc
     let error = None;
     // return value
@@ -372,11 +398,10 @@ impl<'a> KhelState<'a> {
       egui,
       chart_path,
       chart_info,
-      timing_info_list,
+      // timing_info_list,
       // xmod,
       av,
       ratemod,
-      prev_ho_id,
       error,
     }
   }
@@ -456,118 +481,50 @@ impl<'a> KhelState<'a> {
     true
   }
   pub fn update(&mut self) {
-    self.objects.move_all(self.size);
     // try to play chart
-    // let chart_info = &mut self.chart_info;
-    let chart = &self.chart_info.chart;
-    // TODO: stop repeated calls
-    if self.time > self.chart_info.music_time {
-      chart.audio.play();
+    if !matches!(self.chart_info.status, ChartStatus::Playing) {
+      return;
     }
-    // let ticks = &chart.ticks.0;
-    // TODO: is this expensive enough to avoid?
-    let ticks = chart.ticks.0.clone();
-    let instance_tick_u32 = self.chart_info.instance_tick;
-    let hit_tick_u32 = self.chart_info.hit_tick;
-    // let end_tick_u32 = chart_info.end_tick;
-    // instance tick
-    let Some(ref timing_info_list) = self.timing_info_list else { return; };
-    if let Some(instance_tick) = ticks.get(instance_tick_u32 as usize) {
-      let instance_tick_timing_info = &timing_info_list.0.get(instance_tick_u32 as usize).unwrap();
-      if self.time > instance_tick_timing_info.instance_time {
-        info!("instance_tick: {:?}", instance_tick);
-        // durations
-        // let bpm = chart.metadata.bpms.at_tick(instance_tick_u32).value * self.ratemod as f64;
-        // calculate travel time
-        // let (_, ho_height) = zero_to_two(32.0, 32.0, self.size);
-        let instance_y = match instance_tick_u32 {
-          0 => -1.0,
-          _ => {
-            // let late = self.time - instance_tick_timing_info.instance_time;
-            // previous hit object's current y coordinate minus the distance from the previous tick
-            // to the current one
-            let prev_ho_id = self.prev_ho_id.unwrap();
-            let prev_ho_instance = self.objects.get_instance(prev_ho_id);
-            let prev_ho_y = prev_ho_instance.position.y;
-            let prev_tick = &ticks[instance_tick_u32 as usize - 1];
-            let prev_tick_duration = prev_tick.duration(
-              chart.metadata.bpms.at_tick(instance_tick_u32 - 1).value,
-              chart.metadata.divisors.at_tick(instance_tick_u32 - 1).value,
-              self.ratemod,
-            );
-            // info!("prev_tick_duration: {:?}", prev_tick_duration);
-            let (_, prev_tick_distance) = zero_to_two(
-              0.0,
-              prev_tick_duration.as_secs_f32() * self.av.at_tick(instance_tick_u32, &chart.metadata.bpms),
-              self.size,
-            );
-            // info!("prev_tick_distance: {prev_tick_distance}");
-            // prev_ho_y - prev_tick.distance(ho_height, self.chart_info.chart.metadata.divisors.at_tick(instance_tick_u32 - 1).value, self.xmod)
-            prev_ho_y - prev_tick_distance
-          },
-        };
-        // info!("instance_y: {instance_y}");
-        let yv = self.av.at_tick(instance_tick_u32, &chart.metadata.bpms);
-        // info!("yv: {yv}");
-        let tick_duration = instance_tick.duration(
-          chart.metadata.bpms.at_tick(instance_tick_u32).value,
-          chart.metadata.divisors.at_tick(instance_tick_u32).value,
-          self.ratemod,
-        );
-        let (_, tick_distance) = zero_to_two(
-          0.0,
-          tick_duration.as_secs_f32() * self.av.at_tick(instance_tick_u32, &chart.metadata.bpms),
-          self.size,
-        );
-        // instantiate timing line
-        let line = self.instantiate(
-          instance_tick.timing_line_asset(
-            self.chart_info.chart.metadata.divisors.at_tick(instance_tick_u32)
-          ).unwrap(), // TODO: safety
-          -1.0,
-          instance_y
-        );
-        self.velocity(line, 0.0, yv);
-        self.groups.insert_into_group("yv_scale".to_string(), line);
-        // instantiate hit objects
-        for hit_object in &instance_tick.hit_objects.0 {
-          let o = self.instantiate(hit_object.asset(), hit_object.lane_x(), instance_y);
-          self.velocity(o, 0.0, yv);
-          self.groups.insert_into_group("yv_scale".to_string(), o);
-          // we can set prev_ho_id here even in the presence of multiple hit objects because they
-          // should be synced
-          self.prev_ho_id = Some(o);
-          // if applicable, instantiate hold ticks
-          if matches!(hit_object.t, HitObjectType::Hold) {
-            let mut i = 0;
-            let mut tick_y = instance_y - (tick_distance / (instance_tick.length + 1) as f32);
-            while i <= instance_tick.length - 1 {
-              let t = self.instantiate(hit_object.hold_tick_asset(), hit_object.lane_x(), tick_y);
-              self.velocity(t, 0.0, yv);
-              self.groups.insert_into_group("yv_scale".to_string(), t);
-              tick_y -= tick_distance / (instance_tick.length + 1) as f32;
-              i += 1;
-            }
-          }
-        }
-        // move to the next tick
-        self.chart_info.instance_tick += 1;
-        self.chart_info.chart.metadata.divisors.at_tick_mut(instance_tick_u32).units_elapsed += (instance_tick.length + 1) as u32;
-      }
-    }
-    // hit tick
-    let Some(ref timing_info_list) = self.timing_info_list else { return; };
-    if let Some(_hit_tick) = ticks.get(hit_tick_u32 as usize) {
-      let hit_tick_timing_info = &timing_info_list.0.get(hit_tick_u32 as usize).unwrap();
-      if self.time > hit_tick_timing_info.hit_time {
-        // TODO: did the thing really need to be done here
-        self.groups.get_mut("yv_scale".to_string())
-          .for_each_instance(
-            |instance| instance.velocity.y = self.av.at_tick(hit_tick_u32, &self.chart_info.chart.metadata.bpms),
-            &mut self.objects
+    let one_minute = 60.0;
+    let bpm_at_zero = self.chart_info.chart.metadata.bpms.at_exact_time(0.0);
+    let one_beat_at_zero = one_minute / bpm_at_zero.value;
+    let one_bar_at_zero = one_beat_at_zero * 4.0;
+    // subtracting chart_info.start_time from time yields a value 0 or greater
+    // subtracting two bars at zero yields a value -3.33333 or greater for I'M STILL HERE
+    let exact_time = self.time - self.chart_info.start_time - one_bar_at_zero - one_bar_at_zero;
+    // calculate y position for every object in the chart
+    self.groups.get_mut("hit_objects".to_string())
+      .for_each_instance_enumerated(
+        |i, instance| {
+          // pure calculation
+          let mut y = 0.0;
+          let hit_object = &self.chart_info.chart.hit_objects.0[i];
+          let (_, distance_until_exact) = zero_to_two(
+            0.0,
+            self.av.over_time(hit_object.exact_time - exact_time, &self.chart_info.chart.metadata.bpms) as f32,
+            self.size,
           );
-        self.chart_info.hit_tick += 1;
-      }
+          y -= distance_until_exact * (self.av.at_exact_time(exact_time, &self.chart_info.chart.metadata.bpms) as f32 / self.av.value as f32);
+          // }
+          // set y position
+          instance.position.y = y;
+        },
+        &mut self.objects
+      );
+    //   // if applicable, instantiate hold ticks
+    //   if matches!(hit_object.t, HitObjectType::Hold) {
+    //     // let mut i = 0;
+    //     // let mut tick_y = instance_y - (tick_distance / (instance_tick.length + 1) as f32);
+    //     // while i <= instance_tick.length - 1 {
+    //     //   let t = self.instantiate(hit_object.hold_tick_asset(), hit_object.lane_x(), tick_y);
+    //     //   self.groups.insert_into_group("yv_scale".to_string(), t);
+    //     //   tick_y -= tick_distance / (instance_tick.length + 1) as f32;
+    //     //   i += 1;
+    //     // }
+    //   }
+    // }
+    if exact_time > 0.0 {
+      self.chart_info.chart.audio.play();
     }
   }
   /// Use this KhelState to perform a render pass.
@@ -639,6 +596,7 @@ impl<'a> KhelState<'a> {
     //   // run_ui(&self.egui.context);
     // });
     self.egui.context.begin_frame(raw_input);
+    // vvvvv
     run_ui(self);
     let full_output = self.egui.context.end_frame();
     self.egui.state.handle_platform_output(&self.window, full_output.platform_output);
@@ -689,7 +647,6 @@ impl<'a> KhelState<'a> {
     let instance = Instance {
       // t: t.to_string(),
       position: Vector3 { x, y, z: 0.0 },
-      velocity: Vector2 { x: 0.0, y: 0.0 },
       // create_time: self.time,
       // destroy_time: Duration::MAX,
     };
@@ -705,23 +662,6 @@ impl<'a> KhelState<'a> {
     let Some(object) = self.objects.map.values_mut().find(|o| o.instances.contains_key(&id)) else { todo!(); };
     object.instances.remove(&id);
     info!("destroyed object instance (id: {})", id);
-  }
-  /// Set the x velocity of the object instance with the given ID.
-  pub fn x_velocity(&mut self, id: u32, xv: f32) {
-    let instance = self.objects.get_instance_mut(id);
-    instance.velocity.x = xv;
-  }
-  /// Set the y velocity of the object instance with the given ID.
-  pub fn y_velocity(&mut self, id: u32, yv: f32) {
-    let instance = self.objects.get_instance_mut(id);
-    instance.velocity.y = yv;
-  }
-  /// Set the x and y velocity of the object instance with the given ID.
-  pub fn velocity(&mut self, id: u32, x: f32, y: f32) {
-    let instance = self.objects.get_instance_mut(id);
-    instance.velocity.x = x;
-    instance.velocity.y = y;
-    // info!("set {} instance velocity (pps) (id: {}, x: {}, y: {})", instance.t, id, x, y);
   }
 }
 

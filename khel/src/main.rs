@@ -29,7 +29,7 @@ fn main() -> Result<(), anyhow::Error> {
   state.instantiate("line_white", -1.0, 0.0);
   // state.instantiate("hold_tick_white", 0.0, 0.0);
 
-  state.groups.insert("yv_scale".to_string(), vec![]);
+  state.groups.insert("hit_objects".to_string(), vec![]);
 
   let now = Instant::now();
 
@@ -40,7 +40,7 @@ fn main() -> Result<(), anyhow::Error> {
     1000,
     0.1,
     move |g| {
-      g.game.time = now.elapsed();
+      g.game.time = now.elapsed().as_secs_f64();
       g.game.update();
     },
     |g| {

@@ -46,16 +46,6 @@ impl Objects {
     let Some(instance) = object.instances.get_mut(&id) else { todo!(); };
     instance
   }
-  /// Move all object instances according to their velocity.
-  pub fn move_all(&mut self, size: PhysicalSize<u32>) {
-    for object in self.map.values_mut() {
-      for instance in &mut object.instances.values_mut() {
-        // window coordinates are [-1.0, 1.0], so we have to multiply by 2
-        instance.position.x += instance.velocity.x / size.width as f32 / 1000.0 * 2.0;
-        instance.position.y += instance.velocity.y / size.height as f32 / 1000.0 * 2.0;
-      }
-    }
-  }
 }
 
 #[derive(Default)]
@@ -73,15 +63,28 @@ impl Group {
   pub fn remove(&mut self, id: u32) {
     self.vec.retain(|&x| x != id);
   }
+  /// Return the number of object IDs in this group.
+  pub fn size(&self) -> usize {
+    self.vec.len()
+  }
+  /// Call a function on every object ID in the group.
   pub fn for_each_id<F: Fn(u32)>(&mut self, f: F) {
     for id in self.vec.iter() {
       f(*id);
     }
   }
+  /// Call a function on every instance in the group.
   pub fn for_each_instance<F: Fn(&mut Instance)>(&mut self, f: F, objects: &mut Objects) {
     for id in self.vec.iter() {
       let instance = objects.get_instance_mut(*id);
       f(instance);
+    }
+  }
+  /// Call a function on every instance in the group, including an index `i`.
+  pub fn for_each_instance_enumerated<F: Fn(usize, &mut Instance)>(&mut self, f: F, objects: &mut Objects) {
+    for (index, id) in self.vec.iter().enumerate() {
+      let instance = objects.get_instance_mut(*id);
+      f(index, instance);
     }
   }
 }

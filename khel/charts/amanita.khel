@@ -4,6 +4,5 @@ subtitle=;
 artist=sporeball;
 credit=sporeball;
 bpm=115;
-divisor=16;
 
-ticks=f:3,j:3,r:3,u:3,f:3,j:3,v:3,m:3,f:3,j:3,t:3,y:3,f:3,j:3,b:3,n:1,f:0,f:0,j:1,w:1,r:1,s:1,f:1,x:1,f:0,j:0,j:0,j:0;
+hit_objects=f@0,j@1,r@2,u@3,f@4,j@5,v@6,m@7,f@8,j@9,t@10,y@11,f@12,j@13,b@14,n@15,f@15.5,f@15.75,j@16,w@16.5,r@17,s@17.5,f@18,x@18.5,f@19,j@19.25,j@19.5,j@19.75;

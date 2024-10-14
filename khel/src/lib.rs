@@ -10,9 +10,8 @@ use egui_wgpu::ScreenDescriptor;
 use fps_ticker::Fps;
 use gui::EguiRenderer;
 use sound::Sound;
-// use cgmath::{Vector2, Vector3};
 use cgmath::Vector3;
-// use log::info;
+use log::info;
 use pollster::block_on;
 use wgpu::{include_wgsl, BlendState, ColorTargetState, ColorWrites, CommandEncoder, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, FragmentState, FrontFace, InstanceDescriptor, MultisampleState, PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureView, TextureViewDescriptor, VertexBufferLayout, VertexState};
 // use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::ActiveEventLoop, window::{Window, WindowId}};
@@ -404,6 +403,7 @@ impl<'a> KhelState<'a> {
       self.config.width = new_size.width;
       self.config.height = new_size.height;
       self.surface.configure(&self.device, &self.config);
+      info!("resized window (new size = {:?})", new_size);
     }
   }
   /// Handle input.
@@ -511,22 +511,37 @@ impl<'a> KhelState<'a> {
         let one_minute = 60.0;
         let bpm_at_zero = self.chart_info.chart.metadata.bpms.at_exact_time(0.0);
         let one_beat_at_zero = one_minute / bpm_at_zero.value;
+        // total elapsed time on the main thread,
+        // minus the moment that the Play button was pressed,
+        // minus 2 bars, measured from zero
         let exact_time = self.time - self.chart_info.start_time - (one_beat_at_zero * 8.0);
         // calculate y position for every object in the chart
+        for hit_object in self.chart_info.chart.hit_objects.0.iter_mut() {
+          let (_, position_at_exact_time_zero) = zero_to_two(
+            0.0,
+            self.av.over_time(
+              hit_object.beat.to_exact_time(&self.chart_info.chart.metadata.bpms),
+              &self.chart_info.chart.metadata.bpms,
+            ) as f32,
+            self.size,
+          );
+          hit_object.position_at_exact_time_zero = -position_at_exact_time_zero;
+          info!("{:?}", hit_object);
+        }
+
         self.groups.get_mut("hit_objects".to_string())
           .for_each_instance_enumerated(
             |i, instance| {
               // pure calculation
-              let mut y = 0.0;
               let hit_object = &self.chart_info.chart.hit_objects.0[i];
-              let (_, distance_until_exact) = zero_to_two(
+              let mut y = hit_object.position_at_exact_time_zero;
+              let av = self.av.over_time(exact_time, &self.chart_info.chart.metadata.bpms);
+              let (_, distance) = zero_to_two(
                 0.0,
-                self.av.over_time(hit_object.beat.to_exact_time(&self.chart_info.chart.metadata.bpms) - exact_time, &self.chart_info.chart.metadata.bpms) as f32,
+                av as f32,
                 self.size,
               );
-              y -= distance_until_exact * (self.av.at_exact_time(exact_time, &self.chart_info.chart.metadata.bpms) as f32 / self.av.value as f32);
-              // }
-              // set y position
+              y += distance;
               instance.position.y = y;
             },
             &mut self.objects

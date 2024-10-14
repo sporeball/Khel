@@ -200,6 +200,7 @@ pub struct HitObject {
   pub t: HitObjectType,
   pub keys: Vec<char>,
   pub beat: Beat,
+  pub position_at_exact_time_zero: f32,
 }
 
 impl HitObject {
@@ -211,6 +212,7 @@ impl HitObject {
       t,
       keys,
       beat,
+      position_at_exact_time_zero: 0.0 // dummy value, gets updated after the fact
     }
   }
   /// Return the lane that this HitObject is in.

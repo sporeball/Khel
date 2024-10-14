@@ -10,3 +10,8 @@ fn autovelocity_over_time() -> Result<(), anyhow::Error> {
   assert_eq!(av.over_time((80.0 / 3.0) + 2.0, &bpm_list), 4000.0 + 2000.0 + 600.0);
   Ok(())
 }
+
+// #[test]
+// fn pure_calculation() -> Result<(), anyhow::Error> {
+//   Ok(())
+// }

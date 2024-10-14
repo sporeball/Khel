@@ -516,25 +516,21 @@ impl<'a> KhelState<'a> {
         // minus 2 bars, measured from zero
         let exact_time = self.time - self.chart_info.start_time - (one_beat_at_zero * 8.0);
         // calculate y position for every object in the chart
-        for hit_object in self.chart_info.chart.hit_objects.0.iter_mut() {
-          let (_, position_at_exact_time_zero) = zero_to_two(
-            0.0,
-            self.av.over_time(
-              hit_object.beat.to_exact_time(&self.chart_info.chart.metadata.bpms),
-              &self.chart_info.chart.metadata.bpms,
-            ) as f32,
-            self.size,
-          );
-          hit_object.position_at_exact_time_zero = -position_at_exact_time_zero;
-          info!("{:?}", hit_object);
-        }
-
         self.groups.get_mut("hit_objects".to_string())
           .for_each_instance_enumerated(
             |i, instance| {
               // pure calculation
+              let mut y = 0.0;
               let hit_object = &self.chart_info.chart.hit_objects.0[i];
-              let mut y = hit_object.position_at_exact_time_zero;
+              let (_, position_at_exact_time_zero) = zero_to_two(
+                0.0,
+                self.av.over_time(
+                  hit_object.beat.to_exact_time(&self.chart_info.chart.metadata.bpms),
+                  &self.chart_info.chart.metadata.bpms,
+                ) as f32,
+                self.size,
+              );
+              y -= position_at_exact_time_zero;
               let av = self.av.over_time(exact_time, &self.chart_info.chart.metadata.bpms);
               let (_, distance) = zero_to_two(
                 0.0,

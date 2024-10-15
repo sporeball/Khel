@@ -57,7 +57,7 @@ impl Bpm {
   /// ```
   /// use khel::chart::Bpm;
   /// // 120bpm starting at beat 0
-  /// let bpm = Bpm::from_string(String::from("120@0.0"));
+  /// let bpm = Bpm::from_string(String::from("120@0"));
   /// ```
   pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
     let v: Vec<&str> = s.split('@').collect();
@@ -110,9 +110,9 @@ impl BpmList {
   /// ```
   /// use khel::chart::BpmList;
   /// // single bpm
-  /// let bpm_list = BpmList::from_string(String::from("120@0.0"));
+  /// let bpm_list = BpmList::from_string(String::from("120@0"));
   /// // multiple bpms
-  /// let bpm_list = BpmList::from_string(String::from("120@0.0,140@16.0"));
+  /// let bpm_list = BpmList::from_string(String::from("120@0,140@16"));
   /// ```
   pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
     if s.is_empty() {
@@ -270,19 +270,24 @@ impl HitObjectList {
   ///
   /// ```
   /// use khel::chart::HitObjectList;
-  /// // single hit object
+  /// // single hit
   /// let hit_object_list = HitObjectList::from_string(String::from("a@0"));
-  /// // multiple hit objects
-  /// let hit_object_list = HitObjectList::from_string(String::from("a@0,b@4"));
+  /// // single hit using multiple keys
+  /// let hit_object_list = HitObjectList::from_string(String::from("qaz@0"));
+  /// // multiple hits on the same beat
+  /// let hit_object_list = HitObjectList::from_string(String::from("a-b-c@0"));
+  /// // one hit and one hold on the same beat
+  /// let hit_object_list = HitObjectList::from_string(String::from("a+b@0"));
+  /// // multiple hits across multiple beats
+  /// let hit_object_list = HitObjectList::from_string(String::from("a@0,b@4,c@8"));
   /// ```
   pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
     let mut v: Vec<HitObject> = vec![];
     // Vec of what would have been `Tick`s in the old system.
     // each element consists of one or more hit objects which should have the same exact_time.
-    // e.g. a-f-k:0.0
+    // e.g. a-f-k@0
     let synced: Vec<&str> = s.split(',').collect();
     for group in synced.iter() {
-      // e.g. ["a-f-k", "0.0"]
       let g: Vec<&str> = group.split('@').collect();
       if g.len() > 2 {
         panic!("too many parts");
@@ -351,62 +356,6 @@ pub enum HitObjectListError {
   MultiColumnHold,
 }
 
-// #[derive(Debug, Default)]
-// #[derive(Clone, Debug)]
-// pub struct Tick {
-//   pub length: u8,
-//   pub hit_objects: HitObjectList,
-// }
-
-//impl Tick {
-//  /// Create a Tick from a String.
-//  ///
-//  /// # Examples
-//  ///
-//  /// ```
-//  /// // a tick with one HitObject lasting 1 unit at 120bpm
-//  /// let tick = Tick::from_string(String::from("a:0@120"));
-//  /// ```
-//  pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
-//    if s.is_empty() {
-//      return Err(TickError::EmptyString.into());
-//    }
-//    let v: Vec<&str> = s.split(':').collect();
-//    if v.len() > 2 {
-//      return Err(TickError::TooManyParts.into());
-//    }
-//    let head = v.first().unwrap();
-//    let Some(length) = v.get(1) else { return Err(TickError::MissingTickLength.into()); };
-//    let length = length.parse::<u8>()?;
-//    let hit_objects = HitObjectList::from_string(head.to_string())?;
-//    let tick = Tick {
-//      length,
-//      hit_objects,
-//    };
-//    Ok(tick)
-//  }
-//  /// Return the length of this Tick as a Duration.
-//  pub fn duration(&self, bpm: f64, divisor: u8, ratemod: f32) -> Duration {
-//    let divisor = divisor as f64;
-//    let ratemod = ratemod as f64;
-//    // 1-256
-//    let length = (self.length + 1) as f64;
-//    let one_bar = Duration::from_secs_f64((60f64 / (bpm * ratemod)) * 4.0);
-//    one_bar.div_f64(divisor).mul_f64(length)
-//  }
-//  /// Return the length of this tick in quarter notes.
-//  pub fn quarter_notes(&self, divisor: u8) -> f32 {
-//    let divisor = divisor as f32;
-//    // 1-256
-//    let length = (self.length + 1) as f32;
-//    let bars = length / divisor;
-//    bars * 4.0
-//  }
-//  /// Return the distance between zero and two from this tick to the next.
-//  pub fn distance(&self, ho_height: f32, divisor: u8, xmod: f32) -> f32 {
-//    // 1/4 = one height
-//    self.quarter_notes(divisor) * ho_height * xmod
-//  }
 //  /// Return the asset that should be used to render this tick's timing line.
 //  pub fn timing_line_asset(&self, divisor: &Divisor) -> Result<&str, TickError> {
 //    let asset = match divisor.value {
@@ -442,42 +391,6 @@ pub enum HitObjectListError {
 //      _ => return Err(TickError::UnsupportedDivisor),
 //    };
 //    Ok(asset)
-//  }
-//}
-
-// #[derive(Debug, Error)]
-// pub enum TickError {
-//   #[error("attempted to create tick from an empty string")]
-//   EmptyString,
-//   #[error("attempted to create tick with too many parts")]
-//   TooManyParts,
-//   #[error("missing tick length")]
-//   MissingTickLength,
-//   #[error("unsupported divisor")]
-//   UnsupportedDivisor,
-// }
-
-// #[derive(Debug, Default)]
-// /// Wrapper over Vec<Tick>.
-// pub struct TickList(pub Vec<Tick>);
-
-//impl TickList {
-//  /// Create a TickList from a String.
-//  ///
-//  /// # Examples
-//  ///
-//  /// ```
-//  /// // a tick list with two ticks
-//  /// let tick_list = TickList::from_string(String::from("a:0@120,b:0@120"));
-//  /// ```
-//  pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
-//    let mut v: Vec<Tick> = vec![];
-//    let ticks: Vec<&str> = s.split(',').collect();
-//    for tick in ticks {
-//      let tick = Tick::from_string(tick.to_string())?;
-//      v.push(tick);
-//    }
-//    Ok(TickList(v))
 //  }
 //}
 

@@ -197,7 +197,8 @@ impl AutoVelocity {
   pub fn at_exact_time(&self, exact_time: f64, bpms: &BpmList) -> f64 {
     self.value * (bpms.at_exact_time(exact_time).value / bpms.max().value)
   }
-  /// Return the cumulative auto velocity over some amount of time in seconds.
+  /// Return the cumulative auto velocity over some amount of time in seconds, measured from exact
+  /// time zero.
   pub fn over_time(&self, time: f64, bpms: &BpmList) -> f64 {
     let mut time_elapsed = 0.0;
     let mut time_remaining = time;
@@ -522,6 +523,7 @@ impl<'a> KhelState<'a> {
               // pure calculation
               let mut y = 0.0;
               let hit_object = &self.chart_info.chart.hit_objects.0[i];
+              // we are essentially getting the hit object's position at exact time zero...
               let (_, position_at_exact_time_zero) = zero_to_two(
                 0.0,
                 self.av.over_time(
@@ -531,10 +533,10 @@ impl<'a> KhelState<'a> {
                 self.size,
               );
               y -= position_at_exact_time_zero;
-              let av = self.av.over_time(exact_time, &self.chart_info.chart.metadata.bpms);
+              // and translating it by the distance that it travels from zero to now
               let (_, distance) = zero_to_two(
                 0.0,
-                av as f32,
+                self.av.over_time(exact_time, &self.chart_info.chart.metadata.bpms) as f32,
                 self.size,
               );
               y += distance;
@@ -542,18 +544,6 @@ impl<'a> KhelState<'a> {
             },
             &mut self.objects
           );
-        //   // if applicable, instantiate hold ticks
-        //   if matches!(hit_object.t, HitObjectType::Hold) {
-        //     // let mut i = 0;
-        //     // let mut tick_y = instance_y - (tick_distance / (instance_tick.length + 1) as f32);
-        //     // while i <= instance_tick.length - 1 {
-        //     //   let t = self.instantiate(hit_object.hold_tick_asset(), hit_object.lane_x(), tick_y);
-        //     //   self.groups.insert_into_group("yv_scale".to_string(), t);
-        //     //   tick_y -= tick_distance / (instance_tick.length + 1) as f32;
-        //     //   i += 1;
-        //     // }
-        //   }
-        // }
       }
       // create instance buffers
       for object in self.objects.map.values_mut() {

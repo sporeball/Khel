@@ -290,16 +290,19 @@ impl HitObjectList {
     for group in synced.iter() {
       let g: Vec<&str> = group.split('@').collect();
       if g.len() > 2 {
-        panic!("too many parts");
+        return Err(HitObjectListError::ExtraCharsAfterFirstAtSign.into());
       }
       let hit_objects = g.first().unwrap().to_string();
       let Some(beat) = g.get(1) else {
-        panic!("missing beat value");
+        return Err(HitObjectListError::MissingBeatValue.into());
       };
       let beat = beat.parse::<f64>()?;
       let beat = Beat::from_f64(beat);
       // create hit objects
       let h: Vec<&str> = hit_objects.split('+').collect();
+      if h.len() > 2 {
+        return Err(HitObjectListError::ExtraCharsAfterFirstPlusSign.into());
+      }
       // e.g. ["a", "f", "k"]
       let hits: Vec<String> = h.first().unwrap_or(&"").split('-').map(String::from).collect();
       let holds: Vec<String> = h.get(1).unwrap_or(&"").split('-').map(String::from).collect();
@@ -346,6 +349,12 @@ impl HitObjectList {
 
 #[derive(Debug, Error)]
 pub enum HitObjectListError {
+  #[error("missing beat value")]
+  MissingBeatValue,
+  #[error("extra characters after first at sign")]
+  ExtraCharsAfterFirstAtSign,
+  #[error("extra characters after first plus sign")]
+  ExtraCharsAfterFirstPlusSign,
   #[error("found duplicate hit char")]
   DuplicateHitChar,
   #[error("attempted to create hit across multiple columns")]
@@ -438,7 +447,6 @@ impl Chart {
     let credit = credit.to_string();
     let Some(hit_objects) = map.get("hit_objects") else { return Err(ChartError::MissingKeyValuePair(String::from("hit_objects")).into()); };
     let hit_objects = hit_objects.to_string();
-    // bpms
     let bpms = match (map.get("bpm"), map.get("bpms")) {
       (Some(bpm), None) => BpmList::from_f64(bpm.parse::<f64>()?),
       (None, Some(bpms)) => BpmList::from_string(bpms.to_string())?,

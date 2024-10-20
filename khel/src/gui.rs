@@ -1,4 +1,4 @@
-use crate::{KhelState, chart::{Chart, ChartInfo, ChartStatus}};
+use crate::{KhelState, chart::{Chart, ChartInfo, ChartStatus, HitObjectType, SyncedStruct}};
 use egui::{epaint::Shadow, style::{Spacing, Style}, Button, Color32, Context, Frame, Label, Margin, RichText, Rounding, Slider, TextEdit, Vec2};
 use egui_wgpu::Renderer;
 use log::error;
@@ -84,20 +84,37 @@ pub fn gui(state: &mut KhelState) {
           return;
         }
         state.chart_info.start_time = state.time;
-        for hit_object in state.chart_info.chart.hit_objects.0.clone().iter() {
-          // instantiate all of the timing lines in the chart
-          // TODO
-          // instantiate all of the objects in the chart
-          let id = state.objects.instantiate(
-            hit_object.asset().as_str(),
-            hit_object.lane_x(),
-            -1.5, // dummy value, gets updated after the fact
-            state.size,
-            &state.device,
-            &state.queue
-          );
-          state.groups.insert_into_group("pure_calculation".to_string(), id);
-          state.groups.insert_into_group("hit_objects".to_string(), id);
+        for synced_struct in state.chart_info.chart.synced_structs.0.clone().iter() {
+          // create one object instance for every synced struct required by the chart
+          match synced_struct {
+            SyncedStruct::TimingLine(timing_line) => {
+              let id = state.objects.instantiate(
+                timing_line.asset().as_str(),
+                -1.0,
+                -1.5, // dummy value, gets updated after the fact
+                state.size,
+                &state.device,
+                &state.queue
+              );
+              state.groups.insert_into_group("pure_calculation".to_string(), id);
+              state.groups.insert_into_group("timing_lines".to_string(), id);
+            },
+            SyncedStruct::HitObject(hit_object) => {
+              let id = state.objects.instantiate(
+                hit_object.asset().as_str(),
+                hit_object.lane_x(),
+                -1.5, // dummy value, gets updated after the fact
+                state.size,
+                &state.device,
+                &state.queue
+              );
+              state.groups.insert_into_group("pure_calculation".to_string(), id);
+              state.groups.insert_into_group("hit_objects".to_string(), id);
+              if !matches!(hit_object.t, HitObjectType::HoldTick) {
+                state.groups.insert_into_group("hits_and_holds".to_string(), id);
+              }
+            },
+          };
         }
         // update bpms based on ratemod
         state.chart_info.chart.set_ratemod(state.ratemod);

@@ -1,4 +1,4 @@
-use crate::{chart::{BpmList, ChartInfo, ChartStatus}, object::{DrawObject, Groups, Objects}};
+use crate::{chart::{BpmList, ChartInfo, ChartStatus, HitObjectType, SyncedStruct}, object::{DrawObject, Groups, Objects}};
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::mem;
@@ -504,6 +504,8 @@ impl<'a> KhelState<'a> {
       });
       render_pass.set_pipeline(&self.render_pipeline);
       if matches!(self.chart_info.status, ChartStatus::Playing) {
+        // groups
+        // let hits_and_holds = self.groups.get("hits_and_holds".to_string());
         // exact time
         let one_minute = 60.0;
         let bpm_at_zero = self.chart_info.chart.metadata.bpms.at_exact_time(0.0);
@@ -512,18 +514,21 @@ impl<'a> KhelState<'a> {
         // minus the moment that the Play button was pressed,
         // minus 2 bars, measured from zero
         let exact_time = self.time - self.chart_info.start_time - (one_beat_at_zero * 8.0);
-        // calculate y position for every object in the chart
-        self.groups.get_mut("hit_objects".to_string())
+        // calculate y positions
+        self.groups.get_mut("pure_calculation".to_string())
           .for_each_instance_enumerated(
             |i, instance| {
-              // pure calculation
+              // all hit objects and all timing lines are subject to pure calculation
               let mut y = 0.0;
-              let hit_object = &self.chart_info.chart.hit_objects.0[i];
-              // we are essentially getting the hit object's position at exact time zero...
+              let beat = match &self.chart_info.chart.synced_structs.0[i] {
+                SyncedStruct::HitObject(hit_object) => hit_object.beat,
+                SyncedStruct::TimingLine(timing_line) => timing_line.beat,
+              };
+              // we are essentially getting the synced object's position at exact time zero...
               let (_, position_at_exact_time_zero) = zero_to_two(
                 0.0,
                 self.av.over_time(
-                  hit_object.beat.to_exact_time(&self.chart_info.chart.metadata.bpms),
+                  beat.to_exact_time(&self.chart_info.chart.metadata.bpms),
                   &self.chart_info.chart.metadata.bpms,
                 ) as f32,
                 self.size,
@@ -538,7 +543,7 @@ impl<'a> KhelState<'a> {
               y += distance;
               instance.position.y = y;
             },
-            &mut self.objects
+            &mut self.objects,
           );
       }
       // create instance buffers

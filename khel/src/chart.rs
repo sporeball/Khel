@@ -225,7 +225,6 @@ pub struct HitObject {
 impl HitObject {
   /// Create a new HitObject at the given beat.
   /// The beat can be fractional.
-  /// When possible, prefer creating a HitObjectList instead.
   pub fn at_beat(beat: Beat, t: HitObjectType, keys: Vec<char>) -> Self {
     HitObject {
       t,
@@ -269,53 +268,100 @@ impl HitObject {
   }
 }
 
-#[derive(Clone, Debug, Default)]
-/// Wrapper over Vec<HitObject>.
-pub struct HitObjectList(pub Vec<HitObject>);
+#[derive(Clone, Debug)]
+/// A timing line.
+pub struct TimingLine {
+  pub beat: Beat,
+}
 
-impl HitObjectList {
-  /// Create a HitObjectList from a String.
+impl TimingLine {
+  /// Create a new TimingLine at the given beat.
+  /// The beat can be fractional.
+  pub fn at_beat(beat: Beat) -> Self {
+    TimingLine {
+      beat,
+    }
+  }
+  /// Return the asset that should be used to render this TimingLine.
+  pub fn asset(&self) -> String {
+    let e = 1.0 / 2147483648.0;
+    let f = self.beat.0.fract();
+    let color = match f {
+      0.0 => "red", // 1/4
+      0.5 => "blue", // 1/8
+      0.25 | 0.75 => "yellow", // 1/16
+      0.125 | 0.375 | 0.625 | 0.875 => "green", // 1/32
+      _ => {
+        if (f - 0.33333f64).abs() < e || (f - 0.66666f64).abs() < e {
+          "magenta"
+        } else if (f - 0.16666f64).abs() < e || (f - 0.83333f64).abs() < e {
+          "cyan"
+        } else {
+          "white"
+        }
+      },
+    };
+    format!("line_{}", color)
+  }
+}
+
+#[derive(Clone, Debug)]
+/// Some kind of struct that's synced to a beat.
+pub enum SyncedStruct {
+  HitObject(HitObject),
+  TimingLine(TimingLine),
+}
+
+#[derive(Clone, Debug, Default)]
+/// Wrapper over Vec<SyncedStruct>.
+pub struct SyncedStructList(pub Vec<SyncedStruct>);
+
+impl SyncedStructList {
+  /// Create a SyncedStructList from a String.
   ///
   /// # Examples
   ///
   /// ```
-  /// use khel::chart::HitObjectList;
+  /// use khel::chart::SyncedStructList;
   /// // single hit
-  /// let hit_object_list = HitObjectList::from_string(String::from("a@0"));
+  /// let synced_struct_list = SyncedStructList::from_string(String::from("a@0"));
   /// // single hit using multiple keys
-  /// let hit_object_list = HitObjectList::from_string(String::from("qaz@0"));
+  /// let synced_struct_list = SyncedStructList::from_string(String::from("qaz@0"));
   /// // multiple hits on the same beat
-  /// let hit_object_list = HitObjectList::from_string(String::from("a-b-c@0"));
+  /// let synced_struct_list = SyncedStructList::from_string(String::from("a-b-c@0"));
   /// // one hit and one hold on the same beat
-  /// let hit_object_list = HitObjectList::from_string(String::from("a+b:1=4@0"));
+  /// let synced_struct_list = SyncedStructList::from_string(String::from("a+b:1=4@0"));
   /// // multiple hits across multiple beats
-  /// let hit_object_list = HitObjectList::from_string(String::from("a@0,b@4,c@8"));
+  /// let synced_struct_list = SyncedStructList::from_string(String::from("a@0,b@4,c@8"));
   /// ```
   pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
     // example string: a-s+d-f:4=8@0,g-h+j-k:4=8@4
-    let mut v: Vec<HitObject> = vec![];
+    let mut v: Vec<SyncedStruct> = vec![];
     // split on comma, yielding all the hit objects in the chart grouped by beat
     // e.g. ["a-s+d-f:4=8@0", "g-h-j-k:4=8@4"]
-    let synced: Vec<&str> = s.split(',').collect();
-    for group in synced.iter() {
+    let groupings: Vec<&str> = s.split(',').collect();
+    for group in groupings.iter() {
       // split each group on at sign, yielding all the hit objects in the group and the beat they
       // start on
       // e.g. ["a-s+d-f:4=8", "0"]
       let hit_objects_and_beat: Vec<&str> = group.split('@').collect();
       if hit_objects_and_beat.len() > 2 {
-        return Err(HitObjectListError::MultipleAtSigns.into());
+        return Err(SyncedStructListError::MultipleAtSigns.into());
       }
       let hit_objects = hit_objects_and_beat.first().unwrap().to_string();
       let Some(beat) = hit_objects_and_beat.get(1) else {
-        return Err(HitObjectListError::MissingBeatValue.into());
+        return Err(SyncedStructListError::MissingBeatValue.into());
       };
       let beat = beat.parse::<f64>()?;
       let beat = Beat::from_f64(beat);
+      // create a single timing line synced to the whole grouping
+      let timing_line = TimingLine::at_beat(beat);
+      v.push(SyncedStruct::TimingLine(timing_line));
       // split the hit objects on plus sign, separating the hits from the holds
       // e.g. ["a-s", "d-f:4=8"]
       let hits_and_holds: Vec<&str> = hit_objects.split('+').collect();
       if hits_and_holds.len() > 2 {
-        return Err(HitObjectListError::MultiplePlusSigns.into());
+        return Err(SyncedStructListError::MultiplePlusSigns.into());
       }
       // TODO: how many times do the hit and hold loops iterate?
       // split the hits on dash, then cast them, yielding a Vec<String>
@@ -326,40 +372,40 @@ impl HitObjectList {
           continue;
         }
         if !hit.chars().all_unique() {
-          return Err(HitObjectListError::DuplicateHitChar.into());
+          return Err(SyncedStructListError::DuplicateHitChar.into());
         }
         if !hit.chars().map(|c| c.column()).all_equal() {
-          return Err(HitObjectListError::MultiColumnHit.into());
+          return Err(SyncedStructListError::MultiColumnHit.into());
         }
         let hit_object = HitObject::at_beat(
           beat,
           HitObjectType::Hit,
           hit.chars().collect(),
         );
-        v.push(hit_object);
+        v.push(SyncedStruct::HitObject(hit_object));
       }
       // split the holds on colon, yielding the holds and their required information
       // e.g. ["d-f", "4=8"]
       let Some(holds_and_info) = hits_and_holds.get(1) else { continue; };
       let holds_and_info: Vec<&str> = holds_and_info.split(':').collect();
       if holds_and_info.len() > 2 {
-        return Err(HitObjectListError::MultipleColons.into());
+        return Err(SyncedStructListError::MultipleColons.into());
       }
       // split the holds on dash, then cast them, yielding a Vec<String>
       let holds: Vec<String> = holds_and_info.first().unwrap_or(&"").split('-').map(String::from).collect();
       let Some(info) = holds_and_info.get(1) else {
-        return Err(HitObjectListError::MissingHoldInformation.into());
+        return Err(SyncedStructListError::MissingHoldInformation.into());
       };
       // split the hold information on equals, separating the length from the tick count
       // e.g. ["4", "8"]
       let length_and_tick_count: Vec<&str> = info.split('=').collect();
       if length_and_tick_count.len() > 2 {
-        return Err(HitObjectListError::MultipleEqualsSigns.into());
+        return Err(SyncedStructListError::MultipleEqualsSigns.into());
       }
       let length = length_and_tick_count.first().unwrap();
       let length = length.parse::<f64>()?;
       let Some(tick_count) = length_and_tick_count.get(1) else {
-        return Err(HitObjectListError::MissingHoldTickCount.into());
+        return Err(SyncedStructListError::MissingHoldTickCount.into());
       };
       let tick_count = tick_count.parse::<u32>()?;
       // holds
@@ -368,10 +414,10 @@ impl HitObjectList {
           continue;
         }
         if !hold.chars().all_unique() {
-          return Err(HitObjectListError::DuplicateHoldChar.into());
+          return Err(SyncedStructListError::DuplicateHoldChar.into());
         }
         if !hold.chars().map(|c| c.column()).all_equal() {
-          return Err(HitObjectListError::MultiColumnHold.into());
+          return Err(SyncedStructListError::MultiColumnHold.into());
         }
         // let hold_information = HoldInformation {
         //   length,
@@ -382,7 +428,7 @@ impl HitObjectList {
           HitObjectType::Hold,
           hold.chars().collect(),
         );
-        v.push(hit_object);
+        v.push(SyncedStruct::HitObject(hit_object));
       }
       // hold ticks
       for hold in holds.iter() {
@@ -395,18 +441,18 @@ impl HitObjectList {
             HitObjectType::HoldTick,
             hold.chars().collect(),
           );
-          v.push(hit_object);
+          v.push(SyncedStruct::HitObject(hit_object));
           i += 1;
           tick_beat += delta;
         }
       }
     }
-    Ok(HitObjectList(v))
+    Ok(SyncedStructList(v))
   }
 }
 
 #[derive(Debug, Error)]
-pub enum HitObjectListError {
+pub enum SyncedStructListError {
   #[error("missing beat value")]
   MissingBeatValue,
   #[error("missing hold information")]
@@ -431,50 +477,11 @@ pub enum HitObjectListError {
   MultiColumnHold,
 }
 
-//  /// Return the asset that should be used to render this tick's timing line.
-//  pub fn timing_line_asset(&self, divisor: &Divisor) -> Result<&str, TickError> {
-//    let asset = match divisor.value {
-//      1 | 2 | 4 => "line_red",
-//      6 => match divisor.units_elapsed % 6 {
-//        0 | 3 => "line_red",
-//        _ => "line_magenta",
-//      },
-//      8 => match divisor.units_elapsed % 8 {
-//        0 | 4 => "line_red",
-//        _ => "line_blue",
-//      },
-//      12 => match divisor.units_elapsed % 12 {
-//        0 | 3 | 6 | 9 => "line_red",
-//        _ => "line_magenta",
-//      }
-//      16 => match divisor.units_elapsed % 16 {
-//        0 | 4 | 8 | 12 => "line_red",
-//        2 | 6 | 10 | 14 => "line_blue",
-//        _ => "line_yellow",
-//      },
-//      24 => match divisor.units_elapsed % 24 {
-//        0 | 6 | 12 | 18 => "line_red",
-//        3 | 9 | 15 | 21 => "line_magenta",
-//        _ => "line_cyan",
-//      },
-//      32 => match divisor.units_elapsed % 32 {
-//        0 | 8 | 16 | 24 => "line_red",
-//        4 | 12 | 20 | 28 => "line_blue",
-//        2 | 6 | 10 | 14 | 18 | 22 | 26 | 30 => "line_yellow",
-//        _ => "line_green",
-//      },
-//      _ => return Err(TickError::UnsupportedDivisor),
-//    };
-//    Ok(asset)
-//  }
-//}
-
 #[derive(Debug)]
 pub struct Chart {
   pub metadata: Metadata,
   pub audio: Sound,
-  // pub ticks: TickList,
-  pub hit_objects: HitObjectList,
+  pub synced_structs: SyncedStructList,
 }
 
 impl Chart {
@@ -537,15 +544,15 @@ impl Chart {
     };
     let audio = Sound::new(&audio_filename);
     // ticks
-    info!("creating hit object list...");
-    let hit_objects = HitObjectList::from_string(hit_objects)?;
-    info!("parsed {} ticks", hit_objects.0.len());
+    info!("creating synced structs list...");
+    let synced_structs = SyncedStructList::from_string(hit_objects)?;
+    info!("created {} synced structs", synced_structs.0.len());
     info!("finished!");
     // chart
     let chart = Chart {
       metadata,
       audio,
-      hit_objects,
+      synced_structs,
     };
     info!("{:?}", chart);
     Ok(chart)
@@ -556,7 +563,7 @@ impl Chart {
     Chart {
       metadata: Metadata::default(),
       audio: Sound::empty(),
-      hit_objects: HitObjectList::default(),
+      synced_structs: SyncedStructList::default(),
     }
   }
   /// Mutate this Chart according to the specified ratemod.

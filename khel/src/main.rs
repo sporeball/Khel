@@ -37,6 +37,8 @@ fn main() -> Result<(), anyhow::Error> {
 
   state.groups.insert("pure_calculation".to_string(), vec![]);
   state.groups.insert("hit_objects".to_string(), vec![]);
+  state.groups.insert("hits_and_holds".to_string(), vec![]);
+  state.groups.insert("timing_lines".to_string(), vec![]);
 
   let now = Instant::now();
 

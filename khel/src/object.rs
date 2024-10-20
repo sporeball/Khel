@@ -2,6 +2,7 @@ use crate::{load_binary, texture::{self, DrawTexture, Texture}, Instance};
 use std::collections::HashMap;
 use std::time::Duration;
 use cgmath::Vector3;
+use itertools::Itertools;
 use log::info;
 use wgpu::{util::{BufferInitDescriptor, DeviceExt}, Buffer, BufferUsages, Device, Queue, RenderPass};
 use winit::dpi::PhysicalSize;
@@ -93,9 +94,20 @@ impl Objects {
     let Some(instance) = object.instances.get_mut(&id) else { todo!(); };
     instance
   }
+  /// Get a mutable reference to the object which holds an instance with the given ID.
+  pub fn get_object_mut(&mut self, id: u32) -> &mut Object {
+    let Some(object) = self.map.values_mut().find(|o| o.instances.contains_key(&id)) else { todo!(); };
+    object
+  }
+  /// Get the type of the object which holds an instance with the given ID.
+  pub fn get_type(&self, id: u32) -> String {
+    let Some(entry) = self.map.iter().find(|(_s, o)| o.instances.contains_key(&id)) else { todo!(); };
+    let (key, _value) = entry;
+    key.to_string()
+  }
 }
 
-#[derive(Default)]
+#[derive(Clone, Debug, Default)]
 /// A collection of object IDs, able to be manipulated together.
 pub struct Group {
   pub vec: Vec<u32>,
@@ -114,10 +126,20 @@ impl Group {
   pub fn size(&self) -> usize {
     self.vec.len()
   }
+  /// Return whether this group contains the given object ID.
+  pub fn contains(&self, id: u32) -> bool {
+    self.vec.contains(&id)
+  }
   /// Call a function on every object ID in the group.
   pub fn for_each_id<F: Fn(u32)>(&mut self, f: F) {
     for id in self.vec.iter() {
       f(*id);
+    }
+  }
+  /// Call a function on every object ID in the group, including an index `i`.
+  pub fn for_each_id_enumerated<F: Fn(usize, u32)>(&mut self, f: F) {
+    for (index, id) in self.vec.iter().enumerate() {
+      f(index, *id);
     }
   }
   /// Call a function on every instance in the group.
@@ -134,9 +156,18 @@ impl Group {
       f(index, instance);
     }
   }
+  /// Call a function on the object type, ID, and instance associated with every member of the
+  /// group, including an index `i`.
+  pub fn for_each_triple_enumerated<F: Fn(usize, String, u32, &mut Instance)>(&mut self, f: F, objects: &mut Objects) {
+    for (index, id) in self.vec.iter().enumerate() {
+      let t = objects.get_type(*id);
+      let instance = objects.get_instance_mut(*id);
+      f(index, t, *id, instance);
+    }
+  }
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Groups {
   pub map: HashMap<String, Group>,
 }
@@ -164,6 +195,10 @@ impl Groups {
   pub fn get_mut(&mut self, name: String) -> &mut Group {
     let Some(group) = self.map.get_mut(&name) else { todo!(); };
     group
+  }
+  /// Get the names of all groups associated with the given ID.
+  pub fn names(&self, id: u32) -> Vec<String> {
+    self.map.keys().filter(|&n| self.get(n.to_string()).contains(id)).cloned().collect::<Vec<String>>()
   }
 }
 

@@ -564,15 +564,15 @@ impl Chart {
     for bpm in self.metadata.bpms.0.iter_mut() {
       bpm.value *= ratemod;
     }
+    self.audio.set_speed(ratemod);
   }
   /// Begin playing this chart.
-  pub fn play(&self, ratemod: f64) {
+  pub fn play(&self) {
     let Metadata { title, subtitle, artist, credit, .. } = &self.metadata;
     match subtitle.as_str() {
       "" => info!("playing chart \"{} - {}\" (mapped by {})...", artist, title, credit),
       _ => info!("playing chart \"{} - {} ({})\" (mapped by {})...", artist, title, subtitle, credit),
     };
-    self.audio.set_speed(ratemod);
   }
 }
 

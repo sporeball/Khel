@@ -96,12 +96,13 @@ pub fn gui(state: &mut KhelState) {
             &state.device,
             &state.queue
           );
+          state.groups.insert_into_group("pure_calculation".to_string(), id);
           state.groups.insert_into_group("hit_objects".to_string(), id);
         }
         // update bpms based on ratemod
         state.chart_info.chart.set_ratemod(state.ratemod);
         // start playing the chart
-        state.chart_info.chart.play(state.ratemod); // does not immediately play the audio
+        state.chart_info.chart.play(); // does not immediately play the audio
         state.chart_info.status = ChartStatus::Playing;
       }
       // ui.add_enabled(

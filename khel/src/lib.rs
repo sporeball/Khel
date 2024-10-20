@@ -181,11 +181,6 @@ impl Instance {
 //   }
 // }
 
-// pub enum SpeedMod {
-//   Cmod(f32), // TODO
-//   Xmod(f32),
-// }
-
 #[derive(Clone)]
 pub struct AutoVelocity {
   pub value: f64,
@@ -474,6 +469,7 @@ impl<'a> KhelState<'a> {
     true
   }
   pub fn update(&mut self) {
+    // TODO: does this need to happen 1000 times per second?
     if matches!(self.chart_info.status, ChartStatus::Playing) {
       let one_minute = 60.0;
       let bpm_at_zero = self.chart_info.chart.metadata.bpms.at_exact_time(0.0);

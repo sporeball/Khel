@@ -89,7 +89,7 @@ pub fn gui(state: &mut KhelState) {
           // TODO
           // instantiate all of the objects in the chart
           let id = state.objects.instantiate(
-            hit_object.asset(),
+            hit_object.asset().as_str(),
             hit_object.lane_x(),
             -1.5, // dummy value, gets updated after the fact
             state.size,

@@ -42,6 +42,19 @@ impl Beat {
   }
 }
 
+impl std::ops::Add<f64> for Beat {
+  type Output = Self;
+  fn add(self, other: f64) -> Beat {
+    Beat(self.0 + other)
+  }
+}
+
+impl std::ops::AddAssign<f64> for Beat {
+  fn add_assign(&mut self, other: f64) {
+    *self = Beat(self.0 + other);
+  }
+}
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Bpm {
   pub value: f64,
@@ -189,10 +202,17 @@ impl Metadata {
   }
 }
 
+// #[derive(Clone, Debug)]
+// pub struct HoldInformation {
+//   pub length: f64,
+//   pub tick_count: u32,
+// }
+
 #[derive(Clone, Debug)]
 pub enum HitObjectType {
   Hit,
   Hold,
+  HoldTick,
 }
 
 #[derive(Clone, Debug)]
@@ -221,41 +241,31 @@ impl HitObject {
   pub fn lane_x(&self) -> f32 {
     (0.1f32 * self.lane() as f32) - 0.45
   }
-  /// Return the asset that should be used to render this HitObject.
-  pub fn asset(&self) -> &str {
+  /// Return the color of this HitObject.
+  pub fn color(&self) -> &str {
     let rows: u8 = self.keys
       .iter()
-      .map(|&c| c.row().expect("found invalid key in hit object"))
+      .map(|&c| c.row().unwrap())
       .sum();
     match rows {
-      1 => "circle_red",
-      2 => "circle_green",
-      3 => "circle_yellow",
-      4 => "circle_blue",
-      5 => "circle_magenta",
-      6 => "circle_cyan",
-      7 => "circle_white",
+      1 => "red",
+      2 => "green",
+      3 => "yellow",
+      4 => "blue",
+      5 => "magenta",
+      6 => "cyan",
+      7 => "white",
       _ => unreachable!(),
     }
   }
-  /// Return the asset that should be used to render a hold tick of the same color as this
-  /// HitObject.
-  // TODO: better split
-  pub fn hold_tick_asset(&self) -> &str {
-    let rows: u8 = self.keys
-      .iter()
-      .map(|&c| c.row().expect("found invalid key in hit object"))
-      .sum();
-    match rows {
-      1 => "hold_tick_red",
-      2 => "hold_tick_green",
-      3 => "hold_tick_yellow",
-      4 => "hold_tick_blue",
-      5 => "hold_tick_magenta",
-      6 => "hold_tick_cyan",
-      7 => "hold_tick_white",
-      _ => unreachable!(),
-    }
+  /// Return the asset that should be used to render this HitObject.
+  pub fn asset(&self) -> String {
+    let t = match self.t {
+      HitObjectType::Hit | HitObjectType::Hold => "circle",
+      HitObjectType::HoldTick => "hold_tick",
+    };
+    let color = self.color();
+    format!("{}_{}", t, color)
   }
 }
 
@@ -277,36 +287,40 @@ impl HitObjectList {
   /// // multiple hits on the same beat
   /// let hit_object_list = HitObjectList::from_string(String::from("a-b-c@0"));
   /// // one hit and one hold on the same beat
-  /// let hit_object_list = HitObjectList::from_string(String::from("a+b@0"));
+  /// let hit_object_list = HitObjectList::from_string(String::from("a+b:1=4@0"));
   /// // multiple hits across multiple beats
   /// let hit_object_list = HitObjectList::from_string(String::from("a@0,b@4,c@8"));
   /// ```
   pub fn from_string(s: String) -> Result<Self, anyhow::Error> {
+    // example string: a-s+d-f:4=8@0,g-h+j-k:4=8@4
     let mut v: Vec<HitObject> = vec![];
-    // Vec of what would have been `Tick`s in the old system.
-    // each element consists of one or more hit objects which should have the same exact_time.
-    // e.g. a-f-k@0
+    // split on comma, yielding all the hit objects in the chart grouped by beat
+    // e.g. ["a-s+d-f:4=8@0", "g-h-j-k:4=8@4"]
     let synced: Vec<&str> = s.split(',').collect();
     for group in synced.iter() {
-      let g: Vec<&str> = group.split('@').collect();
-      if g.len() > 2 {
-        return Err(HitObjectListError::ExtraCharsAfterFirstAtSign.into());
+      // split each group on at sign, yielding all the hit objects in the group and the beat they
+      // start on
+      // e.g. ["a-s+d-f:4=8", "0"]
+      let hit_objects_and_beat: Vec<&str> = group.split('@').collect();
+      if hit_objects_and_beat.len() > 2 {
+        return Err(HitObjectListError::MultipleAtSigns.into());
       }
-      let hit_objects = g.first().unwrap().to_string();
-      let Some(beat) = g.get(1) else {
+      let hit_objects = hit_objects_and_beat.first().unwrap().to_string();
+      let Some(beat) = hit_objects_and_beat.get(1) else {
         return Err(HitObjectListError::MissingBeatValue.into());
       };
       let beat = beat.parse::<f64>()?;
       let beat = Beat::from_f64(beat);
-      // create hit objects
-      let h: Vec<&str> = hit_objects.split('+').collect();
-      if h.len() > 2 {
-        return Err(HitObjectListError::ExtraCharsAfterFirstPlusSign.into());
+      // split the hit objects on plus sign, separating the hits from the holds
+      // e.g. ["a-s", "d-f:4=8"]
+      let hits_and_holds: Vec<&str> = hit_objects.split('+').collect();
+      if hits_and_holds.len() > 2 {
+        return Err(HitObjectListError::MultiplePlusSigns.into());
       }
-      // e.g. ["a", "f", "k"]
-      let hits: Vec<String> = h.first().unwrap_or(&"").split('-').map(String::from).collect();
-      let holds: Vec<String> = h.get(1).unwrap_or(&"").split('-').map(String::from).collect();
-      // hits
+      // TODO: how many times do the hit and hold loops iterate?
+      // split the hits on dash, then cast them, yielding a Vec<String>
+      // e.g. ["a", "s"]
+      let hits: Vec<String> = hits_and_holds.first().unwrap_or(&"").split('-').map(String::from).collect();
       for hit in hits.iter() {
         if hit.is_empty() {
           continue;
@@ -324,6 +338,30 @@ impl HitObjectList {
         );
         v.push(hit_object);
       }
+      // split the holds on colon, yielding the holds and their required information
+      // e.g. ["d-f", "4=8"]
+      let Some(holds_and_info) = hits_and_holds.get(1) else { continue; };
+      let holds_and_info: Vec<&str> = holds_and_info.split(':').collect();
+      if holds_and_info.len() > 2 {
+        return Err(HitObjectListError::MultipleColons.into());
+      }
+      // split the holds on dash, then cast them, yielding a Vec<String>
+      let holds: Vec<String> = holds_and_info.first().unwrap_or(&"").split('-').map(String::from).collect();
+      let Some(info) = holds_and_info.get(1) else {
+        return Err(HitObjectListError::MissingHoldInformation.into());
+      };
+      // split the hold information on equals, separating the length from the tick count
+      // e.g. ["4", "8"]
+      let length_and_tick_count: Vec<&str> = info.split('=').collect();
+      if length_and_tick_count.len() > 2 {
+        return Err(HitObjectListError::MultipleEqualsSigns.into());
+      }
+      let length = length_and_tick_count.first().unwrap();
+      let length = length.parse::<f64>()?;
+      let Some(tick_count) = length_and_tick_count.get(1) else {
+        return Err(HitObjectListError::MissingHoldTickCount.into());
+      };
+      let tick_count = tick_count.parse::<u32>()?;
       // holds
       for hold in holds.iter() {
         if hold.is_empty() {
@@ -335,12 +373,32 @@ impl HitObjectList {
         if !hold.chars().map(|c| c.column()).all_equal() {
           return Err(HitObjectListError::MultiColumnHold.into());
         }
+        // let hold_information = HoldInformation {
+        //   length,
+        //   tick_count,
+        // };
         let hit_object = HitObject::at_beat(
           beat,
           HitObjectType::Hold,
           hold.chars().collect(),
         );
         v.push(hit_object);
+      }
+      // hold ticks
+      for hold in holds.iter() {
+        let mut i = 1;
+        let delta = length / tick_count as f64;
+        let mut tick_beat = beat + delta; // skip the tick that would land on the start of the hold
+        while i < tick_count {
+          let hit_object = HitObject::at_beat(
+            tick_beat,
+            HitObjectType::HoldTick,
+            hold.chars().collect(),
+          );
+          v.push(hit_object);
+          i += 1;
+          tick_beat += delta;
+        }
       }
     }
     Ok(HitObjectList(v))
@@ -351,10 +409,18 @@ impl HitObjectList {
 pub enum HitObjectListError {
   #[error("missing beat value")]
   MissingBeatValue,
-  #[error("extra characters after first at sign")]
-  ExtraCharsAfterFirstAtSign,
-  #[error("extra characters after first plus sign")]
-  ExtraCharsAfterFirstPlusSign,
+  #[error("missing hold information")]
+  MissingHoldInformation,
+  #[error("missing hold tick count")]
+  MissingHoldTickCount,
+  #[error("multiple at signs")]
+  MultipleAtSigns,
+  #[error("multiple plus signs")]
+  MultiplePlusSigns,
+  #[error("multiple equals signs")]
+  MultipleEqualsSigns,
+  #[error("multiple colons")]
+  MultipleColons,
   #[error("found duplicate hit char")]
   DuplicateHitChar,
   #[error("attempted to create hit across multiple columns")]

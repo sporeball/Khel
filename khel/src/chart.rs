@@ -447,6 +447,10 @@ impl SyncedStructList {
         }
       }
     }
+    // reverse the whole Vec, meaning that `SyncedStruct`s which are timed later appear first
+    // if we do not do this, destroying one pair of `SyncedStruct`s in the pure calculation group
+    // will quickly destroy them all
+    v.reverse();
     Ok(SyncedStructList(v))
   }
 }

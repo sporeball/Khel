@@ -33,8 +33,7 @@ impl Object {
 pub struct Objects {
   pub map: HashMap<String, Object>,
   pub min_available_id: u32,
-  // TODO
-  pub to_be_destroyed: HashMap<u32, Duration>,
+  pub to_be_destroyed: Vec<u32>,
 }
 
 impl Objects {
@@ -64,10 +63,7 @@ impl Objects {
     let object = self.map.get_mut(t).unwrap();
     let id = self.min_available_id;
     let instance = Instance {
-      // t: t.to_string(),
       position: Vector3 { x, y, z: 0.0 },
-      // create_time: self.time,
-      // destroy_time: Duration::MAX,
     };
     // push the instance
     object.instances.insert(id, instance.clone());
@@ -76,11 +72,24 @@ impl Objects {
     self.min_available_id += 1;
     id
   }
+  /// Mark the object instance with the given ID for destruction.
+  pub fn mark_for_destruction(&mut self, id: u32) {
+    self.to_be_destroyed.push(id);
+  }
   /// Destroy the object instance with the given ID.
+  /// Does not remove the ID from any groups.
   pub fn destroy(&mut self, id: u32) {
     let Some(object) = self.map.values_mut().find(|o| o.instances.contains_key(&id)) else { todo!(); };
     object.instances.remove(&id);
     info!("destroyed object instance (id: {})", id);
+  }
+  /// Destroy all object instances which are marked for destruction.
+  pub fn destroy_marked(&mut self, groups: &mut Groups) {
+    for id in self.to_be_destroyed.clone().iter() {
+      self.destroy(*id);
+      groups.remove_from_all_groups(*id);
+    }
+    self.to_be_destroyed = vec![];
   }
   /// Get a reference to the object instance with the given ID.
   pub fn get_instance(&self, id: u32) -> &Instance {
@@ -131,7 +140,8 @@ impl Group {
     self.vec.contains(&id)
   }
   /// Call a function on every object ID in the group.
-  pub fn for_each_id<F: Fn(u32)>(&mut self, f: F) {
+  /// This function does not receive a mutable reference to the group.
+  pub fn for_each_id<F: FnMut(u32)>(&self, mut f: F) {
     for id in self.vec.iter() {
       f(*id);
     }
@@ -185,6 +195,15 @@ impl Groups {
   /// Remove the instance with the given ID from the group with the given name.
   pub fn remove_from_group(&mut self, name: String, id: u32) {
     self.get_mut(name).remove(id);
+  }
+  /// Remove the instance with the given ID from every group in the map.
+  pub fn remove_from_all_groups(&mut self, id: u32) {
+    // for group in self.map.values_mut() {
+    //   group.remove(id);
+    // }
+    for group_name in self.names(id) {
+      self.remove_from_group(group_name, id);
+    }
   }
   /// Get a reference to the group with the given name.
   pub fn get(&self, name: String) -> &Group {

@@ -545,6 +545,20 @@ impl<'a> KhelState<'a> {
             },
             &mut self.objects,
           );
+        // mark objects for destruction
+        self.groups.get("pure_calculation".to_string())
+          .for_each_id(
+            |id| {
+              let instance = self.objects.get_instance(id);
+              // if instance.position.y > 0.5 {
+              // if instance.position.y > 1.5 {
+                info!("instance.position.y = {}, destroying...", instance.position.y);
+                self.objects.mark_for_destruction(id);
+              }
+            }
+          );
+        // destroy objects which are marked for destruction
+        self.objects.destroy_marked(&mut self.groups);
       }
       // create instance buffers
       for object in self.objects.map.values_mut() {

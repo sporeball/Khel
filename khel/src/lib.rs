@@ -551,7 +551,7 @@ impl<'a> KhelState<'a> {
             |id| {
               let instance = self.objects.get_instance(id);
               // if instance.position.y > 0.5 {
-              // if instance.position.y > 1.5 {
+              if instance.position.y > 1.5 {
                 info!("instance.position.y = {}, destroying...", instance.position.y);
                 self.objects.mark_for_destruction(id);
               }

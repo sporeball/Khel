@@ -1,4 +1,4 @@
-use crate::{chart::{BpmList, ChartInfo, ChartStatus, HitObjectType, SyncedStruct}, object::{DrawObject, Groups, Objects}};
+use crate::{chart::{BpmList, ChartInfo, ChartStatus, SyncedStruct}, object::{DrawObject, Groups, Objects}};
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::mem;
@@ -552,7 +552,6 @@ impl<'a> KhelState<'a> {
               let instance = self.objects.get_instance(id);
               // if instance.position.y > 0.5 {
               if instance.position.y > 1.5 {
-                info!("instance.position.y = {}, destroying...", instance.position.y);
                 self.objects.mark_for_destruction(id);
               }
             }
@@ -565,6 +564,7 @@ impl<'a> KhelState<'a> {
         object.instance_buffer = object::create_instance_buffer(&object.instances, &self.device);
       }
       // draw all instances of every type of object
+      // TODO: only draw those instances which are on the screen
       for object in self.objects.map.values() {
         render_pass.draw_object_instanced(object);
       }

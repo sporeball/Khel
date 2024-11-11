@@ -1,9 +1,7 @@
 use crate::{load_binary, texture::{self, DrawTexture, Texture}, Instance};
 use std::collections::HashMap;
-use std::time::Duration;
 use cgmath::Vector3;
-use itertools::Itertools;
-use log::info;
+// use log::info;
 use wgpu::{util::{BufferInitDescriptor, DeviceExt}, Buffer, BufferUsages, Device, Queue, RenderPass};
 use winit::dpi::PhysicalSize;
 
@@ -48,7 +46,7 @@ impl Objects {
     device: &Device,
     queue: &Queue,
   ) -> u32 {
-    // create an entry in objects if none exists
+    // create an entry in the map if none exists
     if !self.map.contains_key(t) {
       let filename = format!("{}.png", t);
       let object = Object::from_file(
@@ -81,7 +79,7 @@ impl Objects {
   pub fn destroy(&mut self, id: u32) {
     let Some(object) = self.map.values_mut().find(|o| o.instances.contains_key(&id)) else { todo!(); };
     object.instances.remove(&id);
-    info!("destroyed object instance (id: {})", id);
+    // info!("destroyed object instance (id: {})", id);
   }
   /// Destroy all object instances which are marked for destruction.
   pub fn destroy_marked(&mut self, groups: &mut Groups) {

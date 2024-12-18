@@ -1,5 +1,5 @@
-// macos: `g++ khel.cpp -o khel $(pkg-config --cflags --libs sdl2 sdl2_image) -std=c++11 -Wall && ./khel`
-// (install SDL2 and SDL2_image using MacPorts)
+// macos: `g++ khel.cpp -o khel $(pkg-config --cflags --libs sdl2 sdl2_image sdl2_mixer) -std=c++17 -Wall && ./khel`
+// (install SDL2, SDL2_image, and SDL2_mixer using MacPorts)
 
 #include <SDL.h>
 #include <SDL_image.h>

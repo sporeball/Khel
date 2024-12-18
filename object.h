@@ -1,6 +1,10 @@
 #ifndef KHEL_OBJECT_H
 #define KHEL_OBJECT_H
 
+#include <string>
+#include <unordered_map>
+#include <vector>
+
 struct Instance {
   SDL_Rect* rect;
   Instance(int x, int y, int w, int h);

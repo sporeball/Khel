@@ -5,11 +5,14 @@
 #include <SDL_image.h>
 #include <stdio.h>
 #include <iostream>
+#include "chart.h"
 #include "object.h"
 
 using namespace std;
 
 int main(int argc, char* argv[]) {
+  setbuf(stdout, NULL);
+
   SDL_Window* window = NULL;
   SDL_Renderer* renderer = NULL;
   SDL_Surface* screenSurface = NULL;
@@ -46,6 +49,11 @@ int main(int argc, char* argv[]) {
   // Instance* i0 = circle_red->instantiate(100, 100, 32, 32);
   // Instance* i1 = circle_red->instantiate(150, 100, 32, 32);
   // Instance* i2 = circle_red->instantiate(200, 100, 32, 32);
+
+  ChartInfo* chart_info = new ChartInfo;
+  chart_info->chart = new Chart("charts/++.khel");
+  chart_info->chart_status = ChartStatus::NONE;
+  chart_info->chart->print();
 
   SDL_Event e;
   int quit = 0;

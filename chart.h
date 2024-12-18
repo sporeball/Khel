@@ -6,11 +6,11 @@
 #include <vector>
 #include <SDL_mixer.h>
 
-const int CHART_VERSION = 0;
-
+struct BpmList;
 struct Beat {
   float value;
-  // float to_exact_time(BpmList* bpms);
+  float to_exact_time(BpmList* bpms);
+  void print();
 };
 
 struct Bpm {
@@ -18,6 +18,7 @@ struct Bpm {
   Beat* start_beat;
   Bpm(std::string s);
   float length(Bpm* next_bpm);
+  void print();
 };
 
 struct BpmList {
@@ -26,6 +27,7 @@ struct BpmList {
   ~BpmList();
   Bpm* at_exact_time(float exact_time);
   Bpm* max();
+  void print();
 };
 
 struct Metadata {
@@ -35,36 +37,33 @@ struct Metadata {
   std::string artist;
   std::string credit;
   BpmList* bpms;
+  void print();
 };
 
-enum HitObjectType {
+enum SyncedStructType {
   HIT,
   HOLD,
   HOLD_TICK,
+  TIMING_LINE,
 };
 
-struct HitObject {
+struct SyncedStruct {
   Beat* beat;
-  HitObjectType t;
+  SyncedStructType t;
   std::vector<char> keys;
-  ~HitObject();
+  ~SyncedStruct();
   int lane();
   float lane_x();
   std::string color();
   std::string asset();
+  void print();
 };
-
-struct TimingLine {
-  Beat* beat;
-  std::string asset();
-};
-
-using SyncedStruct = std::variant<HitObject, TimingLine>;
 
 struct SyncedStructList {
   std::vector<SyncedStruct*> vec;
   SyncedStructList(std::string s);
   ~SyncedStructList();
+  void print();
 };
 
 struct Chart {
@@ -76,6 +75,7 @@ struct Chart {
   // void write_to_disk(std::string filename);
   void set_ratemod(float ratemod);
   void play();
+  void print();
 };
 
 enum ChartStatus {
@@ -90,5 +90,7 @@ struct ChartInfo {
   float start_time;
   ~ChartInfo();
 };
+
+std::vector<std::string> deserialize_kv(std::string raw);
 
 #endif

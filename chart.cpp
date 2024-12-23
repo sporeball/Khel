@@ -224,15 +224,16 @@ int SyncedStruct::lane_x() {
 }
 string SyncedStruct::color() {
   if (t == SyncedStructType::TIMING_LINE) {
-    double e = 1.0 / 2147483648.0;
+    // double e = 1.0 / 2147483648.0;
+    double e = 1.0 / 65536.0;
     double i;
     double f = modf(beat->value, &i);
     if (f == 0.0) return "red";
     else if (f == 0.5) return "blue";
     else if (f == 0.25 || f == 0.75) return "yellow";
     else if (f == 0.125 || f == 0.375 || f == 0.625 || f == 0.875) return "green";
-    else if (abs(f - 0.333333) < e || abs(f - 0.666666) < e) return "magenta";
-    else if (abs(f - 0.166666) < e || abs(f - 0.833333) < e) return "cyan";
+    else if (std::abs(f - 0.333333) < e || std::abs(f - 0.666666) < e) return "magenta";
+    else if (std::abs(f - 0.166666) < e || std::abs(f - 0.833333) < e) return "cyan";
     else return "white";
   } else {
     int rows = 0;

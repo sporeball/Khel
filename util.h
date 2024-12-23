@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+double current_time();
 std::string read_file(std::string filename);
 // std::string slurp(std::ifstream& in);
 std::vector<std::string> split(std::string s, std::string delimiter);

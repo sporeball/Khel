@@ -1,15 +1,18 @@
 #ifndef KHEL_OBJECT_H
 #define KHEL_OBJECT_H
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 struct Instance {
+  double x;
+  double y;
   SDL_Rect* rect;
-  Instance(int x, int y, int w, int h);
+  Instance(double x, double y, int w, int h);
   ~Instance();
-  void move(int x, int y, int w, int h);
+  void move(double new_x, double new_y);
   void draw_instance(SDL_Surface* surface, SDL_Surface* screenSurface);
   void destroy_instance();
 };
@@ -17,25 +20,33 @@ struct Instance {
 struct Object {
   SDL_Surface* surface;
   SDL_Texture* texture;
-  std::vector<Instance*> instances;
-  Object(const char* filename, SDL_Renderer* renderer);
+  std::unordered_map<int, Instance*> instances;
+  Object(std::string filename, SDL_Renderer* renderer);
   ~Object();
-  Instance* instantiate(int x, int y, int w, int h);
+  Instance* get_instance(int id);
+  void destroy(Instance* instance);
   void draw_all_instances(SDL_Surface* screenSurface);
 };
 
 struct Objects {
   std::unordered_map<std::string, Object*> objects;
+  int min_available_id;
+  Objects();
   ~Objects();
-  Object* create_object(const char *filename, SDL_Renderer* renderer);
+  Object* create_object(std::string filename, SDL_Renderer* renderer);
+  Object* get_object(int id);
+  int create_instance(std::string filename, double x, double y, int w, int h, SDL_Renderer* renderer);
+  Instance* get_instance(int id);
+  void destroy_instance(int id);
   void draw_all_objects(SDL_Surface* screenSurface);
 };
 
 struct Group {
-  std::vector<Instance*> instances;
+  std::vector<int> instances;
   ~Group();
-  void insert(Instance* instance);
-  void remove(Instance* instance);
+  void insert(int id);
+  void remove(int id);
+  int size();
 };
 
 struct Groups {
@@ -43,9 +54,9 @@ struct Groups {
   ~Groups();
   Group* get_group(std::string name);
   void create_group(std::string name);
-  void insert_into_group(std::string name, Instance* ptr);
-  void remove_from_group(std::string name, Instance* ptr);
-  void remove_from_all_groups(Instance* ptr);
+  void insert_into_group(std::string name, int id);
+  void remove_from_group(std::string name, int id);
+  void remove_from_all_groups(int id);
 };
 
 #endif

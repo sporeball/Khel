@@ -1,3 +1,4 @@
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -6,6 +7,12 @@
 #include <vector>
 
 using namespace std;
+
+double current_time() {
+  auto now = chrono::system_clock::now();
+  double t = now.time_since_epoch().count();
+  return t;
+}
 
 string read_file(string filename) {
   filesystem::path path(filename);

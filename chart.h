@@ -4,20 +4,29 @@
 #include <string>
 #include <variant>
 #include <vector>
+#include <SDL.h>
 #include <SDL_mixer.h>
+#include "object.h"
 
-struct BpmList;
+struct BpmList; // forward declaration
+
+struct AutoVelocity {
+  double value;
+  double at_exact_time(double exact_time, BpmList* bpms);
+  double over_time(double time, BpmList* bpms);
+};
+
 struct Beat {
-  float value;
-  float to_exact_time(BpmList* bpms);
+  double value;
+  double to_exact_time(BpmList* bpms);
   void print();
 };
 
 struct Bpm {
-  float value;
+  double value;
   Beat* start_beat;
   Bpm(std::string s);
-  float length(Bpm* next_bpm);
+  double length(Bpm* next_bpm);
   void print();
 };
 
@@ -25,7 +34,7 @@ struct BpmList {
   std::vector<Bpm*> vec;
   BpmList(std::string s);
   ~BpmList();
-  Bpm* at_exact_time(float exact_time);
+  Bpm* at_exact_time(double exact_time);
   Bpm* max();
   void print();
 };
@@ -53,7 +62,7 @@ struct SyncedStruct {
   std::vector<char> keys;
   ~SyncedStruct();
   int lane();
-  float lane_x();
+  int lane_x();
   std::string color();
   std::string asset();
   void print();
@@ -73,7 +82,7 @@ struct Chart {
   Chart(std::string filename);
   ~Chart();
   // void write_to_disk(std::string filename);
-  void set_ratemod(float ratemod);
+  void set_ratemod(double ratemod);
   void play();
   void print();
 };
@@ -84,11 +93,14 @@ enum ChartStatus {
   PLAYING,
 };
 
-struct ChartInfo {
+struct ChartWrapper {
   Chart* chart;
   ChartStatus chart_status;
-  float start_time;
-  ~ChartInfo();
+  Uint64 start_time;
+  ChartWrapper();
+  ~ChartWrapper();
+  void load_chart(std::string filename);
+  void play_chart(SDL_Renderer* renderer, Objects* objects, Groups* groups);
 };
 
 std::vector<std::string> deserialize_kv(std::string raw);

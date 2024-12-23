@@ -246,7 +246,7 @@ string SyncedStruct::color() {
     else if (rows == 4) return "blue";
     else if (rows == 5) return "magenta";
     else if (rows == 6) return "cyan";
-    else if (rows == 7) return "white";
+    else return "white";
   }
 }
 string SyncedStruct::asset() {
@@ -255,7 +255,7 @@ string SyncedStruct::asset() {
     return "assets/circle_" + color + ".png";
   } else if (t == SyncedStructType::HOLD_TICK) {
     return "assets/hold_tick_" + color + ".png";
-  } else if (t == SyncedStructType::TIMING_LINE) {
+  } else { // timing line
     return "assets/line_" + color + ".png";
   }
 }

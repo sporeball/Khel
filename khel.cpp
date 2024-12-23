@@ -59,10 +59,10 @@ int main(int argc, char* argv[]) {
 
   Uint64 performance_frequency = SDL_GetPerformanceFrequency();
   printf("performance frequency: %llu\n", performance_frequency);
-  int un_60 = performance_frequency / 60;
+  // int un_60 = performance_frequency / 60;
   int un_240 = performance_frequency / 240;
   int un_1k = performance_frequency / 1000;
-  Uint64 last_tick_60 = performance_counter_value_at_game_start;
+  // Uint64 last_tick_60 = performance_counter_value_at_game_start;
   Uint64 last_tick_240 = performance_counter_value_at_game_start;
   Uint64 last_tick_1k = performance_counter_value_at_game_start;
 
@@ -119,10 +119,10 @@ int main(int argc, char* argv[]) {
       }
       last_tick_1k = now;
     }
-    // 60 tps
+    // 240 tps
     if (now - last_tick_240 >= un_240) {
       if (chart_wrapper->chart_status == ChartStatus::PLAYING) {
-        Group* hits_and_holds = groups->get_group("hits_and_holds");
+        // Group* hits_and_holds = groups->get_group("hits_and_holds");
         Group* pure_calculation = groups->get_group("pure_calculation");
         double one_minute = 60.0;
         Bpm* bpm_at_zero = chart_wrapper->chart->metadata->bpms->at_exact_time(0.0);

@@ -60,8 +60,10 @@ int main(int argc, char* argv[]) {
   Uint64 performance_frequency = SDL_GetPerformanceFrequency();
   printf("performance frequency: %llu\n", performance_frequency);
   int un_60 = performance_frequency / 60;
+  int un_240 = performance_frequency / 240;
   int un_1k = performance_frequency / 1000;
   Uint64 last_tick_60 = performance_counter_value_at_game_start;
+  Uint64 last_tick_240 = performance_counter_value_at_game_start;
   Uint64 last_tick_1k = performance_counter_value_at_game_start;
 
   AutoVelocity* av = new AutoVelocity;
@@ -77,7 +79,7 @@ int main(int argc, char* argv[]) {
   objects->create_instance("assets/line_white.png", 0.0, 300.0, 100, 1, renderer);
 
   ChartWrapper* chart_wrapper = new ChartWrapper;
-  chart_wrapper->load_chart("charts/Nest.khel");
+  chart_wrapper->load_chart("charts/++.khel");
   chart_wrapper->chart->print();
   printf("\n");
 
@@ -105,7 +107,7 @@ int main(int argc, char* argv[]) {
         double exact_time_seconds = now_seconds - start_time_seconds - (one_beat_at_zero * 8.0);
         if (exact_time_seconds > 0.0 && Mix_Playing(channel) == 0) {
           // play audio
-          chart_wrapper->chart->audio = Mix_LoadWAV("assets/Cardboard Box - Nest.wav");
+          chart_wrapper->chart->audio = Mix_LoadWAV("assets/Cardboard Box - ++.wav");
           if (chart_wrapper->chart->audio == NULL) {
             printf("Could not load .wav file!: %s\n", Mix_GetError());
           }
@@ -118,7 +120,7 @@ int main(int argc, char* argv[]) {
       last_tick_1k = now;
     }
     // 60 tps
-    if (now - last_tick_60 >= un_60) {
+    if (now - last_tick_240 >= un_240) {
       if (chart_wrapper->chart_status == ChartStatus::PLAYING) {
         Group* hits_and_holds = groups->get_group("hits_and_holds");
         Group* pure_calculation = groups->get_group("pure_calculation");
@@ -131,6 +133,7 @@ int main(int argc, char* argv[]) {
           // all hit objects and all timing lines are subject to pure calculation
           double y = 0.0;
           Beat* beat = chart_wrapper->chart->synced_structs->vec[i]->beat;
+          SyncedStructType t = chart_wrapper->chart->synced_structs->vec[i]->t;
           // we are essentially getting the synced object's position at exact time zero...
           double exact_time_from_beat = beat->to_exact_time(chart_wrapper->chart->metadata->bpms);
           double position_at_exact_time_zero = av->over_time(exact_time_from_beat, chart_wrapper->chart->metadata->bpms);
@@ -152,9 +155,8 @@ int main(int argc, char* argv[]) {
             erase(pure_calculation->instances, id);
           }
         }
-        // printf("pure_calculation: %d\n", pure_calculation->size());
       }
-      last_tick_60 = now;
+      last_tick_240 = now;
     }
     SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0x00, 0x00, 0x00));
     objects->draw_all_objects(screenSurface);

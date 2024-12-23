@@ -143,6 +143,9 @@ int main(int argc, char* argv[]) {
           y += distance;
           y -= 300.0; // half the screen
           y *= -1.0; // coordinates are flipped
+          if (t == SyncedStructType::TIMING_LINE) {
+            y += 16.0;
+          }
           int id = pure_calculation->instances[i];
           Instance* ptr = objects->get_instance(id);
           ptr->move(ptr->x, y);

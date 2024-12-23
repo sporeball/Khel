@@ -14,6 +14,8 @@ target/
 
 # built game
 khel
+# debug symbols
+khel.dSYM
 
 # files currently used in testing, but which may present licensing issues if included in the repository
 Cardboard Box - Nest.wav

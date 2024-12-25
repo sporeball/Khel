@@ -4,10 +4,12 @@
 #include <SDL.h>
 #include <SDL_image.h>
 #include <SDL_mixer.h>
+#include <SDL_ttf.h>
 #include <stdio.h>
 #include <iostream>
 #include "chart.h"
 #include "object.h"
+#include "ui.h"
 #include "util.h"
 
 using namespace std;
@@ -52,6 +54,13 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
+  if (TTF_Init() != 0) {
+    printf("Could not initialize SDL_ttf!: %s\n", TTF_GetError());
+    return 1;
+  }
+  TTF_Font* noto = TTF_OpenFont("assets/NotoSans-Regular.ttf", 18);
+  SDL_Color white = {255, 255, 255};
+
   screenSurface = SDL_GetWindowSurface(window);
 
   Uint64 performance_counter_value_at_game_start = SDL_GetPerformanceCounter();
@@ -59,10 +68,10 @@ int main(int argc, char* argv[]) {
 
   Uint64 performance_frequency = SDL_GetPerformanceFrequency();
   printf("performance frequency: %llu\n", performance_frequency);
-  // int un_60 = performance_frequency / 60;
+  int un_30 = performance_frequency / 30;
   int un_240 = performance_frequency / 240;
   int un_1k = performance_frequency / 1000;
-  // Uint64 last_tick_60 = performance_counter_value_at_game_start;
+  Uint64 last_tick_30 = performance_counter_value_at_game_start;
   Uint64 last_tick_240 = performance_counter_value_at_game_start;
   Uint64 last_tick_1k = performance_counter_value_at_game_start;
 
@@ -78,10 +87,14 @@ int main(int argc, char* argv[]) {
   Objects* objects = new Objects;
   objects->create_instance("assets/line_white.png", 0.0, 300.0, 100, 1, renderer);
 
+  Ui* ui = new Ui;
+  Text* bpm_text = ui->get_text_instance(ui->add_text("...", noto, white, renderer));
+  bpm_text->set_position(bpm_text->x, 50);
+
   ChartWrapper* chart_wrapper = new ChartWrapper;
   chart_wrapper->load_chart("charts/++.khel");
-  chart_wrapper->chart->print();
-  printf("\n");
+  // chart_wrapper->chart->print();
+  // printf("\n");
 
   chart_wrapper->play_chart(renderer, objects, groups);
   now = SDL_GetPerformanceCounter() - performance_counter_value_at_game_start;
@@ -161,9 +174,24 @@ int main(int argc, char* argv[]) {
       }
       last_tick_240 = now;
     }
+    // 30 tps
+    if (now - last_tick_30 >= un_30) {
+      double one_minute = 60.0;
+      Bpm* bpm_at_zero = chart_wrapper->chart->metadata->bpms->at_exact_time(0.0);
+      double one_beat_at_zero = one_minute / bpm_at_zero->value;
+      double start_time_seconds = (double) chart_wrapper->start_time / (double) performance_frequency;
+      double exact_time_seconds = now_seconds - start_time_seconds - (one_beat_at_zero * 8.0);
+      Bpm* bpm = chart_wrapper->chart->metadata->bpms->at_exact_time(exact_time_seconds);
+      double bpm_value = bpm->value;
+      bpm_text->set_text(to_string(bpm_value), renderer);
+      bpm_text->center_x();
+      last_tick_30 = now;
+    }
     SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0x00, 0x00, 0x00));
     objects->draw_all_objects(screenSurface);
+    ui->draw_all_items(renderer);
     SDL_UpdateWindowSurface(window);
+    SDL_RenderPresent(renderer);
   }
 
   SDL_FreeSurface(screenSurface);

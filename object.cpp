@@ -27,8 +27,10 @@ void Instance::move(double new_x, double new_y) {
   // printf("moved instance to (%f, %f) [rect: (%d, %d)]\n", x, y, rect->x, rect->y);
 }
 // Draw this instance.
-void Instance::draw_instance(SDL_Surface* surface, SDL_Surface* screenSurface) {
-  SDL_BlitSurface(surface, NULL, screenSurface, rect);
+// void Instance::draw_instance(SDL_Surface* surface, SDL_Surface* screenSurface) {
+void Instance::draw_instance(SDL_Renderer* renderer, SDL_Texture* texture) {
+  // SDL_BlitSurface(surface, NULL, screenSurface, rect);
+  SDL_RenderCopy(renderer, texture, NULL, rect);
 }
 // Destroy this instance.
 void Instance::destroy_instance() {
@@ -50,9 +52,9 @@ Instance* Object::get_instance(int id) {
   return instances[id];
 }
 // Draw all instances of this object.
-void Object::draw_all_instances(SDL_Surface* screenSurface) {
+void Object::draw_all_instances(SDL_Renderer* renderer) {
   for (auto& it : instances) {
-    it.second->draw_instance(surface, screenSurface);
+    it.second->draw_instance(renderer, texture);
   }
 }
 
@@ -119,9 +121,9 @@ void Objects::destroy_instance(int id) {
   }
 }
 // Draw all instances of every type of object.
-void Objects::draw_all_objects(SDL_Surface* screenSurface) {
+void Objects::draw_all_objects(SDL_Renderer* renderer) {
   for (auto object : objects) {
-    object.second->draw_all_instances(screenSurface);
+    object.second->draw_all_instances(renderer);
   }
 }
 

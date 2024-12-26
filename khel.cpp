@@ -26,15 +26,21 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  window = SDL_CreateWindow("Khel", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_SHOWN);
+  window = SDL_CreateWindow("Khel", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI);
   if (window == NULL) {
     printf("Could not create window!: %s\n", SDL_GetError());
     return 1;
   }
 
+  // renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+  // if (renderer == NULL) {
+  //   printf("Could not create accelerated renderer!: %s\n", SDL_GetError());
+  //   printf("Falling back to software renderer\n");
+  //   // return 1;
+  // }
   renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE | SDL_RENDERER_PRESENTVSYNC);
   if (renderer == NULL) {
-    printf("Could not create renderer!: %s\n", SDL_GetError());
+    printf("Could not create software renderer!: %s\n", SDL_GetError());
     return 1;
   }
 
@@ -58,9 +64,9 @@ int main(int argc, char* argv[]) {
     printf("Could not initialize SDL_ttf!: %s\n", TTF_GetError());
     return 1;
   }
-  TTF_Font* noto = TTF_OpenFont("assets/NotoSans-Regular.ttf", 18);
-  TTF_Font* rainyhearts = TTF_OpenFont("assets/rainyhearts.ttf", 16);
-  SDL_Color white = {255, 255, 255};
+  // TTF_Font* noto = TTF_OpenFont("assets/NotoSans-Regular.ttf", 18);
+  // TTF_Font* rainyhearts = TTF_OpenFont("assets/rainyhearts.ttf", 16);
+  // SDL_Color white = {255, 255, 255};
 
   screenSurface = SDL_GetWindowSurface(window);
 
@@ -88,27 +94,49 @@ int main(int argc, char* argv[]) {
   Objects* objects = new Objects;
   objects->create_instance("assets/line_white.png", 0.0, 300.0, 100, 1, renderer);
 
-  Ui* ui = new Ui;
-  Text* bpm_text = ui->get_text_instance(ui->add_text("...", rainyhearts, white, renderer));
-  bpm_text->set_position(bpm_text->x, 50);
+  // Ui* ui = new Ui;
+  // Text* bpm_text = ui->get_text_instance(ui->add_text("...", rainyhearts, white, renderer));
+  // bpm_text->set_y_position(50);
+  init_imgui(window, renderer);
 
   ChartWrapper* chart_wrapper = new ChartWrapper;
-  chart_wrapper->load_chart("charts/++.khel");
   // chart_wrapper->chart->print();
   // printf("\n");
 
-  chart_wrapper->play_chart(renderer, objects, groups);
   now = SDL_GetPerformanceCounter() - performance_counter_value_at_game_start;
-  chart_wrapper->start_time = now;
+
+  string chart_path;
 
   SDL_Event e;
   int quit = 0;
   while (quit == 0) {
     while (SDL_PollEvent(&e)) {
+      ImGui_ImplSDL2_ProcessEvent(&e);
       if (e.type == SDL_QUIT) {
         quit = 1;
       }
     }
+    // start imgui frame
+    ImGui_ImplSDLRenderer2_NewFrame();
+    ImGui_ImplSDL2_NewFrame();
+    ImGui::NewFrame();
+    // ImGui::ShowDemoWindow();
+    {
+      ImGui::Begin("Khel", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+      ImGui::SetWindowPos(ImVec2(0.0, 0.0));
+      ImGui::SetWindowSize(ImVec2(800.0, 600.0));
+      // ImGui::Text("Khel");
+      ImGui::PushItemWidth(200.0);
+      ImGui::InputText("Chart", &chart_path);
+      ImGui::SameLine();
+      if (ImGui::Button("Play")) {
+        chart_wrapper->load_chart(chart_path);
+        chart_wrapper->play_chart(renderer, objects, groups);
+        chart_wrapper->start_time = now;
+      }
+      ImGui::End();
+    }
+    // updates
     now = SDL_GetPerformanceCounter() - performance_counter_value_at_game_start;
     double now_seconds = (double) now / performance_frequency;
     // 1000 tps
@@ -176,25 +204,34 @@ int main(int argc, char* argv[]) {
       last_tick_240 = now;
     }
     // 30 tps
-    if (now - last_tick_30 >= un_30) {
-      double one_minute = 60.0;
-      Bpm* bpm_at_zero = chart_wrapper->chart->metadata->bpms->at_exact_time(0.0);
-      double one_beat_at_zero = one_minute / bpm_at_zero->value;
-      double start_time_seconds = (double) chart_wrapper->start_time / (double) performance_frequency;
-      double exact_time_seconds = now_seconds - start_time_seconds - (one_beat_at_zero * 8.0);
-      Bpm* bpm = chart_wrapper->chart->metadata->bpms->at_exact_time(exact_time_seconds);
-      double bpm_value = bpm->value;
-      bpm_text->set_text(to_string(bpm_value), renderer);
-      bpm_text->center_x();
-      last_tick_30 = now;
-    }
-    SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0x00, 0x00, 0x00));
-    objects->draw_all_objects(screenSurface);
-    ui->draw_all_items(screenSurface);
-    SDL_UpdateWindowSurface(window);
-    // SDL_RenderPresent(renderer);
+    // if (now - last_tick_30 >= un_30) {
+    //   double one_minute = 60.0;
+    //   Bpm* bpm_at_zero = chart_wrapper->chart->metadata->bpms->at_exact_time(0.0);
+    //   double one_beat_at_zero = one_minute / bpm_at_zero->value;
+    //   double start_time_seconds = (double) chart_wrapper->start_time / (double) performance_frequency;
+    //   double exact_time_seconds = now_seconds - start_time_seconds - (one_beat_at_zero * 8.0);
+    //   Bpm* bpm = chart_wrapper->chart->metadata->bpms->at_exact_time(exact_time_seconds);
+    //   double bpm_value = bpm->value;
+    //   bpm_text->set_text(to_string(bpm_value), renderer);
+    //   bpm_text->center_x();
+    //   last_tick_30 = now;
+    // }
+    // SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0x00, 0x00, 0x00));
+    ImGui::Render();
+    ImGuiIO& io = ImGui::GetIO();
+    SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
+    SDL_SetRenderDrawColor(renderer, (Uint8) 0, (Uint8) 0, (Uint8) 0, (Uint8) 255);
+    SDL_RenderClear(renderer);
+    ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
+    objects->draw_all_objects(renderer);
+    SDL_RenderPresent(renderer);
+    // ui->draw_all_items(screenSurface);
+    // SDL_UpdateWindowSurface(window);
   }
 
+  ImGui_ImplSDLRenderer2_Shutdown();
+  ImGui_ImplSDL2_Shutdown();
+  ImGui::DestroyContext();
   SDL_FreeSurface(screenSurface);
   SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);

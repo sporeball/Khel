@@ -13,7 +13,7 @@ struct Instance {
   Instance(double x, double y, int w, int h);
   ~Instance();
   void move(double new_x, double new_y);
-  void draw_instance(SDL_Surface* surface, SDL_Surface* screenSurface);
+  void draw_instance(SDL_Renderer* renderer, SDL_Texture* texture);
   void destroy_instance();
 };
 
@@ -25,7 +25,7 @@ struct Object {
   ~Object();
   Instance* get_instance(int id);
   void destroy(Instance* instance);
-  void draw_all_instances(SDL_Surface* screenSurface);
+  void draw_all_instances(SDL_Renderer* renderer);
 };
 
 struct Objects {
@@ -38,7 +38,7 @@ struct Objects {
   int create_instance(std::string filename, double x, double y, int w, int h, SDL_Renderer* renderer);
   Instance* get_instance(int id);
   void destroy_instance(int id);
-  void draw_all_objects(SDL_Surface* screenSurface);
+  void draw_all_objects(SDL_Renderer* renderer);
 };
 
 struct Group {

@@ -148,6 +148,7 @@ int main(int argc, char* argv[]) {
         chart_wrapper->play_chart(renderer, objects, groups);
         chart_wrapper->start_time = now;
       }
+      ImGui::SliderInt("AV", &av->value, 100.0f, 500.0f);
       ImGui::End();
     }
     // updates

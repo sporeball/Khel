@@ -11,7 +11,7 @@
 struct BpmList; // forward declaration
 
 struct AutoVelocity {
-  double value;
+  int value;
   double at_exact_time(double exact_time, BpmList* bpms);
   double over_time(double time, BpmList* bpms);
 };

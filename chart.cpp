@@ -39,7 +39,7 @@ double AutoVelocity::at_exact_time(double exact_time, BpmList* bpms) {
   Bpm* bpm = bpms->at_exact_time(exact_time);
   Bpm* max = bpms->max();
   // printf("return_value: %f\n", return_value);
-  return value * (bpm->value / max->value);
+  return (double) value * (bpm->value / max->value);
 }
 double AutoVelocity::over_time(double time, BpmList* bpms) {
   double time_elapsed = 0.0;

@@ -149,7 +149,16 @@ int main(int argc, char* argv[]) {
         double exact_time_seconds = now_seconds - start_time_seconds - (one_beat_at_zero * 8.0);
         if (exact_time_seconds > 0.0 && Mix_Playing(channel) == 0) {
           // play audio
-          chart_wrapper->chart->audio = Mix_LoadWAV("assets/Cardboard Box - ++.wav");
+          string artist = chart_wrapper->chart->metadata->artist;
+          string title = chart_wrapper->chart->metadata->title;
+          string subtitle = chart_wrapper->chart->metadata->subtitle;
+          string audio_filename;
+          if (empty(subtitle)) {
+            audio_filename = "assets/" + artist + " - " + title + ".wav";
+          } else {
+            audio_filename = "assets/" + artist + " - " + title + " (" + subtitle + ").wav";
+          }
+          chart_wrapper->chart->audio = Mix_LoadWAV(audio_filename.c_str());
           if (chart_wrapper->chart->audio == NULL) {
             printf("Could not load .wav file!: %s\n", Mix_GetError());
           }

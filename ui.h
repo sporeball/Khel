@@ -23,7 +23,8 @@ struct Text {
   void set_position(int new_x, int new_y);
   void set_text(std::string new_text, SDL_Renderer* renderer);
   void center_x();
-  void draw(SDL_Renderer* renderer);
+  // void draw(SDL_Renderer* renderer);
+  void draw(SDL_Surface* screenSurface);
 };
 
 struct Ui {
@@ -31,7 +32,8 @@ struct Ui {
   int min_available_text_id;
   int add_text(std::string text, TTF_Font* font, SDL_Color color, SDL_Renderer* renderer);
   Text* get_text_instance(int id);
-  void draw_all_items(SDL_Renderer* renderer);
+  // void draw_all_items(SDL_Renderer* renderer);
+  void draw_all_items(SDL_Surface* screenSurface);
 };
 
 #endif

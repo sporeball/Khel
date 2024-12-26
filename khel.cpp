@@ -59,6 +59,7 @@ int main(int argc, char* argv[]) {
     return 1;
   }
   TTF_Font* noto = TTF_OpenFont("assets/NotoSans-Regular.ttf", 18);
+  TTF_Font* rainyhearts = TTF_OpenFont("assets/rainyhearts.ttf", 16);
   SDL_Color white = {255, 255, 255};
 
   screenSurface = SDL_GetWindowSurface(window);
@@ -88,7 +89,7 @@ int main(int argc, char* argv[]) {
   objects->create_instance("assets/line_white.png", 0.0, 300.0, 100, 1, renderer);
 
   Ui* ui = new Ui;
-  Text* bpm_text = ui->get_text_instance(ui->add_text("...", noto, white, renderer));
+  Text* bpm_text = ui->get_text_instance(ui->add_text("...", rainyhearts, white, renderer));
   bpm_text->set_position(bpm_text->x, 50);
 
   ChartWrapper* chart_wrapper = new ChartWrapper;
@@ -189,9 +190,9 @@ int main(int argc, char* argv[]) {
     }
     SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0x00, 0x00, 0x00));
     objects->draw_all_objects(screenSurface);
-    ui->draw_all_items(renderer);
+    ui->draw_all_items(screenSurface);
     SDL_UpdateWindowSurface(window);
-    SDL_RenderPresent(renderer);
+    // SDL_RenderPresent(renderer);
   }
 
   SDL_FreeSurface(screenSurface);

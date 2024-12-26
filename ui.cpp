@@ -42,8 +42,10 @@ void Text::center_x() {
   rect->x = 400 - (rect->w / 2);
 }
 // Draw this Text instance.
-void Text::draw(SDL_Renderer* renderer) {
-  SDL_RenderCopy(renderer, texture, NULL, rect);
+// void Text::draw(SDL_Renderer* renderer) {
+void Text::draw(SDL_Surface* screenSurface) {
+  // SDL_RenderCopy(renderer, texture, NULL, rect);
+  SDL_BlitSurface(surface, NULL, screenSurface, rect);
 }
 
 // Create a new Text instance.
@@ -64,8 +66,8 @@ Text* Ui::get_text_instance(int id) {
   return nullptr;
 }
 // Draw all UI items.
-void Ui::draw_all_items(SDL_Renderer* renderer) {
+void Ui::draw_all_items(SDL_Surface* screenSurface) {
   for (auto text : texts) {
-    text.second->draw(renderer);
+    text.second->draw(screenSurface);
   }
 }

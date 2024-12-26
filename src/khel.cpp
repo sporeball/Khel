@@ -114,6 +114,8 @@ int main(int argc, char* argv[]) {
         quit = 1;
       }
     }
+    now = SDL_GetPerformanceCounter() - performance_counter_value_at_game_start;
+    double now_seconds = (double) now / performance_frequency;
     // start imgui frame
     ImGui_ImplSDLRenderer2_NewFrame();
     ImGui_ImplSDL2_NewFrame();
@@ -132,11 +134,18 @@ int main(int argc, char* argv[]) {
         chart_wrapper->start_time = now;
       }
       ImGui::SliderInt("AV", &av->value, 100.0f, 500.0f);
+      if (chart_wrapper->chart_status == ChartStatus::PLAYING) {
+        double one_minute = 60.0;
+        Bpm* bpm_at_zero = chart_wrapper->chart->metadata->bpms->at_exact_time(0.0);
+        double one_beat_at_zero = one_minute / bpm_at_zero->value;
+        double start_time_seconds = (double) chart_wrapper->start_time / (double) performance_frequency;
+        double exact_time_seconds = now_seconds - start_time_seconds - (one_beat_at_zero * 8.0);
+        Bpm* bpm_now = chart_wrapper->chart->metadata->bpms->at_exact_time(exact_time_seconds);
+        ImGui::Text("%f", bpm_now->value);
+      }
       ImGui::End();
     }
     // updates
-    now = SDL_GetPerformanceCounter() - performance_counter_value_at_game_start;
-    double now_seconds = (double) now / performance_frequency;
     // 1000 tps
     if (now - last_tick_1k >= un_1k) {
       if (chart_wrapper->chart_status == ChartStatus::PLAYING) {

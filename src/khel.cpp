@@ -120,7 +120,7 @@ int main(int argc, char* argv[]) {
     ImGui::NewFrame();
     // ImGui::ShowDemoWindow();
     {
-      ImGui::Begin("Khel", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+      ImGui::Begin("Khel", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
       ImGui::SetWindowPos(ImVec2(0.0, 0.0));
       ImGui::SetWindowSize(ImVec2(800.0, 600.0));
       ImGui::PushItemWidth(200.0);

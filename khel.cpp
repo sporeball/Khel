@@ -112,6 +112,20 @@ int main(int argc, char* argv[]) {
   while (quit == 0) {
     while (SDL_PollEvent(&e)) {
       ImGui_ImplSDL2_ProcessEvent(&e);
+      switch (e.type) {
+        case SDL_QUIT:
+          quit = 1;
+          break;
+        case SDL_KEYDOWN:
+          SDL_KeyboardEvent* key = &e.key;
+          switch (key->keysym.scancode) {
+            case SDL_SCANCODE_1:
+              chart_wrapper->chart->print();
+              printf("\n");
+              break;
+          }
+          break;
+      }
       if (e.type == SDL_QUIT) {
         quit = 1;
       }

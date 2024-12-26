@@ -311,7 +311,6 @@ SyncedStructList::SyncedStructList(string s) {
     vector<string> hits_and_holds = split(s_hit_objects, "+");
     // if hits_and_holds.size() > 2 {}
     string s_hits = hits_and_holds[0];
-    string s_holds_and_info = hits_and_holds[1];
     // split the hits on dash, yielding a vector<string>
     vector<string> hits = split(s_hits, "-");
     for (auto hit : hits) {
@@ -328,53 +327,56 @@ SyncedStructList::SyncedStructList(string s) {
       ptr_hit_object->keys = keys;
       vec.push_back(ptr_hit_object);
     }
-    // split the holds on colon, yielding the holds and their required information
-    vector<string> holds_and_info = split(s_holds_and_info, ":");
-    // if holds_and_info.size() > 2 {}
-    string s_holds = holds_and_info[0];
-    string s_info = holds_and_info[1];
-    // split the holds on dash, yielding a vector<string>
-    vector<string> holds = split(s_holds, "-");
-    // split the hold information on equals, separating the length from the tick count
-    vector<string> length_and_tick_count = split(s_info, "=");
-    // if length_and_tick_count.size() > 2 {}
-    string s_length = length_and_tick_count[0];
-    string s_tick_count = length_and_tick_count[1];
-    double d_length;
-    stringstream ss2(s_length);
-    ss2 >> d_length;
-    int i_tick_count;
-    stringstream ss3(s_tick_count);
-    ss3 >> i_tick_count;
-    for (auto hold : holds) {
-      if (empty(hold)) {
-        continue;
-      }
-      // if hit chars are all unique {}
-      // if hit chars columns are all equal {}
-      vector<char> keys(hold.begin(), hold.end());
-      SyncedStruct* ptr_hit_object = new SyncedStruct;
-      ptr_hit_object->beat = ptr_beat;
-      ptr_hit_object->t = SyncedStructType::HOLD;
-      ptr_hit_object->keys = keys;
-      vec.push_back(ptr_hit_object);
-    }
-    // hold ticks
-    for (auto hold : holds) {
-      int i = 1;
-      double delta = d_length / (double) i_tick_count;
-      double tick_beat_value = ptr_beat->value + delta;
-      while (i < i_tick_count) {
-        Beat* ptr_beat = new Beat;
-        ptr_beat->value = tick_beat_value;
+    if (hits_and_holds.size() == 2) {
+      string s_holds_and_info = hits_and_holds[1];
+      // split the holds on colon, yielding the holds and their required information
+      vector<string> holds_and_info = split(s_holds_and_info, ":");
+      // if holds_and_info.size() > 2 {}
+      string s_holds = holds_and_info[0];
+      string s_info = holds_and_info[1];
+      // split the holds on dash, yielding a vector<string>
+      vector<string> holds = split(s_holds, "-");
+      // split the hold information on equals, separating the length from the tick count
+      vector<string> length_and_tick_count = split(s_info, "=");
+      // if length_and_tick_count.size() > 2 {}
+      string s_length = length_and_tick_count[0];
+      string s_tick_count = length_and_tick_count[1];
+      double d_length;
+      stringstream ss2(s_length);
+      ss2 >> d_length;
+      int i_tick_count;
+      stringstream ss3(s_tick_count);
+      ss3 >> i_tick_count;
+      for (auto hold : holds) {
+        if (empty(hold)) {
+          continue;
+        }
+        // if hit chars are all unique {}
+        // if hit chars columns are all equal {}
         vector<char> keys(hold.begin(), hold.end());
         SyncedStruct* ptr_hit_object = new SyncedStruct;
         ptr_hit_object->beat = ptr_beat;
-        ptr_hit_object->t = SyncedStructType::HOLD_TICK;
+        ptr_hit_object->t = SyncedStructType::HOLD;
         ptr_hit_object->keys = keys;
         vec.push_back(ptr_hit_object);
-        i += 1;
-        tick_beat_value += delta;
+      }
+      // hold ticks
+      for (auto hold : holds) {
+        int i = 1;
+        double delta = d_length / (double) i_tick_count;
+        double tick_beat_value = ptr_beat->value + delta;
+        while (i < i_tick_count) {
+          Beat* ptr_beat = new Beat;
+          ptr_beat->value = tick_beat_value;
+          vector<char> keys(hold.begin(), hold.end());
+          SyncedStruct* ptr_hit_object = new SyncedStruct;
+          ptr_hit_object->beat = ptr_beat;
+          ptr_hit_object->t = SyncedStructType::HOLD_TICK;
+          ptr_hit_object->keys = keys;
+          vec.push_back(ptr_hit_object);
+          i += 1;
+          tick_beat_value += delta;
+        }
       }
     }
   }
@@ -403,6 +405,7 @@ Chart::Chart(string filename) {
   string contents = read_file(filename);
   vector<string> lines = split(contents, "\n");
   for (auto line : lines) {
+    if (empty(line)) continue;
     vector<string> key_and_value = deserialize_kv(line);
     string key = key_and_value[0];
     string value = key_and_value[1];
@@ -482,6 +485,7 @@ void ChartWrapper::play_chart(SDL_Renderer* renderer, Objects* objects, Groups* 
 }
 
 vector<string> deserialize_kv(string raw) {
+  // if (empty(raw)) {}
   // if (!raw.ends_with("")) {}
   vector<string> vec;
   vector<string> key_and_value = split(raw, "=");

@@ -4,7 +4,6 @@
 #include <SDL.h>
 #include <SDL_image.h>
 #include <SDL_mixer.h>
-#include <SDL_ttf.h>
 #include <stdio.h>
 #include <iostream>
 #include "chart.h"
@@ -60,14 +59,6 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  if (TTF_Init() != 0) {
-    printf("Could not initialize SDL_ttf!: %s\n", TTF_GetError());
-    return 1;
-  }
-  // TTF_Font* noto = TTF_OpenFont("assets/NotoSans-Regular.ttf", 18);
-  // TTF_Font* rainyhearts = TTF_OpenFont("assets/rainyhearts.ttf", 16);
-  // SDL_Color white = {255, 255, 255};
-
   screenSurface = SDL_GetWindowSurface(window);
 
   Uint64 performance_counter_value_at_game_start = SDL_GetPerformanceCounter();
@@ -83,7 +74,7 @@ int main(int argc, char* argv[]) {
   Uint64 last_tick_1k = performance_counter_value_at_game_start;
 
   AutoVelocity* av = new AutoVelocity;
-  av->value = 300.0;
+  av->value = 300;
 
   Groups* groups = new Groups;
   groups->create_group("pure_calculation");
@@ -94,16 +85,9 @@ int main(int argc, char* argv[]) {
   Objects* objects = new Objects;
   objects->create_instance("assets/line_white.png", 0.0, 300.0, 100, 1, renderer);
 
-  // Ui* ui = new Ui;
-  // Text* bpm_text = ui->get_text_instance(ui->add_text("...", rainyhearts, white, renderer));
-  // bpm_text->set_y_position(50);
   init_imgui(window, renderer);
 
   ChartWrapper* chart_wrapper = new ChartWrapper;
-  // chart_wrapper->chart->print();
-  // printf("\n");
-
-  now = SDL_GetPerformanceCounter() - performance_counter_value_at_game_start;
 
   string chart_path;
 
@@ -139,7 +123,6 @@ int main(int argc, char* argv[]) {
       ImGui::Begin("Khel", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
       ImGui::SetWindowPos(ImVec2(0.0, 0.0));
       ImGui::SetWindowSize(ImVec2(800.0, 600.0));
-      // ImGui::Text("Khel");
       ImGui::PushItemWidth(200.0);
       ImGui::InputText("Chart", &chart_path);
       ImGui::SameLine();
@@ -229,18 +212,8 @@ int main(int argc, char* argv[]) {
     }
     // 30 tps
     // if (now - last_tick_30 >= un_30) {
-    //   double one_minute = 60.0;
-    //   Bpm* bpm_at_zero = chart_wrapper->chart->metadata->bpms->at_exact_time(0.0);
-    //   double one_beat_at_zero = one_minute / bpm_at_zero->value;
-    //   double start_time_seconds = (double) chart_wrapper->start_time / (double) performance_frequency;
-    //   double exact_time_seconds = now_seconds - start_time_seconds - (one_beat_at_zero * 8.0);
-    //   Bpm* bpm = chart_wrapper->chart->metadata->bpms->at_exact_time(exact_time_seconds);
-    //   double bpm_value = bpm->value;
-    //   bpm_text->set_text(to_string(bpm_value), renderer);
-    //   bpm_text->center_x();
     //   last_tick_30 = now;
     // }
-    // SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0x00, 0x00, 0x00));
     ImGui::Render();
     ImGuiIO& io = ImGui::GetIO();
     SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
@@ -249,8 +222,6 @@ int main(int argc, char* argv[]) {
     ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
     objects->draw_all_objects(renderer);
     SDL_RenderPresent(renderer);
-    // ui->draw_all_items(screenSurface);
-    // SDL_UpdateWindowSurface(window);
   }
 
   ImGui_ImplSDLRenderer2_Shutdown();

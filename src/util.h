@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+std::vector<std::string> crawl(std::string path);
 std::string read_file(std::string filename);
 std::vector<std::string> split(std::string s, std::string delimiter);
 

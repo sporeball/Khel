@@ -11,5 +11,7 @@
 #include "imgui/imgui_stdlib.h"
 
 void init_imgui(SDL_Window* window, SDL_Renderer* renderer);
+void set_imgui_style();
+bool string_vector_getter(void* data, int n, const char** out_text);
 
 #endif

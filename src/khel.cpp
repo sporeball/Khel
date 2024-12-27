@@ -96,10 +96,12 @@ int main() {
   objects->create_instance("assets/line_white.png", 0.0, 300.0, 100, 1, renderer);
 
   init_imgui(window, renderer);
+  set_imgui_style();
 
   ChartWrapper* chart_wrapper = new ChartWrapper;
 
-  string chart_path;
+  vector<string> charts = crawl("charts");
+  int charts_listbox_index = 0;
 
   SDL_Event e;
   int quit = 0;
@@ -135,9 +137,15 @@ int main() {
       ImGui::SetWindowPos(ImVec2(0.0, 0.0));
       ImGui::SetWindowSize(ImVec2(800.0, 600.0));
       ImGui::PushItemWidth(200.0);
-      ImGui::InputText("Chart", &chart_path);
-      ImGui::SameLine();
+      ImGui::ListBox(
+        "##Chart",
+        &charts_listbox_index,
+        string_vector_getter,
+        charts.data(),
+        (int) charts.size()
+      );
       if (ImGui::Button("Play")) {
+        string chart_path = "charts/" + charts[charts_listbox_index] + ".khel";
         chart_wrapper->load_chart(chart_path);
         chart_wrapper->play_chart(renderer, objects, groups);
         chart_wrapper->start_time = now;

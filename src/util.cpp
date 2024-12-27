@@ -8,11 +8,14 @@
 
 using namespace std;
 
-// double current_time() {
-//   auto now = chrono::system_clock::now();
-//   double t = now.time_since_epoch().count();
-//   return t;
-// }
+// Get the names of all files in a directory as a `vector<string>`.
+vector<string> crawl(string path) {
+  vector<string> vec;
+  for (const auto& entry : filesystem::directory_iterator(path)) {
+    vec.push_back(entry.path().stem().c_str());
+  }
+  return vec;
+}
 
 // Read the contents of a file into a string.
 string read_file(string filename) {

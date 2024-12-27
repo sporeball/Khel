@@ -116,8 +116,8 @@ int main(int argc, char* argv[]) {
     ImGui_ImplSDLRenderer2_NewFrame();
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
-    // ImGui::ShowDemoWindow();
     {
+      auto window_width = 800.0;
       ImGui::Begin("Khel", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
       ImGui::SetWindowPos(ImVec2(0.0, 0.0));
       ImGui::SetWindowSize(ImVec2(800.0, 600.0));
@@ -130,6 +130,7 @@ int main(int argc, char* argv[]) {
         chart_wrapper->start_time = now;
       }
       ImGui::SliderInt("AV", &av->value, 100.0f, 500.0f);
+      ImGui::PopItemWidth();
       if (chart_wrapper->chart_status == ChartStatus::PLAYING) {
         double one_minute = 60.0;
         Bpm* bpm_at_zero = chart_wrapper->chart->metadata->bpms->at_exact_time(0.0);
@@ -137,7 +138,10 @@ int main(int argc, char* argv[]) {
         double start_time_seconds = (double) chart_wrapper->start_time / (double) performance_frequency;
         double exact_time_seconds = now_seconds - start_time_seconds - (one_beat_at_zero * 8.0);
         Bpm* bpm_now = chart_wrapper->chart->metadata->bpms->at_exact_time(exact_time_seconds);
-        ImGui::Text("%f", bpm_now->value);
+        string bpm_text = format("{:.2f}", bpm_now->value);
+        auto bpm_text_width = ImGui::CalcTextSize(bpm_text.c_str()).x;
+        ImGui::SetCursorPosX((window_width - bpm_text_width) * 0.5f);
+        ImGui::Text(bpm_text.c_str());
       }
       ImGui::End();
     }

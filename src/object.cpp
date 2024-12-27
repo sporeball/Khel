@@ -24,12 +24,9 @@ void Instance::move(double new_x, double new_y) {
   y = new_y;
   rect->x = (int) x;
   rect->y = (int) y;
-  // printf("moved instance to (%f, %f) [rect: (%d, %d)]\n", x, y, rect->x, rect->y);
 }
 // Draw this instance.
-// void Instance::draw_instance(SDL_Surface* surface, SDL_Surface* screenSurface) {
 void Instance::draw_instance(SDL_Renderer* renderer, SDL_Texture* texture) {
-  // SDL_BlitSurface(surface, NULL, screenSurface, rect);
   SDL_RenderCopy(renderer, texture, NULL, rect);
 }
 // Destroy this instance.
@@ -48,8 +45,15 @@ Object::~Object() {
   SDL_DestroyTexture(texture);
   instances.clear();
 }
+// Get a pointer to the instance with the given ID, if it is an instance of
+// this object.
 Instance* Object::get_instance(int id) {
-  return instances[id];
+  for (auto instance : instances) {
+    if (instance.first == id) {
+      return instance.second;
+    }
+  }
+  return nullptr;
 }
 // Draw all instances of this object.
 void Object::draw_all_instances(SDL_Renderer* renderer) {
@@ -67,24 +71,26 @@ Objects::~Objects() {
   objects.clear();
 }
 // Create a type of object.
+// Returns a pointer to the object.
 Object* Objects::create_object(string filename, SDL_Renderer* renderer) {
   Object* object = new Object(filename, renderer);
   pair<string, Object*> p(filename, object);
   objects.insert(p);
   return object;
 }
-// Get the type of object which holds an instance with the given ID.
+// Get a pointer to the object which holds an instance with the given ID.
 Object* Objects::get_object(int id) {
   for (auto object : objects) {
     for (auto instance : object.second->instances) {
       if (instance.first == id) {
-        return objects[object.first];
+        return object.second;
       }
     }
   }
   return nullptr;
 }
-// Create an object instance at the given coordinates.
+// Create an instance of an object at the given coordinates.
+// Creates the object if it does not exist.
 // Returns the ID of the object instance.
 int Objects::create_instance(string filename, double x, double y, int w, int h, SDL_Renderer* renderer) {
   unordered_map<string, Object*>::const_iterator got = objects.find(filename);
@@ -148,19 +154,34 @@ int Group::size() {
 Groups::~Groups() {
   groups.clear();
 }
-// Get the group with the given name.
-Group* Groups::get_group(string name) {
-  return groups[name];
-}
 // Create a new group.
-void Groups::create_group(string name) {
+// Returns a pointer to the group.
+Group* Groups::create_group(string name) {
   Group* group = new Group();
   pair<string, Group*> p(name, group);
   groups.insert(p);
+  return group;
+}
+// Get the group with the given name.
+Group* Groups::get_group(string name) {
+  for (auto group : groups) {
+    if (group.first == name) {
+      return group.second;
+    }
+  }
+  return nullptr;
 }
 // Add the given object instance to the group with the given name.
+// Creates the group if it does not exist.
 void Groups::insert_into_group(string name, int id) {
-  groups[name]->insert(id);
+  unordered_map<string, Group*>::const_iterator got = groups.find(name);
+  Group* group;
+  if (got == groups.end()) {
+    group = create_group(name);
+  } else {
+    group = got->second;
+  }
+  group->insert(id);
 }
 // Remove the given object instance from the group with the given name.
 void Groups::remove_from_group(string name, int id) {

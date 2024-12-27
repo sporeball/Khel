@@ -77,10 +77,6 @@ int main(int argc, char* argv[]) {
   av->value = 300;
 
   Groups* groups = new Groups;
-  groups->create_group("pure_calculation");
-  groups->create_group("hit_objects");
-  groups->create_group("hits_and_holds");
-  groups->create_group("timing_lines");
 
   Objects* objects = new Objects;
   objects->create_instance("assets/line_white.png", 0.0, 300.0, 100, 1, renderer);

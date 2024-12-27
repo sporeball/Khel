@@ -52,8 +52,8 @@ struct Group {
 struct Groups {
   std::unordered_map<std::string, Group*> groups;
   ~Groups();
+  Group* create_group(std::string name);
   Group* get_group(std::string name);
-  void create_group(std::string name);
   void insert_into_group(std::string name, int id);
   void remove_from_group(std::string name, int id);
   void remove_from_all_groups(int id);

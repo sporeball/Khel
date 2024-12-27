@@ -1,4 +1,4 @@
-// macos: `g++ khel.cpp -o khel $(pkg-config --cflags --libs sdl2 sdl2_image sdl2_mixer) -std=c++17 -Wall && ./khel`
+// macos: `g++ -g src/*.cpp src/imgui/*.cpp -o khel $(pkg-config --cflags --libs sdl2 sdl2_image sdl2_mixer) -std=c++20 -Wall && ./khel`
 // (install SDL2, SDL2_image, and SDL2_mixer using MacPorts)
 
 #include <SDL.h>
@@ -11,6 +11,10 @@
 #include "ui.h"
 #include "util.h"
 
+#define KHEL_VERSION_MAJOR 0
+#define KHEL_VERSION_MINOR 0
+#define KHEL_VERSION_PATCH 0
+
 using namespace std;
 
 int main(int argc, char* argv[]) {
@@ -20,44 +24,56 @@ int main(int argc, char* argv[]) {
   SDL_Renderer* renderer = NULL;
   SDL_Surface* screenSurface = NULL;
 
-  if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
-    printf("Could not initialize SDL!: %s\n", SDL_GetError());
+  printf("Khel (C++ ver.) v%d.%d.%d\n", KHEL_VERSION_MAJOR, KHEL_VERSION_MINOR, KHEL_VERSION_PATCH);
+
+  printf("initializing SDL...\n");
+  int sdl_flags = SDL_INIT_VIDEO | SDL_INIT_AUDIO;
+  if (SDL_Init(sdl_flags) != 0) {
+    printf("could not initialize SDL!: %s\n", SDL_GetError());
     return 1;
   }
 
-  window = SDL_CreateWindow("Khel", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI);
+  printf("creating window...\n");
+  int window_flags = SDL_WINDOW_ALLOW_HIGHDPI;
+  window = SDL_CreateWindow("Khel", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, window_flags);
   if (window == NULL) {
-    printf("Could not create window!: %s\n", SDL_GetError());
+    printf("could not create window!: %s\n", SDL_GetError());
     return 1;
   }
 
-  // renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-  // if (renderer == NULL) {
-  //   printf("Could not create accelerated renderer!: %s\n", SDL_GetError());
-  //   printf("Falling back to software renderer\n");
-  //   // return 1;
-  // }
-  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE | SDL_RENDERER_PRESENTVSYNC);
+  printf("creating renderer...\n");
+  int renderer_flags_accelerated = SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC;
+  int renderer_flags_software = SDL_RENDERER_SOFTWARE | SDL_RENDERER_PRESENTVSYNC;
+  renderer = SDL_CreateRenderer(window, -1, renderer_flags_accelerated);
   if (renderer == NULL) {
-    printf("Could not create software renderer!: %s\n", SDL_GetError());
+    printf("could not create accelerated renderer!: %s\n", SDL_GetError());
+    printf("falling back to software renderer\n");
+    renderer = SDL_CreateRenderer(window, -1, renderer_flags_software);
+    if (renderer == NULL) {
+      printf("could not create software renderer!: %s\n", SDL_GetError());
+      return 1;
+    }
+  }
+
+  printf("initializing SDL_image...\n");
+  int img_flags = IMG_INIT_PNG;
+  if (IMG_Init(img_flags) != img_flags) {
+    printf("could not initialize SDL_image!: %s\n", SDL_GetError());
     return 1;
   }
 
-  int imgFlags = IMG_INIT_PNG;
-  if (!(IMG_Init(imgFlags) & imgFlags)) {
-    printf("Could not initialize SDL_image!: %s\n", SDL_GetError());
-    return 1;
-  }
-
+  printf("initializing SDL_mixer...\n");
   int audio_rate = 44100;
   Uint16 audio_format = AUDIO_S16SYS;
   int audio_channels = 2;
   int audio_buffers = 4096;
   int channel;
   if (Mix_OpenAudio(audio_rate, audio_format, audio_channels, audio_buffers) != 0) {
-    printf("Could not initialize SDL_mixer!: %s\n", Mix_GetError());
+    printf("could not initialize SDL_mixer!: %s\n", Mix_GetError());
     return 1;
   }
+
+  printf("all done\n");
 
   screenSurface = SDL_GetWindowSurface(window);
 
@@ -103,11 +119,10 @@ int main(int argc, char* argv[]) {
               chart_wrapper->chart->print();
               printf("\n");
               break;
+            default:
+              break;
           }
           break;
-      }
-      if (e.type == SDL_QUIT) {
-        quit = 1;
       }
     }
     now = SDL_GetPerformanceCounter() - performance_counter_value_at_game_start;

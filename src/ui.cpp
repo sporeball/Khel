@@ -4,6 +4,7 @@
 
 using namespace std;
 
+// Initialize imgui.
 void init_imgui(SDL_Window* window, SDL_Renderer* renderer) {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();

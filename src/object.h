@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <vector>
 
+// An instance of an object.
+// Create an instance using `Objects::create_instance()`.
 struct Instance {
   double x;
   double y;
@@ -17,6 +19,8 @@ struct Instance {
   void destroy_instance();
 };
 
+// A type of object.
+// Create an object using `Objects::create_object()` or `Objects::create_instance()`.
 struct Object {
   SDL_Surface* surface;
   SDL_Texture* texture;
@@ -28,6 +32,7 @@ struct Object {
   void draw_all_instances(SDL_Renderer* renderer);
 };
 
+// A collection of all types of objects created by Khel.
 struct Objects {
   std::unordered_map<std::string, Object*> objects;
   int min_available_id;
@@ -41,6 +46,9 @@ struct Objects {
   void draw_all_objects(SDL_Renderer* renderer);
 };
 
+// A collection of object instances, able to be manipulated together.
+// Create a group using `Groups::create_group()` or `Groups::insert_into_group()`.
+// Use `for (int i = 0; i < group->size(); i++)` or `for (auto id : group->instances)` to iterate over the group.
 struct Group {
   std::vector<int> instances;
   ~Group();
@@ -49,6 +57,7 @@ struct Group {
   int size();
 };
 
+// A collection of all groups created by Khel.
 struct Groups {
   std::unordered_map<std::string, Group*> groups;
   ~Groups();

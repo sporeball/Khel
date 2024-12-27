@@ -10,18 +10,21 @@
 
 struct BpmList; // forward declaration
 
+// Used to determine scroll speed.
 struct AutoVelocity {
   int value;
   double at_exact_time(double exact_time, BpmList* bpms);
   double over_time(double time, BpmList* bpms);
 };
 
+// The beat that an object should be placed on.
 struct Beat {
   double value;
   double to_exact_time(BpmList* bpms);
   void print();
 };
 
+// A tempo value in beats per minute.
 struct Bpm {
   double value;
   Beat* start_beat;
@@ -30,6 +33,7 @@ struct Bpm {
   void print();
 };
 
+// A list of tempo values in beats per minute.
 struct BpmList {
   std::vector<Bpm*> vec;
   BpmList(std::string s);
@@ -39,6 +43,7 @@ struct BpmList {
   void print();
 };
 
+// The metadata associated with a chart.
 struct Metadata {
   int version;
   std::string title;
@@ -56,6 +61,7 @@ enum SyncedStructType {
   TIMING_LINE,
 };
 
+// Some kind of struct that's synced to a beat.
 struct SyncedStruct {
   Beat* beat;
   SyncedStructType t;
@@ -68,6 +74,7 @@ struct SyncedStruct {
   void print();
 };
 
+// A list of structs synced to a beat.
 struct SyncedStructList {
   std::vector<SyncedStruct*> vec;
   SyncedStructList(std::string s);
@@ -81,18 +88,19 @@ struct Chart {
   SyncedStructList* synced_structs;
   Chart(std::string filename);
   ~Chart();
-  // void write_to_disk(std::string filename);
   void set_ratemod(double ratemod);
   void play();
   void print();
 };
 
+// Status of the current chart.
 enum ChartStatus {
   NONE,
   PAUSED,
   PLAYING,
 };
 
+// A chart object and associated information.
 struct ChartWrapper {
   Chart* chart;
   ChartStatus chart_status;

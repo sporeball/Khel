@@ -1,4 +1,4 @@
-#include <chrono>
+// #include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -8,12 +8,13 @@
 
 using namespace std;
 
-double current_time() {
-  auto now = chrono::system_clock::now();
-  double t = now.time_since_epoch().count();
-  return t;
-}
+// double current_time() {
+//   auto now = chrono::system_clock::now();
+//   double t = now.time_since_epoch().count();
+//   return t;
+// }
 
+// Read the contents of a file into a string.
 string read_file(string filename) {
   filesystem::path path(filename);
   ifstream f(path, ios::in | ios::binary);
@@ -23,6 +24,7 @@ string read_file(string filename) {
   return result;
 }
 
+// Split a string on some delimiter.
 vector<string> split(string s, string delimiter) {
   vector<string> tokens;
   int pos = 0;

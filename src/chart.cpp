@@ -35,12 +35,15 @@ static const map<char, int> map_rows = {
   {'z', 4}, {'x', 4}, {'c', 4}, {'v', 4}, {'b', 4}, {'n', 4}, {'m', 4}, {',', 4}, {'.', 4}, {'/', 4},
 };
 
+// Return the auto velocity value that should be used at a given exact time.
+// Scales around `AutoVelocity::value`.
 double AutoVelocity::at_exact_time(double exact_time, BpmList* bpms) {
   Bpm* bpm = bpms->at_exact_time(exact_time);
   Bpm* max = bpms->max();
   // printf("return_value: %f\n", return_value);
   return (double) value * (bpm->value / max->value);
 }
+// Return the cumulative auto velocity over some amount of time in seconds, measured from exact time zero.
 double AutoVelocity::over_time(double time, BpmList* bpms) {
   double time_elapsed = 0.0;
   double time_remaining = time;
@@ -207,9 +210,12 @@ void Metadata::print() {
   printf(" }");
 }
 
+// Destructor method.
 SyncedStruct::~SyncedStruct() {
   keys.erase(keys.begin(), keys.end());
 }
+// Return the column that this SyncedStruct is in.
+// Returns -1 if this SyncedStruct is a timing line.
 int SyncedStruct::lane() {
   if (t == SyncedStructType::TIMING_LINE) return -1;
   map<char, int>::const_iterator pos = map_columns.find(keys[0]);
@@ -218,10 +224,12 @@ int SyncedStruct::lane() {
   }
   return pos->second;
 }
+// Return the x coordinate of the column that this SyncedStruct is in.
 int SyncedStruct::lane_x() {
   int lane = this->lane();
   return ((40 * lane) - 180) + 400;
 }
+// Return the color of this SyncedStruct.
 string SyncedStruct::color() {
   if (t == SyncedStructType::TIMING_LINE) {
     // double e = 1.0 / 2147483648.0;
@@ -250,6 +258,7 @@ string SyncedStruct::color() {
     else return "white";
   }
 }
+// Return the asset that should be used to draw this SyncedStruct.
 string SyncedStruct::asset() {
   string color = this->color();
   if (t == SyncedStructType::HIT || t == SyncedStructType::HOLD) {
@@ -286,6 +295,7 @@ void SyncedStruct::print() {
   printf(" }");
 }
 
+// Create a SyncedStructList from a string.
 SyncedStructList::SyncedStructList(string s) {
   // printf("creating SyncedStructList from string %s...\n", s.c_str());
   // split on comma, yielding all the hit objects in the chart grouped by beat
@@ -386,6 +396,7 @@ SyncedStructList::SyncedStructList(string s) {
   reverse(vec.begin(), vec.end());
   // printf("created SyncedStructList from string %s\n", s.c_str());
 }
+// Destructor method.
 SyncedStructList::~SyncedStructList() {
   for (SyncedStruct* ptr : vec) {
     delete ptr;
@@ -400,6 +411,7 @@ void SyncedStructList::print() {
   printf("}");
 }
 
+// Constructor method.
 Chart::Chart(string filename) {
   unordered_map<string, string> map;
   string contents = read_file(filename);
@@ -428,15 +440,15 @@ Chart::Chart(string filename) {
   metadata->bpms = new BpmList(s_bpms);
   synced_structs = new SyncedStructList(s_hit_objects);
 }
+// Destructor method.
 Chart::~Chart() {
   Mix_FreeChunk(audio);
   synced_structs->~SyncedStructList();
 }
+// Set this chart's ratemod value.
 void Chart::set_ratemod(double ratemod) {
   // TODO
 }
-// void Chart::play() {
-// }
 void Chart::print() {
   printf("Chart { ");
   printf("metadata: ");
@@ -447,15 +459,19 @@ void Chart::print() {
   printf(" }");
 }
 
+// Constructor method.
 ChartWrapper::ChartWrapper() {
   chart_status = ChartStatus::NONE;
 }
+// Destructor method.
 ChartWrapper::~ChartWrapper() {
   chart->~Chart();
 }
+// Load a chart into this ChartWrapper.
 void ChartWrapper::load_chart(string filename) {
   chart = new Chart(filename);
 }
+// Play the chart attached to this ChartWrapper.
 void ChartWrapper::play_chart(SDL_Renderer* renderer, Objects* objects, Groups* groups) {
   string title = chart->metadata->title;
   string subtitle = chart->metadata->subtitle;
@@ -484,6 +500,7 @@ void ChartWrapper::play_chart(SDL_Renderer* renderer, Objects* objects, Groups* 
   chart_status = ChartStatus::PLAYING;
 }
 
+// Deserialize a key-value pair from .khel format into a `vector<string>`.
 vector<string> deserialize_kv(string raw) {
   // if (empty(raw)) {}
   // if (!raw.ends_with("")) {}

@@ -18,7 +18,7 @@ Instance::Instance(double x, double y, int w, int h) {
 Instance::~Instance() {
   delete rect;
 }
-// Move this instance.
+// Move this instance to the given coordinates.
 void Instance::move(double new_x, double new_y) {
   x = new_x;
   y = new_y;
@@ -45,8 +45,7 @@ Object::~Object() {
   SDL_DestroyTexture(texture);
   instances.clear();
 }
-// Get a pointer to the instance with the given ID, if it is an instance of
-// this object.
+// Get a pointer to the instance with the given ID, if it is an instance of this object.
 Instance* Object::get_instance(int id) {
   for (auto instance : instances) {
     if (instance.first == id) {
@@ -70,8 +69,7 @@ Objects::Objects() {
 Objects::~Objects() {
   objects.clear();
 }
-// Create a type of object.
-// Returns a pointer to the object.
+// Create a type of object and return a pointer to it.
 Object* Objects::create_object(string filename, SDL_Renderer* renderer) {
   Object* object = new Object(filename, renderer);
   pair<string, Object*> p(filename, object);
@@ -89,9 +87,8 @@ Object* Objects::get_object(int id) {
   }
   return nullptr;
 }
-// Create an instance of an object at the given coordinates.
+// Create an object instance at the given coordinates and return its ID.
 // Creates the object if it does not exist.
-// Returns the ID of the object instance.
 int Objects::create_instance(string filename, double x, double y, int w, int h, SDL_Renderer* renderer) {
   unordered_map<string, Object*>::const_iterator got = objects.find(filename);
   Object* object;
@@ -126,7 +123,7 @@ void Objects::destroy_instance(int id) {
     }
   }
 }
-// Draw all instances of every type of object.
+// Draw all instances of every object.
 void Objects::draw_all_objects(SDL_Renderer* renderer) {
   for (auto object : objects) {
     object.second->draw_all_instances(renderer);
@@ -137,11 +134,11 @@ void Objects::draw_all_objects(SDL_Renderer* renderer) {
 Group::~Group() {
   instances.clear();
 }
-// Add the given instance to this group.
+// Add the object instance with the given ID to this group.
 void Group::insert(int id) {
   instances.push_back(id);
 }
-// Remove the given instance from this group.
+// Remove the object instance with the given ID from this group.
 void Group::remove(int id) {
   instances.erase(std::remove(instances.begin(), instances.end(), id), instances.end());
 }
@@ -154,15 +151,14 @@ int Group::size() {
 Groups::~Groups() {
   groups.clear();
 }
-// Create a new group.
-// Returns a pointer to the group.
+// Create a new group and return a pointer to it.
 Group* Groups::create_group(string name) {
   Group* group = new Group();
   pair<string, Group*> p(name, group);
   groups.insert(p);
   return group;
 }
-// Get the group with the given name.
+// Get a pointer to the group with the given name.
 Group* Groups::get_group(string name) {
   for (auto group : groups) {
     if (group.first == name) {
@@ -171,7 +167,7 @@ Group* Groups::get_group(string name) {
   }
   return nullptr;
 }
-// Add the given object instance to the group with the given name.
+// Add the object instance with the given ID to the group with the given name.
 // Creates the group if it does not exist.
 void Groups::insert_into_group(string name, int id) {
   unordered_map<string, Group*>::const_iterator got = groups.find(name);
@@ -183,11 +179,11 @@ void Groups::insert_into_group(string name, int id) {
   }
   group->insert(id);
 }
-// Remove the given object instance from the group with the given name.
+// Remove the object instance with the given ID from the group with the given name.
 void Groups::remove_from_group(string name, int id) {
   groups[name]->remove(id);
 }
-// Remove the given object instance from every group.
+// Remove the object instance with the given ID from every group.
 void Groups::remove_from_all_groups(int id) {
   for (auto group : groups) {
     group.second->remove(id);

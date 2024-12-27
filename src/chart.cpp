@@ -48,7 +48,7 @@ double AutoVelocity::over_time(double time, BpmList* bpms) {
   double time_elapsed = 0.0;
   double time_remaining = time;
   double cumulative = 0.0;
-  for (int i = 0; i < bpms->vec.size(); i++) {
+  for (unsigned long i = 0; i < bpms->vec.size(); i++) {
     double av = at_exact_time(time_elapsed, bpms);
     if (i == bpms->vec.size() - 1) {
       cumulative += av * time_remaining;
@@ -77,7 +77,7 @@ double Beat::to_exact_time(BpmList* bpms) {
   double one_minute = 60.0;
   // for (Bpm* ptr : vec) {
   // for (auto it = vec.begin(); it != vec.end(); ++it) {
-  for (int i = 0; i < vec.size(); i++) {
+  for (unsigned long i = 0; i < vec.size(); i++) {
     // printf("value: %f\n", vec[i]->value);
     double one_beat = one_minute / vec[i]->value;
     // printf("one_beat: %f\n", one_beat);
@@ -165,7 +165,7 @@ Bpm* BpmList::at_exact_time(double exact_time) {
   if (exact_time <= 0.0) {
     return vec[0];
   }
-  int i = 0;
+  unsigned long i = 0;
   double time = exact_time;
   while (1) {
     Bpm* next_bpm = (i + 1 < vec.size()) ? vec[i + 1] : NULL;
@@ -444,10 +444,6 @@ Chart::Chart(string filename) {
 Chart::~Chart() {
   Mix_FreeChunk(audio);
   synced_structs->~SyncedStructList();
-}
-// Set this chart's ratemod value.
-void Chart::set_ratemod(double ratemod) {
-  // TODO
 }
 void Chart::print() {
   printf("Chart { ");

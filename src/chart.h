@@ -88,7 +88,6 @@ struct Chart {
   SyncedStructList* synced_structs;
   Chart(std::string filename);
   ~Chart();
-  void set_ratemod(double ratemod);
   void play();
   void print();
 };

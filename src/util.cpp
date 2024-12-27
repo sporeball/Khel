@@ -27,7 +27,7 @@ string read_file(string filename) {
 // Split a string on some delimiter.
 vector<string> split(string s, string delimiter) {
   vector<string> tokens;
-  int pos = 0;
+  unsigned long pos = 0;
   string token;
   while ((pos = s.find(delimiter)) != string::npos) {
     token = s.substr(0, pos);

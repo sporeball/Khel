@@ -17,7 +17,7 @@
 
 using namespace std;
 
-int main(int argc, char* argv[]) {
+int main() {
   // setbuf(stdout, NULL);
 
   SDL_Window* window = NULL;
@@ -82,10 +82,8 @@ int main(int argc, char* argv[]) {
 
   Uint64 performance_frequency = SDL_GetPerformanceFrequency();
   printf("performance frequency: %llu\n", performance_frequency);
-  int un_30 = performance_frequency / 30;
-  int un_240 = performance_frequency / 240;
-  int un_1k = performance_frequency / 1000;
-  Uint64 last_tick_30 = performance_counter_value_at_game_start;
+  Uint64 un_240 = performance_frequency / 240;
+  Uint64 un_1k = performance_frequency / 1000;
   Uint64 last_tick_240 = performance_counter_value_at_game_start;
   Uint64 last_tick_1k = performance_counter_value_at_game_start;
 
@@ -156,7 +154,7 @@ int main(int argc, char* argv[]) {
         string bpm_text = format("{:.2f}", bpm_now->value);
         auto bpm_text_width = ImGui::CalcTextSize(bpm_text.c_str()).x;
         ImGui::SetCursorPosX((window_width - bpm_text_width) * 0.5f);
-        ImGui::Text(bpm_text.c_str());
+        ImGui::Text("%s", bpm_text.c_str());
       }
       ImGui::End();
     }
@@ -234,10 +232,6 @@ int main(int argc, char* argv[]) {
       }
       last_tick_240 = now;
     }
-    // 30 tps
-    // if (now - last_tick_30 >= un_30) {
-    //   last_tick_30 = now;
-    // }
     ImGui::Render();
     ImGuiIO& io = ImGui::GetIO();
     SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);

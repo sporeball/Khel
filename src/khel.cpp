@@ -138,32 +138,31 @@ int main() {
       ImGui::Begin("Khel", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
       ImGui::SetWindowPos(ImVec2(0.0, 0.0));
       ImGui::SetWindowSize(ImVec2(800.0, 600.0));
-      ImGui::PushItemWidth(200.0);
-      ImGui::ListBox(
-        "##Chart",
-        &charts_listbox_index,
-        string_vector_getter,
-        chart_names.data(),
-        (int) chart_names.size()
-      );
       if (chart_wrapper->chart_status == ChartStatus::PREVIEWING) {
+        // detect change to listbox
         if (charts[charts_listbox_index] != chart) {
           chart = charts[charts_listbox_index];
           Beat* preview = chart->metadata->preview;
           double preview_seconds = preview->to_exact_time(chart->metadata->bpms);
-          // chart->audio->play();
-          // chart->audio->seek(preview_seconds);
           chart->audio->fade_in(preview_seconds);
         }
+        ImGui::PushItemWidth(200.0);
+        ImGui::ListBox(
+          "##Chart",
+          &charts_listbox_index,
+          string_vector_getter,
+          chart_names.data(),
+          (int) chart_names.size()
+        );
+        if (ImGui::Button("Play")) {
+          chart->audio->stop();
+          chart_wrapper->load_chart(chart);
+          chart_wrapper->play_chart(renderer, objects, groups);
+          chart_wrapper->start_time = now;
+        }
+        ImGui::SliderInt("AV", &av->value, 100.0f, 500.0f);
+        ImGui::PopItemWidth();
       }
-      if (ImGui::Button("Play")) {
-        chart->audio->stop();
-        chart_wrapper->load_chart(chart);
-        chart_wrapper->play_chart(renderer, objects, groups);
-        chart_wrapper->start_time = now;
-      }
-      ImGui::SliderInt("AV", &av->value, 100.0f, 500.0f);
-      ImGui::PopItemWidth();
       if (chart_wrapper->chart_status == ChartStatus::PLAYING) {
         double one_minute = 60.0;
         Bpm* bpm_at_zero = chart_wrapper->chart->metadata->bpms->at_exact_time(0.0);
@@ -173,6 +172,7 @@ int main() {
         Bpm* bpm_now = chart_wrapper->chart->metadata->bpms->at_exact_time(exact_time_seconds);
         string bpm_text = format("{:.2f}", bpm_now->value);
         auto bpm_text_width = ImGui::CalcTextSize(bpm_text.c_str()).x;
+        ImGui::Dummy(ImVec2(0.0f, 20.0f));
         ImGui::SetCursorPosX((window_width - bpm_text_width) * 0.5f);
         ImGui::Text("%s", bpm_text.c_str());
       }

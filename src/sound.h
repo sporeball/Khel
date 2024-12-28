@@ -16,12 +16,15 @@ struct Sound {
 
 struct Music {
   Mix_Music* music;
+  int fading_out;
   Music(std::string s);
   ~Music();
   void play();
   void stop();
+  double position();
   void seek(double position);
   void fade_in(double position);
+  void fade_out();
 };
 
 #endif

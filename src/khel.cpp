@@ -143,12 +143,25 @@ int main() {
       if (chart_wrapper->chart_status == ChartStatus::PREVIEWING) {
         // detect change to chart
         if (charts[charts_listbox_index] != chart) {
+          if (chart != nullptr) {
+            chart->audio->fade_out();
+          }
           chart = charts[charts_listbox_index];
           difficulties = chart->difficulties;
           difficulties_listbox_index = 0;
-          Beat* preview = chart->metadata->preview;
-          double preview_seconds = preview->to_exact_time(chart->metadata->bpms);
+        }
+        // fade in
+        Beat* preview = chart->metadata->preview;
+        double preview_seconds = preview->to_exact_time(chart->metadata->bpms);
+        if (Mix_PlayingMusic() == 0) {
           chart->audio->fade_in(preview_seconds);
+        }
+        // fade out
+        Beat* preview_end = new Beat;
+        preview_end->value = preview->value + 32.0;
+        double preview_end_seconds = preview_end->to_exact_time(chart->metadata->bpms);
+        if (Mix_GetMusicPosition(chart->audio->music) >= preview_end_seconds - 0.5 && chart->audio->fading_out == 0) {
+          chart->audio->fade_out();
         }
         // detect change to difficulty
         if (difficulties[difficulties_listbox_index] != difficulty) {

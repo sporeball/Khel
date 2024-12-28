@@ -160,7 +160,7 @@ int main() {
           chart_wrapper->start_time = now;
           objects->create_instance("assets/line_white.png", 0.0, 120.0, 100, 1, renderer);
           for (int i = 0; i < 10; i++) {
-            objects->create_instance("assets/circle_white.png", ((40 * i) - 180) + 400, 104.0, 32, 32, renderer);
+            objects->create_instance("assets/circle_gray.png", ((40 * i) - 180) + 400, 104.0, 32, 32, renderer);
           }
         }
         ImGui::SliderInt("AV", &av->value, 100.0f, 500.0f);

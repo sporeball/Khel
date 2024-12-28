@@ -67,7 +67,6 @@ int main() {
   Uint16 audio_format = AUDIO_S16SYS;
   int audio_channels = 2;
   int audio_buffers = 4096;
-  int channel;
   if (Mix_OpenAudio(audio_rate, audio_format, audio_channels, audio_buffers) != 0) {
     printf("could not initialize SDL_mixer!: %s\n", Mix_GetError());
     return 1;
@@ -175,25 +174,8 @@ int main() {
         double one_beat_at_zero = one_minute / bpm_at_zero->value; // seconds
         double start_time_seconds = (double) chart_wrapper->start_time / (double) performance_frequency;
         double exact_time_seconds = now_seconds - start_time_seconds - (one_beat_at_zero * 8.0);
-        if (exact_time_seconds > 0.0 && Mix_Playing(channel) == 0) {
-          // play audio
-          string artist = chart_wrapper->chart->metadata->artist;
-          string title = chart_wrapper->chart->metadata->title;
-          string subtitle = chart_wrapper->chart->metadata->subtitle;
-          string audio_filename;
-          if (empty(subtitle)) {
-            audio_filename = "assets/" + artist + " - " + title + ".wav";
-          } else {
-            audio_filename = "assets/" + artist + " - " + title + " (" + subtitle + ").wav";
-          }
-          chart_wrapper->chart->audio = Mix_LoadWAV(audio_filename.c_str());
-          if (chart_wrapper->chart->audio == NULL) {
-            printf("Could not load .wav file!: %s\n", Mix_GetError());
-          }
-          channel = Mix_PlayChannel(-1, chart_wrapper->chart->audio, 0);
-          if (channel == -1) {
-            printf("Could not play .wav file!: %s\n", Mix_GetError());
-          }
+        if (exact_time_seconds > 0.0 && chart_wrapper->chart->audio->playing() == 0) {
+          chart_wrapper->chart->audio->play();
         }
       }
       last_tick_1k = now;

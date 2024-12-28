@@ -7,6 +7,7 @@
 #include <SDL.h>
 #include <SDL_mixer.h>
 #include "object.h"
+#include "sound.h"
 
 struct BpmList; // forward declaration
 
@@ -84,7 +85,7 @@ struct SyncedStructList {
 
 struct Chart {
   Metadata* metadata;
-  Mix_Chunk* audio;
+  Sound* audio;
   SyncedStructList* synced_structs;
   Chart(std::string filename);
   ~Chart();

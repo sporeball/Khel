@@ -12,6 +12,7 @@
 #include <SDL_mixer.h>
 #include "chart.h"
 #include "object.h"
+#include "sound.h"
 #include "util.h"
 
 using namespace std;
@@ -431,6 +432,7 @@ Chart::Chart(string filename) {
   string s_credit = map["credit"];
   string s_hit_objects = map["hit_objects"];
   string s_bpms = map["bpms"];
+  // create metadata
   metadata = new Metadata;
   metadata->version = 0;
   metadata->title = s_title;
@@ -439,10 +441,18 @@ Chart::Chart(string filename) {
   metadata->credit = s_credit;
   metadata->bpms = new BpmList(s_bpms);
   synced_structs = new SyncedStructList(s_hit_objects);
+  // load audio
+  string s_audio;
+  if (empty(s_subtitle)) {
+    s_audio = "assets/" + s_artist + " - " + s_title + ".wav";
+  } else {
+    s_audio = "assets/" + s_artist + " - " + s_title + " (" + s_subtitle + ").wav";
+  }
+  audio = new Sound(s_audio);
 }
 // Destructor method.
 Chart::~Chart() {
-  Mix_FreeChunk(audio);
+  audio->~Sound();
   synced_structs->~SyncedStructList();
 }
 void Chart::print() {

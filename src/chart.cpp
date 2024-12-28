@@ -507,6 +507,7 @@ void ChartWrapper::play_chart(SDL_Renderer* renderer, Objects* objects, Groups* 
       }
     }
   }
+  printf("hit objects: %d\n", groups->get_group("hit_objects")->size());
   // start_time = SDL_GetPerformanceCounter();
   chart_status = ChartStatus::PLAYING;
 }

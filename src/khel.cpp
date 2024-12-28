@@ -92,7 +92,6 @@ int main() {
   Groups* groups = new Groups;
 
   Objects* objects = new Objects;
-  objects->create_instance("assets/line_white.png", 0.0, 300.0, 100, 1, renderer);
 
   init_imgui(window, renderer);
   set_imgui_style();
@@ -159,6 +158,10 @@ int main() {
           chart_wrapper->load_chart(chart);
           chart_wrapper->play_chart(renderer, objects, groups);
           chart_wrapper->start_time = now;
+          objects->create_instance("assets/line_white.png", 0.0, 120.0, 100, 1, renderer);
+          for (int i = 0; i < 10; i++) {
+            objects->create_instance("assets/circle_white.png", ((40 * i) - 180) + 400, 104.0, 32, 32, renderer);
+          }
         }
         ImGui::SliderInt("AV", &av->value, 100.0f, 500.0f);
         ImGui::PopItemWidth();
@@ -215,7 +218,7 @@ int main() {
           // and translating it by the distance that it travels from zero to now
           double distance = av->over_time(exact_time_seconds, chart_wrapper->chart->metadata->bpms);
           y += distance;
-          y -= 300.0; // half the screen
+          y -= 120.0; // correct
           y *= -1.0; // coordinates are flipped
           if (t == SyncedStructType::TIMING_LINE) {
             y += 16.0;

@@ -1,6 +1,7 @@
 #ifndef KHEL_CHART_H
 #define KHEL_CHART_H
 
+#include <map>
 #include <string>
 #include <variant>
 #include <vector>
@@ -87,7 +88,8 @@ struct SyncedStructList {
 struct Chart {
   Metadata* metadata;
   Music* audio;
-  SyncedStructList* synced_structs;
+  std::vector<std::string> difficulties;
+  std::unordered_map<std::string, SyncedStructList*> synced_structs;
   Chart(std::string filename);
   ~Chart();
   void play();
@@ -110,9 +112,10 @@ struct ChartWrapper {
   ChartWrapper();
   ~ChartWrapper();
   void load_chart(Chart* c);
-  void play_chart(SDL_Renderer* renderer, Objects* objects, Groups* groups);
+  void play_chart(std::string difficulty, SDL_Renderer* renderer, Objects* objects, Groups* groups);
 };
 
+std::string deserialize_group(std::string raw);
 std::vector<std::string> deserialize_kv(std::string raw);
 std::vector<Chart*> load_all_charts(std::vector<std::string> chart_names);
 

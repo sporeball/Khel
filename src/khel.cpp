@@ -96,10 +96,13 @@ int main() {
   init_imgui(window, renderer);
   set_imgui_style();
   int charts_listbox_index = 0;
+  int difficulties_listbox_index = 0;
 
   vector<string> chart_names = crawl("charts");
   vector<Chart*> charts = load_all_charts(chart_names);
   Chart* chart;
+  vector<string> difficulties;
+  string difficulty;
 
   ChartWrapper* chart_wrapper = new ChartWrapper;
   chart_wrapper->chart_status = ChartStatus::PREVIEWING;
@@ -138,12 +141,18 @@ int main() {
       ImGui::SetWindowPos(ImVec2(0.0, 0.0));
       ImGui::SetWindowSize(ImVec2(800.0, 600.0));
       if (chart_wrapper->chart_status == ChartStatus::PREVIEWING) {
-        // detect change to listbox
+        // detect change to chart
         if (charts[charts_listbox_index] != chart) {
           chart = charts[charts_listbox_index];
+          difficulties = chart->difficulties;
+          difficulties_listbox_index = 0;
           Beat* preview = chart->metadata->preview;
           double preview_seconds = preview->to_exact_time(chart->metadata->bpms);
           chart->audio->fade_in(preview_seconds);
+        }
+        // detect change to difficulty
+        if (difficulties[difficulties_listbox_index] != difficulty) {
+          difficulty = difficulties[difficulties_listbox_index];
         }
         ImGui::PushItemWidth(200.0);
         ImGui::ListBox(
@@ -153,10 +162,17 @@ int main() {
           chart_names.data(),
           (int) chart_names.size()
         );
+        ImGui::ListBox(
+          "##Difficulty",
+          &difficulties_listbox_index,
+          string_vector_getter,
+          difficulties.data(),
+          (int) difficulties.size()
+        );
         if (ImGui::Button("Play")) {
           chart->audio->stop();
           chart_wrapper->load_chart(chart);
-          chart_wrapper->play_chart(renderer, objects, groups);
+          chart_wrapper->play_chart(difficulty, renderer, objects, groups);
           chart_wrapper->start_time = now;
           objects->create_instance("assets/line_white.png", 0.0, 120.0, 100, 1, renderer);
           for (int i = 0; i < 10; i++) {
@@ -209,8 +225,8 @@ int main() {
         for (int i = 0; i < pure_calculation->size(); i++) {
           // all hit objects and all timing lines are subject to pure calculation
           double y = 0.0;
-          Beat* beat = chart_wrapper->chart->synced_structs->vec[i]->beat;
-          SyncedStructType t = chart_wrapper->chart->synced_structs->vec[i]->t;
+          Beat* beat = chart_wrapper->chart->synced_structs[difficulty]->vec[i]->beat;
+          SyncedStructType t = chart_wrapper->chart->synced_structs[difficulty]->vec[i]->t;
           // we are essentially getting the synced object's position at exact time zero...
           double exact_time_from_beat = beat->to_exact_time(chart_wrapper->chart->metadata->bpms);
           double position_at_exact_time_zero = av->over_time(exact_time_from_beat, chart_wrapper->chart->metadata->bpms);

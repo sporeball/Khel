@@ -412,25 +412,34 @@ void SyncedStructList::print() {
 
 // Constructor method.
 Chart::Chart(string filename) {
-  unordered_map<string, string> map;
+  std::map<string, std::map<string, string>> map;
+  string group;
   string contents = read_file(filename);
   vector<string> lines = split(contents, "\n");
   for (auto line : lines) {
     if (empty(line)) continue;
-    vector<string> key_and_value = deserialize_kv(line);
-    string key = key_and_value[0];
-    string value = key_and_value[1];
-    pair<string, string> p(key, value);
-    map.insert(p);
+    if (line.starts_with("[") && line.ends_with("]")) {
+      group = deserialize_group(line);
+      std::map<string, string> empty;
+      map.insert({group, empty});
+      // insert into difficulties here to preserve insertion order
+      if (group != "metadata") difficulties.push_back(group);
+    } else {
+      vector<string> key_and_value = deserialize_kv(line);
+      string key = key_and_value[0];
+      string value = key_and_value[1];
+      pair<string, string> p(key, value);
+      map[group].insert(p);
+    }
   }
-  string s_version = map["version"];
-  string s_title = map["title"];
-  string s_subtitle = map["subtitle"];
-  string s_artist = map["artist"];
-  string s_credit = map["credit"];
-  string s_bpms = map["bpms"];
-  string s_preview = map["preview"];
-  string s_hit_objects = map["hit_objects"];
+  std::map<string, string> map_metadata = map["metadata"];
+  string s_version = map_metadata["version"];
+  string s_title = map_metadata["title"];
+  string s_subtitle = map_metadata["subtitle"];
+  string s_artist = map_metadata["artist"];
+  string s_credit = map_metadata["credit"];
+  string s_bpms = map_metadata["bpms"];
+  string s_preview = map_metadata["preview"];
   // create metadata
   metadata = new Metadata;
   metadata->version = 0;
@@ -445,7 +454,14 @@ Chart::Chart(string filename) {
   Beat* ptr_preview = new Beat;
   ptr_preview->value = d_preview;
   metadata->preview = ptr_preview;
-  synced_structs = new SyncedStructList(s_hit_objects);
+  // create synced structs for each difficulty
+  for (auto difficulty : difficulties) {
+    std::map<string, string> difficulty_map = map[difficulty];
+    string s_hit_objects = difficulty_map["hit_objects"];
+    SyncedStructList* synced_struct_list = new SyncedStructList(s_hit_objects);
+    pair<string, SyncedStructList*> p(difficulty, synced_struct_list);
+    synced_structs.insert(p);
+  }
   // load audio
   string s_audio;
   if (empty(s_subtitle)) {
@@ -458,15 +474,15 @@ Chart::Chart(string filename) {
 // Destructor method.
 Chart::~Chart() {
   audio->~Music();
-  synced_structs->~SyncedStructList();
+  synced_structs.clear();
 }
 void Chart::print() {
   printf("Chart { ");
   printf("metadata: ");
   metadata->print();
   printf(", audio: [private]");
-  printf(", synced_structs: ");
-  synced_structs->print();
+  printf(", synced_structs: [private]");
+  // synced_structs->print();
   printf(" }");
 }
 
@@ -483,17 +499,18 @@ void ChartWrapper::load_chart(Chart* c) {
   chart = c;
 }
 // Play the chart attached to this ChartWrapper.
-void ChartWrapper::play_chart(SDL_Renderer* renderer, Objects* objects, Groups* groups) {
+void ChartWrapper::play_chart(string difficulty, SDL_Renderer* renderer, Objects* objects, Groups* groups) {
   string title = chart->metadata->title;
   string subtitle = chart->metadata->subtitle;
   string artist = chart->metadata->artist;
   string credit = chart->metadata->credit;
   if (empty(subtitle)) {
-    printf("playing chart \"%s - %s\" (mapped by %s)...\n", artist.c_str(), title.c_str(), credit.c_str());
+    printf("playing chart \"%s - %s [%s]\" (mapped by %s)...\n", artist.c_str(), title.c_str(), difficulty.c_str(), credit.c_str());
   } else {
-    printf("playing chart \"%s - %s (%s)\" (mapped by %s)...\n", artist.c_str(), title.c_str(), subtitle.c_str(), credit.c_str());
+    printf("playing chart \"%s - %s (%s) [%s]\" (mapped by %s)...\n", artist.c_str(), title.c_str(), subtitle.c_str(), difficulty.c_str(), credit.c_str());
   }
-  for (SyncedStruct* synced : chart->synced_structs->vec) {
+  SyncedStructList* synced_struct_list = chart->synced_structs[difficulty];
+  for (SyncedStruct* synced : synced_struct_list->vec) {
     if (synced->t == SyncedStructType::TIMING_LINE) {
       int id = objects->create_instance(synced->asset(), 0.0, 1000.0, 100, 1, renderer);
       groups->insert_into_group("pure_calculation", id);
@@ -512,6 +529,13 @@ void ChartWrapper::play_chart(SDL_Renderer* renderer, Objects* objects, Groups* 
   chart_status = ChartStatus::PLAYING;
 }
 
+// Deserialize a group from .khel format into a `string`.
+string deserialize_group(string raw) {
+  string s = raw;
+  s.erase(s.begin());
+  s.pop_back();
+  return s;
+}
 // Deserialize a key-value pair from .khel format into a `vector<string>`.
 vector<string> deserialize_kv(string raw) {
   // if (empty(raw)) {}

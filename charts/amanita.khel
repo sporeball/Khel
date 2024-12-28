@@ -1,3 +1,4 @@
+[metadata]
 version=0;
 title=amanita;
 subtitle=;
@@ -6,4 +7,5 @@ credit=sporeball;
 bpms=115@0;
 preview=80;
 
+[normal]
 hit_objects=f@0,j@1,r@2,u@3,f@4,j@5,v@6,m@7,f@8,j@9,t@10,y@11,f@12,j@13,b@14,n@15,f@15.5,f@15.75,j@16,w@16.5,r@17,s@17.5,f@18,x@18.5,f@19,j@19.25,j@19.5,j@19.75;

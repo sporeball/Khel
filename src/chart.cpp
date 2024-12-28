@@ -187,13 +187,9 @@ Bpm* BpmList::max() {
   return vec[index];
 }
 void BpmList::print() {
+  unsigned long size = vec.size();
   printf("BpmList { ");
-  printf("vec: [ ");
-  for (Bpm* ptr : vec) {
-    ptr->print();
-    printf(", ");
-  }
-  printf("] ");
+  printf("vec: [%lu items] ", size);
   printf("} ");
 }
 
@@ -527,6 +523,76 @@ void ChartWrapper::play_chart(string difficulty, SDL_Renderer* renderer, Objects
   printf("hit objects: %d\n", groups->get_group("hit_objects")->size());
   // start_time = SDL_GetPerformanceCounter();
   chart_status = ChartStatus::PLAYING;
+}
+// Try to record a hit on the chart attached to this ChartWrapper.
+void ChartWrapper::try_hit(
+  char c,
+  string difficulty,
+  float offset,
+  double now_seconds,
+  Uint64 performance_frequency,
+  int* score,
+  string* judgement
+) {
+  if (chart_status != ChartStatus::PLAYING) return;
+  double d_offset = (double) offset;
+  BpmList* bpms = chart->metadata->bpms;
+  double one_minute = 60.0;
+  Bpm* bpm_at_zero = bpms->at_exact_time(0.0);
+  double one_beat_at_zero = one_minute / bpm_at_zero->value;
+  double start_time_seconds = (double) start_time / (double) performance_frequency;
+  double exact_time_seconds = now_seconds - start_time_seconds - (one_beat_at_zero * 8.0) + (d_offset / 1000.0);
+  SyncedStructList* synced_struct_list = chart->synced_structs[difficulty];
+  vector<SyncedStruct*> hit_objects;
+  // determine which synced structs are within the timing window
+  vector<SyncedStruct*> synced_structs_within_window;
+  for (auto synced : synced_struct_list->vec) {
+    if (synced->t != SyncedStructType::HIT) continue;
+    hit_objects.push_back(synced);
+    double synced_exact_time = synced->beat->to_exact_time(bpms);
+    // marvelous = 0-23ms
+    // perfect = 23-45ms
+    // great = 45-90ms
+    // good = 90-135ms
+    // miss = 135ms+
+    double early_limit = synced_exact_time - 0.135;
+    double late_limit = synced_exact_time + 0.135;
+    if (exact_time_seconds >= early_limit && exact_time_seconds <= late_limit) {
+      synced_structs_within_window.push_back(synced);
+    }
+  }
+  // find the first synced struct which matches the key
+  SyncedStruct* match = nullptr;
+  for (auto synced : synced_structs_within_window) {
+    if (synced->keys.size() == 1 && synced->keys[0] == c) {
+      match = synced;
+      break;
+    }
+  }
+  if (match == nullptr) return;
+  // figure out how accurate the hit is
+  double match_exact_time = match->beat->to_exact_time(bpms);
+  double hit_time_ms = (exact_time_seconds - match_exact_time) * 1000.0;
+  if (hit_time_ms < 0.0) {
+    printf("hit %c %f ms early\n", c, std::abs(hit_time_ms));
+  } else if (hit_time_ms > 0.0) {
+    printf("hit %c %f ms late\n", c, hit_time_ms);
+  } else {
+    printf("hit %c exactly on time!\n", c);
+  }
+  if (std::abs(hit_time_ms) <= 23.0) { // marvelous
+    *score += ceil(1000000.0 / (double) hit_objects.size());
+    *judgement = "marvelous!";
+  } else if (std::abs(hit_time_ms) <= 45.0) { // perfect
+    *score += ceil((1000000.0 / (double) hit_objects.size()) * 0.75);
+    *judgement = "perfect";
+  } else if (std::abs(hit_time_ms) <= 90.0) { // great
+    *score += ceil((1000000.0 / (double) hit_objects.size()) * 0.5);
+    *judgement = "great";
+  } else { // good
+    *score += ceil((1000000.0 / (double) hit_objects.size()) * 0.25);
+    *judgement = "good";
+  }
 }
 
 // Deserialize a group from .khel format into a `string`.

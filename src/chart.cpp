@@ -79,9 +79,7 @@ double Beat::to_exact_time(BpmList* bpms) {
   // for (Bpm* ptr : vec) {
   // for (auto it = vec.begin(); it != vec.end(); ++it) {
   for (unsigned long i = 0; i < vec.size(); i++) {
-    // printf("value: %f\n", vec[i]->value);
     double one_beat = one_minute / vec[i]->value;
-    // printf("one_beat: %f\n", one_beat);
     if (i == vec.size() - 1) {
       exact_time += one_beat * beats_remaining;
       break;
@@ -430,8 +428,9 @@ Chart::Chart(string filename) {
   string s_subtitle = map["subtitle"];
   string s_artist = map["artist"];
   string s_credit = map["credit"];
-  string s_hit_objects = map["hit_objects"];
   string s_bpms = map["bpms"];
+  string s_preview = map["preview"];
+  string s_hit_objects = map["hit_objects"];
   // create metadata
   metadata = new Metadata;
   metadata->version = 0;
@@ -440,6 +439,12 @@ Chart::Chart(string filename) {
   metadata->artist = s_artist;
   metadata->credit = s_credit;
   metadata->bpms = new BpmList(s_bpms);
+  double d_preview;
+  stringstream ss(s_preview);
+  ss >> d_preview;
+  Beat* ptr_preview = new Beat;
+  ptr_preview->value = d_preview;
+  metadata->preview = ptr_preview;
   synced_structs = new SyncedStructList(s_hit_objects);
   // load audio
   string s_audio;
@@ -448,11 +453,11 @@ Chart::Chart(string filename) {
   } else {
     s_audio = "assets/" + s_artist + " - " + s_title + " (" + s_subtitle + ").wav";
   }
-  audio = new Sound(s_audio);
+  audio = new Music(s_audio);
 }
 // Destructor method.
 Chart::~Chart() {
-  audio->~Sound();
+  audio->~Music();
   synced_structs->~SyncedStructList();
 }
 void Chart::print() {
@@ -474,8 +479,8 @@ ChartWrapper::~ChartWrapper() {
   chart->~Chart();
 }
 // Load a chart into this ChartWrapper.
-void ChartWrapper::load_chart(string filename) {
-  chart = new Chart(filename);
+void ChartWrapper::load_chart(Chart* c) {
+  chart = c;
 }
 // Play the chart attached to this ChartWrapper.
 void ChartWrapper::play_chart(SDL_Renderer* renderer, Objects* objects, Groups* groups) {
@@ -518,4 +523,14 @@ vector<string> deserialize_kv(string raw) {
   vec.push_back(key);
   vec.push_back(value);
   return vec;
+}
+
+vector<Chart*> load_all_charts(vector<string> chart_names) {
+  vector<Chart*> charts;
+  for (string chart_name : chart_names) {
+    string chart_path = "charts/" + chart_name + ".khel";
+    Chart* chart = new Chart(chart_path);
+    charts.push_back(chart);
+  }
+  return charts;
 }

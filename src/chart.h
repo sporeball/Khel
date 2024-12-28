@@ -51,6 +51,7 @@ struct Metadata {
   std::string subtitle;
   std::string artist;
   std::string credit;
+  Beat* preview;
   BpmList* bpms;
   void print();
 };
@@ -85,7 +86,7 @@ struct SyncedStructList {
 
 struct Chart {
   Metadata* metadata;
-  Sound* audio;
+  Music* audio;
   SyncedStructList* synced_structs;
   Chart(std::string filename);
   ~Chart();
@@ -98,6 +99,7 @@ enum ChartStatus {
   NONE,
   PAUSED,
   PLAYING,
+  PREVIEWING,
 };
 
 // A chart object and associated information.
@@ -107,10 +109,11 @@ struct ChartWrapper {
   Uint64 start_time;
   ChartWrapper();
   ~ChartWrapper();
-  void load_chart(std::string filename);
+  void load_chart(Chart* c);
   void play_chart(SDL_Renderer* renderer, Objects* objects, Groups* groups);
 };
 
 std::vector<std::string> deserialize_kv(std::string raw);
+std::vector<Chart*> load_all_charts(std::vector<std::string> chart_names);
 
 #endif

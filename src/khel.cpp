@@ -96,11 +96,14 @@ int main() {
 
   init_imgui(window, renderer);
   set_imgui_style();
+  int charts_listbox_index = 0;
+
+  vector<string> chart_names = crawl("charts");
+  vector<Chart*> charts = load_all_charts(chart_names);
+  Chart* chart;
 
   ChartWrapper* chart_wrapper = new ChartWrapper;
-
-  vector<string> charts = crawl("charts");
-  int charts_listbox_index = 0;
+  chart_wrapper->chart_status = ChartStatus::PREVIEWING;
 
   SDL_Event e;
   int quit = 0;
@@ -140,12 +143,22 @@ int main() {
         "##Chart",
         &charts_listbox_index,
         string_vector_getter,
-        charts.data(),
-        (int) charts.size()
+        chart_names.data(),
+        (int) chart_names.size()
       );
+      if (chart_wrapper->chart_status == ChartStatus::PREVIEWING) {
+        if (charts[charts_listbox_index] != chart) {
+          chart = charts[charts_listbox_index];
+          Beat* preview = chart->metadata->preview;
+          double preview_seconds = preview->to_exact_time(chart->metadata->bpms);
+          // chart->audio->play();
+          // chart->audio->seek(preview_seconds);
+          chart->audio->fade_in(preview_seconds);
+        }
+      }
       if (ImGui::Button("Play")) {
-        string chart_path = "charts/" + charts[charts_listbox_index] + ".khel";
-        chart_wrapper->load_chart(chart_path);
+        chart->audio->stop();
+        chart_wrapper->load_chart(chart);
         chart_wrapper->play_chart(renderer, objects, groups);
         chart_wrapper->start_time = now;
       }
@@ -174,7 +187,7 @@ int main() {
         double one_beat_at_zero = one_minute / bpm_at_zero->value; // seconds
         double start_time_seconds = (double) chart_wrapper->start_time / (double) performance_frequency;
         double exact_time_seconds = now_seconds - start_time_seconds - (one_beat_at_zero * 8.0);
-        if (exact_time_seconds > 0.0 && chart_wrapper->chart->audio->playing() == 0) {
+        if (exact_time_seconds > 0.0 && Mix_PlayingMusic() == 0) {
           chart_wrapper->chart->audio->play();
         }
       }

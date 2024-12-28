@@ -4,5 +4,6 @@ subtitle=;
 artist=sporeball;
 credit=sporeball;
 bpms=128@0;
+preview=64;
 
 hit_objects=a@0,b@4,c@8,d@12,e@16,f@20,g@24,h@28,i@32,j@36,k@40,l@44,m@48,n@52,o@56,p@60,q@64,r@68,s@72,t@76,u@80,v@84,w@88,x@92,y@96,z@100;

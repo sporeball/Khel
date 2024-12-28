@@ -14,4 +14,14 @@ struct Sound {
   int playing();
 };
 
+struct Music {
+  Mix_Music* music;
+  Music(std::string s);
+  ~Music();
+  void play();
+  void stop();
+  void seek(double position);
+  void fade_in(double position);
+};
+
 #endif

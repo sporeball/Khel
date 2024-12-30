@@ -19,6 +19,7 @@ const map<char, int> map_scancodes = {
   {'p', SDL_SCANCODE_P}, {';', SDL_SCANCODE_SEMICOLON}, {'/', SDL_SCANCODE_SLASH},
 };
 
-void try_hit() {
+void try_hit(KhelState* state) {
+  if (state->chart_wrapper->chart_status != ChartStatus::PLAYING) return;
   // TODO
 }

@@ -151,7 +151,7 @@ int main() {
         }
         // handle key presses
         const Uint8* keyboard_state = SDL_GetKeyboardState(NULL);
-        SyncedStructList* synced_struct_list = state->chart_wrapper->chart->synced_structs[ui_state->difficulty];
+        SyncedStructList* synced_struct_list = state->chart_wrapper->chart->get_difficulty(ui_state->difficulty)->synced_struct_list;
         vector<SyncedStruct*> hits_and_holds;
         vector<SyncedStruct*> hits_and_holds_within_window;
         // determine which hits and holds are within the timing window
@@ -219,11 +219,12 @@ int main() {
         state->now = SDL_GetPerformanceCounter() - state->performance_counter_value_at_game_start;
         now_seconds = (double) state->now / (double) state->performance_frequency;
         double exact_time_seconds = now_seconds - start_time_seconds - (one_beat_at_zero * 8.0);
+        SyncedStructList* synced_struct_list = state->chart_wrapper->chart->get_difficulty(ui_state->difficulty)->synced_struct_list;
         for (int i = 0; i < pure_calculation->size(); i++) {
           // all hit objects and all timing lines are subject to pure calculation
           double y = 0.0;
-          Beat* beat = state->chart_wrapper->chart->synced_structs[ui_state->difficulty]->vec[i]->beat;
-          SyncedStructType t = state->chart_wrapper->chart->synced_structs[ui_state->difficulty]->vec[i]->t;
+          Beat* beat = synced_struct_list->vec[i]->beat;
+          SyncedStructType t = synced_struct_list->vec[i]->t;
           // we are essentially getting the synced object's position at exact time zero...
           double exact_time_from_beat = beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
           double position_at_exact_time_zero = state->av->over_time(exact_time_from_beat, state->chart_wrapper->chart->metadata->bpms);

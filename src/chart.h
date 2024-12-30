@@ -88,14 +88,28 @@ struct SyncedStructList {
   void print();
 };
 
+// A specific difficulty of a chart.
+struct Difficulty {
+  std::string name;
+  SyncedStructList* synced_struct_list;
+};
+
+// A list of all difficulties of a chart.
+struct DifficultyList {
+  std::vector<Difficulty*> vec;
+  ~DifficultyList();
+  Difficulty* get(std::string name);
+  std::vector<std::string> names();
+};
+
+// A chart object.
 struct Chart {
   Metadata* metadata;
   Music* audio;
-  std::vector<std::string> difficulties;
-  std::unordered_map<std::string, SyncedStructList*> synced_structs;
+  DifficultyList* difficulties;
   Chart(std::string filename);
   ~Chart();
-  void play();
+  Difficulty* get_difficulty(std::string name);
   void print();
 };
 

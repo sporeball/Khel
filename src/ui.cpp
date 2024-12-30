@@ -121,7 +121,7 @@ void UiState::draw_ui_previewing(KhelState* state) {
       chart->audio->fade_out();
     }
     chart = state->charts[charts_listbox_index];
-    difficulties = chart->difficulties;
+    difficulties = chart->difficulties->names();
     difficulties_listbox_index = 0;
   }
   // detect change to difficulty

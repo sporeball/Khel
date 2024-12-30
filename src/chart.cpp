@@ -406,10 +406,34 @@ void SyncedStructList::print() {
   printf("}");
 }
 
+// Destructor method.
+DifficultyList::~DifficultyList() {
+  vec.clear();
+}
+// Get the given difficulty from the list.
+Difficulty* DifficultyList::get(string name) {
+  for (auto difficulty : vec) {
+    if (difficulty->name == name) {
+      return difficulty;
+    }
+  }
+  return nullptr;
+}
+// Get the names of all difficulties in the list.
+vector<string> DifficultyList::names() {
+  vector<string> v;
+  for (auto difficulty : vec) {
+    v.push_back(difficulty->name);
+  }
+  return v;
+}
+
 // Constructor method.
 Chart::Chart(string filename) {
   std::map<string, std::map<string, string>> map;
   string group;
+  vector<string> difficulty_names;
+  // read lines
   string contents = read_file(filename);
   vector<string> lines = split(contents, "\n");
   for (auto line : lines) {
@@ -418,8 +442,10 @@ Chart::Chart(string filename) {
       group = deserialize_group(line);
       std::map<string, string> empty;
       map.insert({group, empty});
-      // insert into difficulties here to preserve insertion order
-      if (group != "metadata") difficulties.push_back(group);
+      // insert into difficulty names here to preserve insertion order
+      if (group != "metadata") {
+        difficulty_names.push_back(group);
+      }
     } else {
       vector<string> key_and_value = deserialize_kv(line);
       string key = key_and_value[0];
@@ -428,6 +454,7 @@ Chart::Chart(string filename) {
       map[group].insert(p);
     }
   }
+  // get keys and values
   std::map<string, string> map_metadata = map["metadata"];
   string s_version = map_metadata["version"];
   string s_title = map_metadata["title"];
@@ -450,14 +477,6 @@ Chart::Chart(string filename) {
   Beat* ptr_preview = new Beat;
   ptr_preview->value = d_preview;
   metadata->preview = ptr_preview;
-  // create synced structs for each difficulty
-  for (auto difficulty : difficulties) {
-    std::map<string, string> difficulty_map = map[difficulty];
-    string s_hit_objects = difficulty_map["hit_objects"];
-    SyncedStructList* synced_struct_list = new SyncedStructList(s_hit_objects);
-    pair<string, SyncedStructList*> p(difficulty, synced_struct_list);
-    synced_structs.insert(p);
-  }
   // load audio
   string s_audio;
   if (empty(s_subtitle)) {
@@ -466,11 +485,25 @@ Chart::Chart(string filename) {
     s_audio = "assets/" + s_artist + " - " + s_title + " (" + s_subtitle + ").wav";
   }
   audio = new Music(s_audio);
+  // load difficulties
+  difficulties = new DifficultyList;
+  for (auto difficulty_name : difficulty_names) {
+    std::map<string, string> difficulty_map = map[difficulty_name];
+    string s_hit_objects = difficulty_map["hit_objects"];
+    Difficulty* difficulty = new Difficulty;
+    difficulty->name = difficulty_name;
+    difficulty->synced_struct_list = new SyncedStructList(s_hit_objects);
+    difficulties->vec.push_back(difficulty);
+  }
 }
 // Destructor method.
 Chart::~Chart() {
   audio->~Music();
-  synced_structs.clear();
+  difficulties->~DifficultyList();
+}
+// Get a specific difficulty of this chart.
+Difficulty* Chart::get_difficulty(string name) {
+  return difficulties->get(name);
 }
 void Chart::print() {
   printf("Chart { ");
@@ -496,6 +529,7 @@ void ChartWrapper::load_chart(Chart* c) {
 }
 // Play the chart attached to this ChartWrapper.
 void ChartWrapper::play_chart(string difficulty, SDL_Renderer* renderer, Objects* objects, Groups* groups) {
+  // print
   string title = chart->metadata->title;
   string subtitle = chart->metadata->subtitle;
   string artist = chart->metadata->artist;
@@ -505,7 +539,8 @@ void ChartWrapper::play_chart(string difficulty, SDL_Renderer* renderer, Objects
   } else {
     printf("playing chart \"%s - %s (%s) [%s]\" (mapped by %s)...\n", artist.c_str(), title.c_str(), subtitle.c_str(), difficulty.c_str(), credit.c_str());
   }
-  SyncedStructList* synced_struct_list = chart->synced_structs[difficulty];
+  // create object instances
+  SyncedStructList* synced_struct_list = chart->get_difficulty(difficulty)->synced_struct_list;
   for (SyncedStruct* synced : synced_struct_list->vec) {
     if (synced->t == SyncedStructType::TIMING_LINE) {
       int id = objects->create_instance(synced->asset(), 0.0, 1000.0, 100, 1, renderer);

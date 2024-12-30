@@ -60,13 +60,11 @@ void try_hit(KhelState* state, UiState* ui_state) {
   Uint64 now = state->now();
   double chart_time = state->chart_time();
   KeyPressList* keypresses = state->keypresses;
-  SyncedStructList* synced_struct_list = state->chart_wrapper->chart->get_difficulty(ui_state->difficulty)->synced_struct_list;
-  vector<SyncedStruct*> hits_and_holds;
+  SyncedStructList* synced_struct_list = state->chart_wrapper->synced_structs;
   vector<SyncedStruct*> hits_and_holds_within_window;
   // determine which hits and holds are within the timing window
   for (auto synced : synced_struct_list->vec) {
     if (synced->t != SyncedStructType::HIT && synced->t != SyncedStructType::HOLD) continue;
-    hits_and_holds.push_back(synced);
     double synced_exact_time = synced->beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
     double early_limit = synced_exact_time - 0.135;
     double late_limit = synced_exact_time + 0.135;
@@ -112,6 +110,13 @@ void try_hit(KhelState* state, UiState* ui_state) {
       // state->score += ceil(max_score_per_object * 0.25);
       ui_state->judgement = "good";
     }
-    synced_struct_list->vec.erase(remove(synced_struct_list->vec.begin(), synced_struct_list->vec.end(), match), synced_struct_list->vec.end());
+    state->chart_wrapper->synced_structs->vec.erase(
+      remove(
+        state->chart_wrapper->synced_structs->vec.begin(),
+        state->chart_wrapper->synced_structs->vec.end(),
+        match
+      ),
+      state->chart_wrapper->synced_structs->vec.end()
+    );
   }
 }

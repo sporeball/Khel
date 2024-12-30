@@ -83,6 +83,7 @@ struct SyncedStruct {
 // A list of structs synced to a beat.
 struct SyncedStructList {
   std::vector<SyncedStruct*> vec;
+  SyncedStructList(SyncedStructList* l);
   SyncedStructList(std::string s);
   ~SyncedStructList();
   void print();
@@ -125,6 +126,9 @@ enum ChartStatus {
 struct ChartWrapper {
   Chart* chart;
   ChartStatus chart_status;
+  // Active synced structs.
+  // This is copied from one of the wrapped chart's difficulties when `play_chart()` is called.
+  SyncedStructList* synced_structs;
   Uint64 start_time;
   ChartWrapper();
   ~ChartWrapper();

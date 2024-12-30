@@ -290,6 +290,10 @@ void SyncedStruct::print() {
   printf(" }");
 }
 
+// Create a SyncedStructList from an existing one.
+SyncedStructList::SyncedStructList(SyncedStructList* l) {
+  vec = l->vec;
+}
 // Create a SyncedStructList from a string.
 SyncedStructList::SyncedStructList(string s) {
   // split on comma, yielding all the hit objects in the chart grouped by beat
@@ -518,6 +522,7 @@ ChartWrapper::ChartWrapper() {
 // Destructor method.
 ChartWrapper::~ChartWrapper() {
   chart->~Chart();
+  synced_structs->~SyncedStructList();
 }
 // Load a chart into this ChartWrapper.
 void ChartWrapper::load_chart(Chart* c) {
@@ -536,8 +541,8 @@ void ChartWrapper::play_chart(string difficulty, SDL_Renderer* renderer, Objects
     printf("playing chart \"%s - %s (%s) [%s]\" (mapped by %s)...\n", artist.c_str(), title.c_str(), subtitle.c_str(), difficulty.c_str(), credit.c_str());
   }
   // create object instances
-  SyncedStructList* synced_struct_list = chart->get_difficulty(difficulty)->synced_struct_list;
-  for (SyncedStruct* synced : synced_struct_list->vec) {
+  synced_structs = new SyncedStructList(chart->get_difficulty(difficulty)->synced_struct_list);
+  for (SyncedStruct* synced : synced_structs->vec) {
     if (synced->t == SyncedStructType::TIMING_LINE) {
       int id = objects->create_instance(synced->asset(), 0.0, 1000.0, 100, 1, renderer);
       groups->insert_into_group("pure_calculation", id);
@@ -552,7 +557,6 @@ void ChartWrapper::play_chart(string difficulty, SDL_Renderer* renderer, Objects
     }
   }
   printf("hit objects: %d\n", groups->get_group("hit_objects")->size());
-  // start_time = SDL_GetPerformanceCounter();
   chart_status = ChartStatus::PLAYING;
 }
 

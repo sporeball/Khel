@@ -166,8 +166,7 @@ void UiState::draw_ui_previewing(KhelState* state) {
     state->chart_wrapper->load_chart(chart);
     state->chart_wrapper->play_chart(difficulty, state->renderer, state->objects, state->groups);
     state->chart_wrapper->start_time = state->now();
-    // TODO: include hold ticks in this calculation
-    // max_score_per_object = ceil(1000000.0 / (double) state->groups->get_group("hits_and_holds")->size());
+    state->max_score_per_object = ceil(1000000.0 / (double) state->groups->get_group("hit_objects")->size());
     // create objects
     state->objects->create_instance("assets/line_white.png", 0.0, 120.0, 100, 1, state->renderer);
     for (int i = 0; i < 10; i++) {

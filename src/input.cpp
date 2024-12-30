@@ -120,7 +120,7 @@ void try_hit(KhelState* state, UiState* ui_state) {
     SyncedStructType t = match->t;
     if (t == SyncedStructType::SS_HOLD_TICK) {
       printf("held %s\n", s_keys.c_str());
-      // state->score += max_score_per_object;
+      state->score += state->max_score_per_object;
       match->judgement = Judgement::J_MARVELOUS;
       ui_state->judgement = "marvelous!";
     } else {
@@ -134,19 +134,19 @@ void try_hit(KhelState* state, UiState* ui_state) {
       }
       // return a judgement
       if (std::abs(hit_time_ms) <= 23.0) { // marvelous
-        // state->score += max_score_per_object;
+        state->score += state->max_score_per_object;
         match->judgement = Judgement::J_MARVELOUS;
         ui_state->judgement = "marvelous!";
       } else if (std::abs(hit_time_ms) <= 45.0) { // perfect
-        // state->score += ceil(max_score_per_object * 0.75);
+        state->score += ceil(state->max_score_per_object * 0.75);
         match->judgement = Judgement::J_PERFECT;
         ui_state->judgement = "perfect";
       } else if (std::abs(hit_time_ms) <= 90.0) { // great
-        // state->score += ceil(max_score_per_object * 0.5);
+        state->score += ceil(state->max_score_per_object * 0.5);
         match->judgement = Judgement::J_GREAT;
         ui_state->judgement = "great";
       } else { // good
-        // state->score += ceil(max_score_per_object * 0.25);
+        state->score += ceil(state->max_score_per_object * 0.25);
         match->judgement = Judgement::J_GOOD;
         ui_state->judgement = "good";
       }

@@ -310,6 +310,7 @@ SyncedStructList::SyncedStructList(string s) {
     ptr_beat->value = d_beat;
     // create a single timing line synced to the whole grouping
     SyncedStruct* timing_line = new SyncedStruct;
+    timing_line->id = -1;
     timing_line->beat = ptr_beat;
     timing_line->t = SyncedStructType::TIMING_LINE;
     vec.push_back(timing_line);
@@ -328,6 +329,7 @@ SyncedStructList::SyncedStructList(string s) {
       // if hit chars columns are all equal {}
       vector<char> keys(hit.begin(), hit.end());
       SyncedStruct* ptr_hit_object = new SyncedStruct;
+      ptr_hit_object->id = -1;
       ptr_hit_object->beat = ptr_beat;
       ptr_hit_object->t = SyncedStructType::HIT;
       ptr_hit_object->keys = keys;
@@ -361,6 +363,7 @@ SyncedStructList::SyncedStructList(string s) {
         // if hit chars columns are all equal {}
         vector<char> keys(hold.begin(), hold.end());
         SyncedStruct* ptr_hit_object = new SyncedStruct;
+        ptr_hit_object->id = -1;
         ptr_hit_object->beat = ptr_beat;
         ptr_hit_object->t = SyncedStructType::HOLD;
         ptr_hit_object->keys = keys;
@@ -376,6 +379,7 @@ SyncedStructList::SyncedStructList(string s) {
           ptr_beat->value = tick_beat_value;
           vector<char> keys(hold.begin(), hold.end());
           SyncedStruct* ptr_hit_object = new SyncedStruct;
+          ptr_hit_object->id = -1;
           ptr_hit_object->beat = ptr_beat;
           ptr_hit_object->t = SyncedStructType::HOLD_TICK;
           ptr_hit_object->keys = keys;
@@ -543,18 +547,22 @@ void ChartWrapper::play_chart(string difficulty, SDL_Renderer* renderer, Objects
   // create object instances
   synced_structs = new SyncedStructList(chart->get_difficulty(difficulty)->synced_struct_list);
   for (SyncedStruct* synced : synced_structs->vec) {
+    int id;
+    // create object instance
     if (synced->t == SyncedStructType::TIMING_LINE) {
-      int id = objects->create_instance(synced->asset(), 0.0, 1000.0, 100, 1, renderer);
+      id = objects->create_instance(synced->asset(), 0.0, 1000.0, 100, 1, renderer);
       groups->insert_into_group("pure_calculation", id);
       groups->insert_into_group("timing_lines", id);
     } else {
-      int id = objects->create_instance(synced->asset(), synced->lane_x(), 1000.0, 32, 32, renderer);
+      id = objects->create_instance(synced->asset(), synced->lane_x(), 1000.0, 32, 32, renderer);
       groups->insert_into_group("pure_calculation", id);
       groups->insert_into_group("hit_objects", id);
       if (synced->t != SyncedStructType::HOLD_TICK) {
         groups->insert_into_group("hits_and_holds", id);
       }
     }
+    // set ID
+    synced->id = id;
   }
   printf("hit objects: %d\n", groups->get_group("hit_objects")->size());
   chart_status = ChartStatus::PLAYING;

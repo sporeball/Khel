@@ -110,6 +110,10 @@ void try_hit(KhelState* state, UiState* ui_state) {
       // state->score += ceil(max_score_per_object * 0.25);
       ui_state->judgement = "good";
     }
+    // remove from objects and groups (stops rendering)
+    state->objects->destroy_instance(match->id);
+    state->groups->remove_from_all_groups(match->id);
+    // remove from chart wrapper
     state->chart_wrapper->synced_structs->vec.erase(
       remove(
         state->chart_wrapper->synced_structs->vec.begin(),

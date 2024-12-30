@@ -69,6 +69,8 @@ enum SyncedStructType {
 
 // Some kind of struct that's synced to a beat.
 struct SyncedStruct {
+  // The ID of a linked object instance.
+  int id;
   Beat* beat;
   SyncedStructType t;
   std::vector<char> keys;

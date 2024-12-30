@@ -2,12 +2,34 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
 #include <SDL.h>
 
 using namespace std;
+
+// Case insensitive comparator.
+struct CaseInsensitive {
+  bool operator()(const filesystem::path& lhs, const filesystem::path& rhs) const {
+    string lhs_lower = lhs.filename().string();
+    string rhs_lower = rhs.filename().string();
+    transform(
+      lhs_lower.begin(),
+      lhs_lower.end(),
+      lhs_lower.begin(),
+      [](unsigned char c) { return tolower(c); }
+    );
+    transform(
+      rhs_lower.begin(),
+      rhs_lower.end(),
+      rhs_lower.begin(),
+      [](unsigned char c) { return tolower(c); }
+    );
+    return lhs_lower < rhs_lower;
+  }
+};
 
 // Convert a Uint64 from SDL's high resolution counter to a time in seconds.
 double as_seconds(Uint64 t) {
@@ -17,8 +39,12 @@ double as_seconds(Uint64 t) {
 // Get the names of all files in a directory as a `vector<string>`.
 vector<string> crawl(string path) {
   vector<string> vec;
+  set<filesystem::path, CaseInsensitive> sorted;
   for (const auto& entry : filesystem::directory_iterator(path)) {
-    vec.push_back(entry.path().stem().c_str());
+    sorted.insert(entry.path());
+  }
+  for (const auto& filename : sorted) {
+    vec.push_back(filename.stem().string());
   }
   return vec;
 }

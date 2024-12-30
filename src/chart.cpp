@@ -340,7 +340,6 @@ SyncedStructList::SyncedStructList(string s) {
     }
     if (hits_and_holds.size() == 2) {
       string s_holds_and_info = hits_and_holds[1];
-      printf("s_holds_and_info = \"%s\"\n", s_holds_and_info.c_str());
       // split the holds on colon, yielding the holds and their required information
       vector<string> holds_and_info = split(s_holds_and_info, ":");
       // if holds_and_info.size() > 2 {}

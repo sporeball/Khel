@@ -14,6 +14,7 @@ bool string_vector_getter(void* data, int n, const char** out_text);
 
 // Constructor method.
 UiState::UiState() {
+  chart = nullptr;
   charts_listbox_index = 0;
   difficulties_listbox_index = 0;
 }

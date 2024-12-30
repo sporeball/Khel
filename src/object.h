@@ -16,7 +16,6 @@ struct Instance {
   ~Instance();
   void move(double new_x, double new_y);
   void draw_instance(SDL_Renderer* renderer, SDL_Texture* texture);
-  void destroy_instance();
 };
 
 // A type of object.

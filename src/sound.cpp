@@ -1,3 +1,4 @@
+#include <iostream>
 #include <string>
 #include <SDL_mixer.h>
 #include "sound.h"

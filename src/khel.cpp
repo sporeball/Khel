@@ -36,6 +36,8 @@ KhelState::KhelState(SDL_Window* w, SDL_Renderer* r)
   keypresses = new KeyPressList;
   performance_counter_value_at_game_start = SDL_GetPerformanceCounter();
   performance_frequency = SDL_GetPerformanceFrequency();
+  offset = 0;
+  score = 0;
   printf("performance frequency: %llu\n", performance_frequency);
 }
 // Return the number of ticks of SDL's high resolution counter elapsed since Khel started.
@@ -193,12 +195,16 @@ int main() {
           Instance* ptr = state->objects->get_instance(id);
           ptr->move(ptr->x, y);
         }
-        for (auto id : pure_calculation->instances) {
-          Object* o = state->objects->get_object(id);
-          Instance* i = state->objects->get_instance(id);
+        for (auto it = pure_calculation->instances.begin(); it != pure_calculation->instances.end(); ) {
+          Instance* i = state->objects->get_instance(*it);
+          int id = *it;
           if (i->x < 0.0 || i->y < 0.0) {
-            o->instances.erase(id);
-            erase(pure_calculation->instances, id);
+            state->objects->destroy_instance(*it);
+            it = pure_calculation->instances.erase(it);
+            // safely remove from all other groups
+            state->groups->remove_from_all_groups(id);
+          } else {
+            ++it;
           }
         }
       }

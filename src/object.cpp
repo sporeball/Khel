@@ -29,10 +29,6 @@ void Instance::move(double new_x, double new_y) {
 void Instance::draw_instance(SDL_Renderer* renderer, SDL_Texture* texture) {
   SDL_RenderCopy(renderer, texture, NULL, rect);
 }
-// Destroy this instance.
-void Instance::destroy_instance() {
-  this->~Instance();
-}
 
 // Constructor method.
 Object::Object(string filename, SDL_Renderer* renderer) {
@@ -116,9 +112,12 @@ Instance* Objects::get_instance(int id) {
 // Destroy the object instance with the given ID.
 void Objects::destroy_instance(int id) {
   for (auto object : objects) {
-    for (auto instance : object.second->instances) {
-      if (instance.first == id) {
-        instance.second->destroy_instance();
+    for (auto it = object.second->instances.begin(); it != object.second->instances.end(); ) {
+      if (it->first == id) {
+        it->second->~Instance();
+        it = object.second->instances.erase(it);
+      } else {
+        ++it;
       }
     }
   }
@@ -140,7 +139,7 @@ void Group::insert(int id) {
 }
 // Remove the object instance with the given ID from this group.
 void Group::remove(int id) {
-  instances.erase(std::remove(instances.begin(), instances.end(), id), instances.end());
+  erase(instances, id);
 }
 // Return the size of this group.
 int Group::size() {

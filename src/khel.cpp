@@ -149,61 +149,8 @@ int main() {
         if (exact_time_seconds > 0.0 && Mix_PlayingMusic() == 0) {
           state->chart_wrapper->chart->audio->play();
         }
-        // handle key presses
-        const Uint8* keyboard_state = SDL_GetKeyboardState(NULL);
-        SyncedStructList* synced_struct_list = state->chart_wrapper->chart->get_difficulty(ui_state->difficulty)->synced_struct_list;
-        vector<SyncedStruct*> hits_and_holds;
-        vector<SyncedStruct*> hits_and_holds_within_window;
-        // determine which hits and holds are within the timing window
-        for (auto synced : synced_struct_list->vec) {
-          if (synced->t != SyncedStructType::HIT && synced->t != SyncedStructType::HOLD) continue;
-          hits_and_holds.push_back(synced);
-          double synced_exact_time = synced->beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
-          double early_limit = synced_exact_time - 0.135;
-          double late_limit = synced_exact_time + 0.135;
-          if (exact_time_seconds >= early_limit && exact_time_seconds <= late_limit) {
-            hits_and_holds_within_window.push_back(synced);
-          } else if (exact_time_seconds > late_limit) {
-            synced_struct_list->vec.erase(remove(synced_struct_list->vec.begin(), synced_struct_list->vec.end(), synced), synced_struct_list->vec.end());
-          }
-        }
-        // determine which hits and holds are having their keys pressed right now
-        vector<SyncedStruct*> matches;
-        for (auto synced : hits_and_holds_within_window) {
-          if (all_of(synced->keys.begin(), synced->keys.end(), [keyboard_state](char c) {
-            return keyboard_state[map_scancodes.at(c)] == 1;
-          })) {
-            matches.push_back(synced);
-          }
-        }
-        // figure out how accurate each one is
-        for (auto match : matches) {
-          string s_keys(match->keys.begin(), match->keys.end());
-          double match_exact_time = match->beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
-          double hit_time_ms = (exact_time_seconds - match_exact_time) * 1000.0;
-          if (hit_time_ms < 0.0) {
-            printf("hit %s %f ms early\n", s_keys.c_str(), std::abs(hit_time_ms));
-          } else if (hit_time_ms > 0.0) {
-            printf("hit %s %f ms late\n", s_keys.c_str(), hit_time_ms);
-          } else {
-            printf("hit %s exactly on time!\n", s_keys.c_str());
-          }
-          if (std::abs(hit_time_ms) <= 23.0) { // marvelous
-            // state->score += max_score_per_object;
-            ui_state->judgement = "marvelous!";
-          } else if (std::abs(hit_time_ms) <= 45.0) { // perfect
-            // state->score += ceil(max_score_per_object * 0.75);
-            ui_state->judgement = "perfect";
-          } else if (std::abs(hit_time_ms) <= 90.0) { // great
-            // state->score += ceil(max_score_per_object * 0.5);
-            ui_state->judgement = "great";
-          } else { // good
-            // state->score += ceil(max_score_per_object * 0.25);
-            ui_state->judgement = "good";
-          }
-          synced_struct_list->vec.erase(remove(synced_struct_list->vec.begin(), synced_struct_list->vec.end(), match), synced_struct_list->vec.end());
-        }
       }
+      try_hit(state, ui_state);
       last_tick_1k = state->now();
     }
     // 240 tps

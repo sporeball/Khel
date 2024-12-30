@@ -292,16 +292,13 @@ void SyncedStruct::print() {
 
 // Create a SyncedStructList from a string.
 SyncedStructList::SyncedStructList(string s) {
-  // printf("creating SyncedStructList from string %s...\n", s.c_str());
   // split on comma, yielding all the hit objects in the chart grouped by beat
   vector<string> groupings = split(s, ",");
   for (string grouping : groupings) {
-    // printf("parsing grouping %s...\n", grouping.c_str());
     vector<string> hit_objects_and_beat = split(grouping, "@");
     // if hit_objects_and_beat.size() > 2 {}
     string s_hit_objects = hit_objects_and_beat[0];
     string s_beat = hit_objects_and_beat[1];
-    // printf("converting s_beat %s to f_beat...\n", s_beat.c_str());
     double d_beat;
     stringstream ss(s_beat);
     ss >> d_beat;
@@ -389,7 +386,6 @@ SyncedStructList::SyncedStructList(string s) {
   // if we do not do this, destroying one pair of SyncedStructs in the pure calculation group
   // will quickly destroy them all
   reverse(vec.begin(), vec.end());
-  // printf("created SyncedStructList from string %s\n", s.c_str());
 }
 // Destructor method.
 SyncedStructList::~SyncedStructList() {

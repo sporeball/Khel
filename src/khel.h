@@ -1,6 +1,7 @@
 #ifndef KHEL_H
 #define KHEL_H
 
+#include <map>
 #include <vector>
 #include <SDL.h>
 #include "chart.h"
@@ -21,7 +22,6 @@ struct KhelState {
   int score;
   KhelState(SDL_Window* w, SDL_Renderer* r);
   Uint64 now();
-  double now_seconds();
 };
 
 #endif

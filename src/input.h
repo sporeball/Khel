@@ -3,6 +3,7 @@
 
 #include <map>
 #include "khel.h"
+#include "ui.h"
 
 extern const std::map<char, int> map_scancodes;
 
@@ -11,6 +12,6 @@ extern const std::map<char, int> map_scancodes;
 //   double press_time;
 // };
 
-void try_hit(KhelState* state);
+void try_hit(KhelState* state, UiState* ui_state);
 
 #endif

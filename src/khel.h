@@ -29,6 +29,7 @@ struct KhelState {
   Uint64 performance_frequency;
   int offset;
   int score;
+  int max_score_per_object;
   KhelState(SDL_Window* w, SDL_Renderer* r);
   Uint64 now();
   double chart_time();

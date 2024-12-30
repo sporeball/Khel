@@ -340,6 +340,7 @@ SyncedStructList::SyncedStructList(string s) {
     }
     if (hits_and_holds.size() == 2) {
       string s_holds_and_info = hits_and_holds[1];
+      printf("s_holds_and_info = \"%s\"\n", s_holds_and_info.c_str());
       // split the holds on colon, yielding the holds and their required information
       vector<string> holds_and_info = split(s_holds_and_info, ":");
       // if holds_and_info.size() > 2 {}
@@ -559,7 +560,11 @@ void ChartWrapper::play_chart(string difficulty, SDL_Renderer* renderer, Objects
       groups->insert_into_group("pure_calculation", id);
       groups->insert_into_group("timing_lines", id);
     } else {
-      id = objects->create_instance(synced->asset(), synced->lane_x(), 1000.0, 32, 32, renderer);
+      if (synced->t == SyncedStructType::SS_HOLD_TICK) {
+        id = objects->create_instance(synced->asset(), synced->lane_x() + 10, 1000.0, 12, 12, renderer);
+      } else {
+        id = objects->create_instance(synced->asset(), synced->lane_x(), 1000.0, 32, 32, renderer);
+      }
       groups->insert_into_group("pure_calculation", id);
       groups->insert_into_group("hit_objects", id);
       if (synced->t != SyncedStructType::SS_HOLD_TICK) {
@@ -585,7 +590,7 @@ vector<string> deserialize_kv(string raw) {
   // if (empty(raw)) {}
   // if (!raw.ends_with("")) {}
   vector<string> vec;
-  vector<string> key_and_value = split(raw, "=");
+  vector<string> key_and_value = split(raw, "=", 1);
   string key = key_and_value[0];
   string value = key_and_value[1];
   value.pop_back();

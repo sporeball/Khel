@@ -34,14 +34,17 @@ string read_file(string filename) {
 }
 
 // Split a string on some delimiter.
-vector<string> split(string s, string delimiter) {
+vector<string> split(string s, string delimiter, int max_times = -1) {
   vector<string> tokens;
   unsigned long pos = 0;
   string token;
+  int i = 0;
   while ((pos = s.find(delimiter)) != string::npos) {
+    if (i == max_times) break;
     token = s.substr(0, pos);
     tokens.push_back(token);
     s.erase(0, pos + delimiter.length());
+    i++;
   }
   tokens.push_back(s);
   return tokens;

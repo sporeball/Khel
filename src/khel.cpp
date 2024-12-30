@@ -38,6 +38,7 @@ KhelState::KhelState(SDL_Window* w, SDL_Renderer* r)
   performance_frequency = SDL_GetPerformanceFrequency();
   offset = 0;
   score = 0;
+  max_score_per_object = 0;
   printf("performance frequency: %llu\n", performance_frequency);
 }
 // Return the number of ticks of SDL's high resolution counter elapsed since Khel started.

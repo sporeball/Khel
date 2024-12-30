@@ -9,6 +9,9 @@ SRCS = src/*.cpp src/imgui/*.cpp
 compile:
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(SRCS) -o khel
 
+sanitize:
+	$(CXX) $(CXXFLAGS) -fsanitize=address,undefined $(LDFLAGS) $(SRCS) -o khel
+
 run: khel
 	./khel
 

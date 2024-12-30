@@ -173,12 +173,18 @@ int main() {
       if (state->chart_wrapper->chart_status == ChartStatus::PLAYING) {
         // Group* hits_and_holds = groups->get_group("hits_and_holds");
         Group* pure_calculation = state->groups->get_group("pure_calculation");
-        SyncedStructList* synced_struct_list = state->chart_wrapper->chart->get_difficulty(ui_state->difficulty)->synced_struct_list;
+        SyncedStructList* synced_struct_list = state->chart_wrapper->synced_structs;
         for (int i = 0; i < pure_calculation->size(); i++) {
-          // all hit objects and all timing lines are subject to pure calculation
+          int id = pure_calculation->instances[i];
+          SyncedStruct* synced;
+          for (auto ss : synced_struct_list->vec) {
+            if (ss->id == id) {
+              synced = ss;
+            }
+          }
           double y = 0.0;
-          Beat* beat = synced_struct_list->vec[i]->beat;
-          SyncedStructType t = synced_struct_list->vec[i]->t;
+          Beat* beat = synced->beat;
+          SyncedStructType t = synced->t;
           // we are essentially getting the synced object's position at exact time zero...
           double exact_time_from_beat = beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
           double position_at_exact_time_zero = state->av->over_time(exact_time_from_beat, state->chart_wrapper->chart->metadata->bpms);
@@ -191,7 +197,6 @@ int main() {
           if (t == SyncedStructType::SS_TIMING_LINE) {
             y += 16.0;
           }
-          int id = pure_calculation->instances[i];
           Instance* ptr = state->objects->get_instance(id);
           ptr->move(ptr->x, y);
         }

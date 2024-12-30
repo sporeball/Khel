@@ -5,10 +5,25 @@
 #include <unordered_map>
 #include <vector>
 #include <SDL.h>
+#include "chart.h"
+#include "khel.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl2.h"
 #include "imgui/imgui_impl_sdlrenderer2.h"
 #include "imgui/imgui_stdlib.h"
+
+struct UiState {
+  Chart* chart;
+  std::vector<std::string> difficulties;
+  std::string difficulty;
+  std::string judgement;
+  int charts_listbox_index;
+  int difficulties_listbox_index;
+  void draw_ui(KhelState* state);
+  void draw_ui_previewing(KhelState* state);
+  void draw_ui_playing(KhelState* state);
+  UiState();
+};
 
 void init_imgui(SDL_Window* window, SDL_Renderer* renderer);
 void set_imgui_style();

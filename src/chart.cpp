@@ -17,7 +17,7 @@
 
 using namespace std;
 
-static const map<char, int> map_columns = {
+const map<char, int> map_columns = {
   {'q', 0}, {'a', 0}, {'z', 0},
   {'w', 1}, {'s', 1}, {'x', 1},
   {'e', 2}, {'d', 2}, {'c', 2},
@@ -30,7 +30,7 @@ static const map<char, int> map_columns = {
   {'p', 9}, {';', 9}, {'/', 9},
 };
 
-static const map<char, int> map_rows = {
+const map<char, int> map_rows = {
   {'q', 1}, {'w', 1}, {'e', 1}, {'r', 1}, {'t', 1}, {'y', 1}, {'u', 1}, {'i', 1}, {'o', 1}, {'p', 1},
   {'a', 2}, {'s', 2}, {'d', 2}, {'f', 2}, {'g', 2}, {'h', 2}, {'j', 2}, {'k', 2}, {'l', 2}, {';', 2},
   {'z', 4}, {'x', 4}, {'c', 4}, {'v', 4}, {'b', 4}, {'n', 4}, {'m', 4}, {',', 4}, {'.', 4}, {'/', 4},
@@ -524,76 +524,6 @@ void ChartWrapper::play_chart(string difficulty, SDL_Renderer* renderer, Objects
   // start_time = SDL_GetPerformanceCounter();
   chart_status = ChartStatus::PLAYING;
 }
-// Try to record a hit on the chart attached to this ChartWrapper.
-void ChartWrapper::try_hit(
-  char c,
-  string difficulty,
-  float offset,
-  double now_seconds,
-  Uint64 performance_frequency,
-  int* score,
-  string* judgement
-) {
-  if (chart_status != ChartStatus::PLAYING) return;
-  double d_offset = (double) offset;
-  BpmList* bpms = chart->metadata->bpms;
-  double one_minute = 60.0;
-  Bpm* bpm_at_zero = bpms->at_exact_time(0.0);
-  double one_beat_at_zero = one_minute / bpm_at_zero->value;
-  double start_time_seconds = (double) start_time / (double) performance_frequency;
-  double exact_time_seconds = now_seconds - start_time_seconds - (one_beat_at_zero * 8.0) + (d_offset / 1000.0);
-  SyncedStructList* synced_struct_list = chart->synced_structs[difficulty];
-  vector<SyncedStruct*> hit_objects;
-  // determine which synced structs are within the timing window
-  vector<SyncedStruct*> synced_structs_within_window;
-  for (auto synced : synced_struct_list->vec) {
-    if (synced->t != SyncedStructType::HIT) continue;
-    hit_objects.push_back(synced);
-    double synced_exact_time = synced->beat->to_exact_time(bpms);
-    // marvelous = 0-23ms
-    // perfect = 23-45ms
-    // great = 45-90ms
-    // good = 90-135ms
-    // miss = 135ms+
-    double early_limit = synced_exact_time - 0.135;
-    double late_limit = synced_exact_time + 0.135;
-    if (exact_time_seconds >= early_limit && exact_time_seconds <= late_limit) {
-      synced_structs_within_window.push_back(synced);
-    }
-  }
-  // find the first synced struct which matches the key
-  SyncedStruct* match = nullptr;
-  for (auto synced : synced_structs_within_window) {
-    if (synced->keys.size() == 1 && synced->keys[0] == c) {
-      match = synced;
-      break;
-    }
-  }
-  if (match == nullptr) return;
-  // figure out how accurate the hit is
-  double match_exact_time = match->beat->to_exact_time(bpms);
-  double hit_time_ms = (exact_time_seconds - match_exact_time) * 1000.0;
-  if (hit_time_ms < 0.0) {
-    printf("hit %c %f ms early\n", c, std::abs(hit_time_ms));
-  } else if (hit_time_ms > 0.0) {
-    printf("hit %c %f ms late\n", c, hit_time_ms);
-  } else {
-    printf("hit %c exactly on time!\n", c);
-  }
-  if (std::abs(hit_time_ms) <= 23.0) { // marvelous
-    *score += ceil(1000000.0 / (double) hit_objects.size());
-    *judgement = "marvelous!";
-  } else if (std::abs(hit_time_ms) <= 45.0) { // perfect
-    *score += ceil((1000000.0 / (double) hit_objects.size()) * 0.75);
-    *judgement = "perfect";
-  } else if (std::abs(hit_time_ms) <= 90.0) { // great
-    *score += ceil((1000000.0 / (double) hit_objects.size()) * 0.5);
-    *judgement = "great";
-  } else { // good
-    *score += ceil((1000000.0 / (double) hit_objects.size()) * 0.25);
-    *judgement = "good";
-  }
-}
 
 // Deserialize a group from .khel format into a `string`.
 string deserialize_group(string raw) {
@@ -616,6 +546,7 @@ vector<string> deserialize_kv(string raw) {
   return vec;
 }
 
+// Load all given charts into a vector<Chart*>.
 vector<Chart*> load_all_charts(vector<string> chart_names) {
   vector<Chart*> charts;
   for (string chart_name : chart_names) {

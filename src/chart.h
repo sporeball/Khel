@@ -10,6 +10,9 @@
 #include "object.h"
 #include "sound.h"
 
+extern const std::map<char, int> map_columns;
+extern const std::map<char, int> map_rows;
+
 struct BpmList; // forward declaration
 
 // Used to determine scroll speed.
@@ -113,7 +116,6 @@ struct ChartWrapper {
   ~ChartWrapper();
   void load_chart(Chart* c);
   void play_chart(std::string difficulty, SDL_Renderer* renderer, Objects* objects, Groups* groups);
-  void try_hit(char c, std::string difficulty, float offset, double now_seconds, Uint64 performance_frequency, int* score, std::string* judgement);
 };
 
 std::string deserialize_group(std::string raw);

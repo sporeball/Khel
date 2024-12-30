@@ -8,7 +8,12 @@
 #include "input.h"
 #include "object.h"
 
+struct AutoVelocity;
+struct Chart;
+struct ChartWrapper;
+struct Groups;
 struct KeyPressList;
+struct Objects;
 
 struct KhelState {
   SDL_Window* window;

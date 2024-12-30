@@ -64,12 +64,30 @@ void try_hit(KhelState* state, UiState* ui_state) {
   vector<SyncedStruct*> hits_and_holds_within_window;
   // determine which hits and holds are within the timing window
   for (auto synced : synced_struct_list->vec) {
-    if (synced->t != SyncedStructType::HIT && synced->t != SyncedStructType::HOLD) continue;
+    if (synced->t != SyncedStructType::SS_HIT && synced->t != SyncedStructType::SS_HOLD) continue;
     double synced_exact_time = synced->beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
     double early_limit = synced_exact_time - 0.135;
     double late_limit = synced_exact_time + 0.135;
     if (chart_time >= early_limit && chart_time <= late_limit) {
       hits_and_holds_within_window.push_back(synced);
+    } else if (chart_time > late_limit + 1.0) {
+      // remove from objects and groups (stops rendering)
+      state->objects->destroy_instance(synced->id);
+      state->groups->remove_from_all_groups(synced->id);
+      // remove from chart wrapper
+      state->chart_wrapper->synced_structs->vec.erase(
+        remove(
+          state->chart_wrapper->synced_structs->vec.begin(),
+          state->chart_wrapper->synced_structs->vec.end(),
+          synced
+        ),
+        state->chart_wrapper->synced_structs->vec.end()
+      );
+    } else if (chart_time > late_limit && synced->judgement == Judgement::J_NONE) {
+      string s(synced->keys.begin(), synced->keys.end());
+      printf("missed %s\n", s.c_str());
+      synced->judgement = Judgement::J_MISS;
+      ui_state->judgement = "miss";
     }
   }
   // determine which hits and holds are having their keys pressed right now
@@ -99,15 +117,19 @@ void try_hit(KhelState* state, UiState* ui_state) {
     // return a judgement
     if (std::abs(hit_time_ms) <= 23.0) { // marvelous
       // state->score += max_score_per_object;
+      match->judgement = Judgement::J_MARVELOUS;
       ui_state->judgement = "marvelous!";
     } else if (std::abs(hit_time_ms) <= 45.0) { // perfect
       // state->score += ceil(max_score_per_object * 0.75);
+      match->judgement = Judgement::J_PERFECT;
       ui_state->judgement = "perfect";
     } else if (std::abs(hit_time_ms) <= 90.0) { // great
       // state->score += ceil(max_score_per_object * 0.5);
+      match->judgement = Judgement::J_GREAT;
       ui_state->judgement = "great";
     } else { // good
       // state->score += ceil(max_score_per_object * 0.25);
+      match->judgement = Judgement::J_GOOD;
       ui_state->judgement = "good";
     }
     // remove from objects and groups (stops rendering)

@@ -188,24 +188,12 @@ int main() {
           y += distance;
           y -= 120.0; // correct
           y *= -1.0; // coordinates are flipped
-          if (t == SyncedStructType::TIMING_LINE) {
+          if (t == SyncedStructType::SS_TIMING_LINE) {
             y += 16.0;
           }
           int id = pure_calculation->instances[i];
           Instance* ptr = state->objects->get_instance(id);
           ptr->move(ptr->x, y);
-        }
-        for (auto it = pure_calculation->instances.begin(); it != pure_calculation->instances.end(); ) {
-          Instance* i = state->objects->get_instance(*it);
-          int id = *it;
-          if (i->x < 0.0 || i->y < 0.0) {
-            state->objects->destroy_instance(*it);
-            it = pure_calculation->instances.erase(it);
-            // safely remove from all other groups
-            state->groups->remove_from_all_groups(id);
-          } else {
-            ++it;
-          }
         }
       }
       last_tick_240 = state->now();

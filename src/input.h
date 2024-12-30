@@ -24,6 +24,15 @@ struct KeyPressList {
   int contains(char c);
 };
 
+enum Judgement {
+  J_MARVELOUS,
+  J_PERFECT,
+  J_GREAT,
+  J_GOOD,
+  J_MISS,
+  J_NONE,
+};
+
 void try_hit(KhelState* state, UiState* ui_state);
 
 #endif

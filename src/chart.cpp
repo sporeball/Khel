@@ -11,6 +11,7 @@
 #include <SDL.h>
 #include <SDL_mixer.h>
 #include "chart.h"
+#include "input.h"
 #include "object.h"
 #include "sound.h"
 #include "util.h"
@@ -212,7 +213,7 @@ SyncedStruct::~SyncedStruct() {
 // Return the column that this SyncedStruct is in.
 // Returns -1 if this SyncedStruct is a timing line.
 int SyncedStruct::lane() {
-  if (t == SyncedStructType::TIMING_LINE) return -1;
+  if (t == SyncedStructType::SS_TIMING_LINE) return -1;
   map<char, int>::const_iterator pos = map_columns.find(keys[0]);
   if (pos == map_columns.end()) {
     return -1;
@@ -226,7 +227,7 @@ int SyncedStruct::lane_x() {
 }
 // Return the color of this SyncedStruct.
 string SyncedStruct::color() {
-  if (t == SyncedStructType::TIMING_LINE) {
+  if (t == SyncedStructType::SS_TIMING_LINE) {
     // double e = 1.0 / 2147483648.0;
     double e = 1.0 / 65536.0;
     double i;
@@ -256,9 +257,9 @@ string SyncedStruct::color() {
 // Return the asset that should be used to draw this SyncedStruct.
 string SyncedStruct::asset() {
   string color = this->color();
-  if (t == SyncedStructType::HIT || t == SyncedStructType::HOLD) {
+  if (t == SyncedStructType::SS_HIT || t == SyncedStructType::SS_HOLD) {
     return "assets/circle_" + color + ".png";
-  } else if (t == SyncedStructType::HOLD_TICK) {
+  } else if (t == SyncedStructType::SS_HOLD_TICK) {
     return "assets/hold_tick_" + color + ".png";
   } else { // timing line
     return "assets/line_" + color + ".png";
@@ -270,16 +271,16 @@ void SyncedStruct::print() {
   beat->print();
   printf(", t: ");
   switch (t) {
-    case SyncedStructType::HIT:
+    case SyncedStructType::SS_HIT:
       printf("HIT");
       break;
-    case SyncedStructType::HOLD:
+    case SyncedStructType::SS_HOLD:
       printf("HOLD");
       break;
-    case SyncedStructType::HOLD_TICK:
+    case SyncedStructType::SS_HOLD_TICK:
       printf("HOLD_TICK");
       break;
-    case SyncedStructType::TIMING_LINE:
+    case SyncedStructType::SS_TIMING_LINE:
       printf("TIMING_LINE");
       break;
   }
@@ -312,7 +313,8 @@ SyncedStructList::SyncedStructList(string s) {
     SyncedStruct* timing_line = new SyncedStruct;
     timing_line->id = -1;
     timing_line->beat = ptr_beat;
-    timing_line->t = SyncedStructType::TIMING_LINE;
+    timing_line->t = SyncedStructType::SS_TIMING_LINE;
+    timing_line->judgement = Judgement::J_NONE;
     vec.push_back(timing_line);
     // split the hit objects on plus sign, separating the hits from the holds and their info
     vector<string> hits_and_holds = split(s_hit_objects, "+");
@@ -331,8 +333,9 @@ SyncedStructList::SyncedStructList(string s) {
       SyncedStruct* ptr_hit_object = new SyncedStruct;
       ptr_hit_object->id = -1;
       ptr_hit_object->beat = ptr_beat;
-      ptr_hit_object->t = SyncedStructType::HIT;
+      ptr_hit_object->t = SyncedStructType::SS_HIT;
       ptr_hit_object->keys = keys;
+      ptr_hit_object->judgement = Judgement::J_NONE;
       vec.push_back(ptr_hit_object);
     }
     if (hits_and_holds.size() == 2) {
@@ -365,8 +368,9 @@ SyncedStructList::SyncedStructList(string s) {
         SyncedStruct* ptr_hit_object = new SyncedStruct;
         ptr_hit_object->id = -1;
         ptr_hit_object->beat = ptr_beat;
-        ptr_hit_object->t = SyncedStructType::HOLD;
+        ptr_hit_object->t = SyncedStructType::SS_HOLD;
         ptr_hit_object->keys = keys;
+        ptr_hit_object->judgement = Judgement::J_NONE;
         vec.push_back(ptr_hit_object);
       }
       // hold ticks
@@ -381,8 +385,9 @@ SyncedStructList::SyncedStructList(string s) {
           SyncedStruct* ptr_hit_object = new SyncedStruct;
           ptr_hit_object->id = -1;
           ptr_hit_object->beat = ptr_beat;
-          ptr_hit_object->t = SyncedStructType::HOLD_TICK;
+          ptr_hit_object->t = SyncedStructType::SS_HOLD_TICK;
           ptr_hit_object->keys = keys;
+          ptr_hit_object->judgement = Judgement::J_NONE;
           vec.push_back(ptr_hit_object);
           i += 1;
           tick_beat_value += delta;
@@ -549,7 +554,7 @@ void ChartWrapper::play_chart(string difficulty, SDL_Renderer* renderer, Objects
   for (SyncedStruct* synced : synced_structs->vec) {
     int id;
     // create object instance
-    if (synced->t == SyncedStructType::TIMING_LINE) {
+    if (synced->t == SyncedStructType::SS_TIMING_LINE) {
       id = objects->create_instance(synced->asset(), 0.0, 1000.0, 100, 1, renderer);
       groups->insert_into_group("pure_calculation", id);
       groups->insert_into_group("timing_lines", id);
@@ -557,7 +562,7 @@ void ChartWrapper::play_chart(string difficulty, SDL_Renderer* renderer, Objects
       id = objects->create_instance(synced->asset(), synced->lane_x(), 1000.0, 32, 32, renderer);
       groups->insert_into_group("pure_calculation", id);
       groups->insert_into_group("hit_objects", id);
-      if (synced->t != SyncedStructType::HOLD_TICK) {
+      if (synced->t != SyncedStructType::SS_HOLD_TICK) {
         groups->insert_into_group("hits_and_holds", id);
       }
     }

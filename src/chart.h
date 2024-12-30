@@ -7,6 +7,7 @@
 #include <vector>
 #include <SDL.h>
 #include <SDL_mixer.h>
+#include "input.h"
 #include "object.h"
 #include "sound.h"
 
@@ -61,10 +62,10 @@ struct Metadata {
 };
 
 enum SyncedStructType {
-  HIT,
-  HOLD,
-  HOLD_TICK,
-  TIMING_LINE,
+  SS_HIT,
+  SS_HOLD,
+  SS_HOLD_TICK,
+  SS_TIMING_LINE,
 };
 
 // Some kind of struct that's synced to a beat.
@@ -74,6 +75,7 @@ struct SyncedStruct {
   Beat* beat;
   SyncedStructType t;
   std::vector<char> keys;
+  Judgement judgement;
   ~SyncedStruct();
   int lane();
   int lane_x();

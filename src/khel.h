@@ -5,7 +5,10 @@
 #include <vector>
 #include <SDL.h>
 #include "chart.h"
+#include "input.h"
 #include "object.h"
+
+struct KeyPressList;
 
 struct KhelState {
   SDL_Window* window;
@@ -16,6 +19,7 @@ struct KhelState {
   std::vector<Chart*> charts;
   ChartWrapper* chart_wrapper;
   AutoVelocity* av;
+  KeyPressList* keypresses;
   Uint64 performance_counter_value_at_game_start;
   Uint64 performance_frequency;
   int offset;

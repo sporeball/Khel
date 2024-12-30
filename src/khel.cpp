@@ -33,6 +33,7 @@ KhelState::KhelState(SDL_Window* w, SDL_Renderer* r)
   chart_wrapper->chart_status = ChartStatus::PREVIEWING;
   av = new AutoVelocity;
   av->value = 300;
+  keypresses = new KeyPressList;
   performance_counter_value_at_game_start = SDL_GetPerformanceCounter();
   performance_frequency = SDL_GetPerformanceFrequency();
   printf("performance frequency: %llu\n", performance_frequency);
@@ -131,13 +132,22 @@ int main() {
           quit = 1;
           break;
         case SDL_KEYDOWN:
-          SDL_KeyboardEvent* key = &e.key;
-          switch (key->keysym.scancode) {
+          switch (e.key.keysym.scancode) {
             case SDL_SCANCODE_1:
               state->chart_wrapper->chart->print();
               printf("\n");
               break;
             default:
+              if (!map_keys.contains(e.key.keysym.scancode)) break;
+              state->keypresses->add(map_keys.at(e.key.keysym.scancode), state->now());
+              break;
+          }
+          break;
+        case SDL_KEYUP:
+          switch (e.key.keysym.scancode) {
+            default:
+              if (!map_keys.contains(e.key.keysym.scancode)) break;
+              state->keypresses->remove(map_keys.at(e.key.keysym.scancode));
               break;
           }
           break;

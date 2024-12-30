@@ -8,23 +8,58 @@
 
 using namespace std;
 
-const map<char, int> map_scancodes = {
-  {'q', SDL_SCANCODE_Q}, {'a', SDL_SCANCODE_A}, {'z', SDL_SCANCODE_Z},
-  {'w', SDL_SCANCODE_W}, {'s', SDL_SCANCODE_S}, {'x', SDL_SCANCODE_X},
-  {'e', SDL_SCANCODE_E}, {'d', SDL_SCANCODE_D}, {'c', SDL_SCANCODE_C},
-  {'r', SDL_SCANCODE_R}, {'f', SDL_SCANCODE_F}, {'v', SDL_SCANCODE_V},
-  {'t', SDL_SCANCODE_T}, {'g', SDL_SCANCODE_G}, {'b', SDL_SCANCODE_B},
-  {'y', SDL_SCANCODE_Y}, {'h', SDL_SCANCODE_H}, {'n', SDL_SCANCODE_N},
-  {'u', SDL_SCANCODE_U}, {'j', SDL_SCANCODE_J}, {'m', SDL_SCANCODE_M},
-  {'i', SDL_SCANCODE_I}, {'k', SDL_SCANCODE_K}, {',', SDL_SCANCODE_COMMA},
-  {'o', SDL_SCANCODE_O}, {'l', SDL_SCANCODE_L}, {'.', SDL_SCANCODE_PERIOD},
-  {'p', SDL_SCANCODE_P}, {';', SDL_SCANCODE_SEMICOLON}, {'/', SDL_SCANCODE_SLASH},
+const std::map<int, char> map_keys = {
+  {SDL_SCANCODE_Q, 'q'}, {SDL_SCANCODE_A, 'a'}, {SDL_SCANCODE_Z, 'z'},
+  {SDL_SCANCODE_W, 'w'}, {SDL_SCANCODE_S, 's'}, {SDL_SCANCODE_X, 'x'},
+  {SDL_SCANCODE_E, 'e'}, {SDL_SCANCODE_D, 'd'}, {SDL_SCANCODE_C, 'c'},
+  {SDL_SCANCODE_R, 'r'}, {SDL_SCANCODE_F, 'f'}, {SDL_SCANCODE_V, 'v'},
+  {SDL_SCANCODE_T, 't'}, {SDL_SCANCODE_G, 'g'}, {SDL_SCANCODE_B, 'b'},
+  {SDL_SCANCODE_Y, 'y'}, {SDL_SCANCODE_H, 'h'}, {SDL_SCANCODE_N, 'n'},
+  {SDL_SCANCODE_U, 'u'}, {SDL_SCANCODE_J, 'j'}, {SDL_SCANCODE_M, 'm'},
+  {SDL_SCANCODE_I, 'i'}, {SDL_SCANCODE_K, 'k'}, {SDL_SCANCODE_COMMA, ','},
+  {SDL_SCANCODE_O, 'o'}, {SDL_SCANCODE_L, 'l'}, {SDL_SCANCODE_PERIOD, '.'},
+  {SDL_SCANCODE_P, 'p'}, {SDL_SCANCODE_SEMICOLON, ';'}, {SDL_SCANCODE_SLASH, '/'},
 };
 
+// Add a key press to the key press list.
+void KeyPressList::add(char c, Uint64 t) {
+  KeyPress* key_press = new KeyPress;
+  key_press->key = c;
+  key_press->press_time = t;
+  vec.push_back(key_press);
+}
+// Remove a key press from the key press list.
+void KeyPressList::remove(char c) {
+  auto it = remove_if(
+    vec.begin(),
+    vec.end(),
+    [c](KeyPress* key_press) {
+      return key_press->key == c;
+    }
+  );
+  vec.erase(it, vec.end());
+}
+// Get a pointer to the given key press in the key press list.
+KeyPress* KeyPressList::get(char c) {
+  for (auto keypress : vec) {
+    if (keypress->key == c) return keypress;
+  }
+  return nullptr;
+}
+// Return whether the key press list contains the given key.
+int KeyPressList::contains(char c) {
+  for (auto keypress : vec) {
+    if (keypress->key == c) return 1;
+  }
+  return 0;
+}
+
+// Try to register a hit on the currently playing chart.
 void try_hit(KhelState* state, UiState* ui_state) {
   if (state->chart_wrapper->chart_status != ChartStatus::PLAYING) return;
+  Uint64 now = state->now();
   double chart_time = state->chart_time();
-  const Uint8* keyboard_state = SDL_GetKeyboardState(NULL);
+  KeyPressList* keypresses = state->keypresses;
   SyncedStructList* synced_struct_list = state->chart_wrapper->chart->get_difficulty(ui_state->difficulty)->synced_struct_list;
   vector<SyncedStruct*> hits_and_holds;
   vector<SyncedStruct*> hits_and_holds_within_window;
@@ -37,15 +72,16 @@ void try_hit(KhelState* state, UiState* ui_state) {
     double late_limit = synced_exact_time + 0.135;
     if (chart_time >= early_limit && chart_time <= late_limit) {
       hits_and_holds_within_window.push_back(synced);
-    } else if (chart_time > late_limit) {
-      synced_struct_list->vec.erase(remove(synced_struct_list->vec.begin(), synced_struct_list->vec.end(), synced), synced_struct_list->vec.end());
     }
   }
   // determine which hits and holds are having their keys pressed right now
   vector<SyncedStruct*> matches;
   for (auto synced : hits_and_holds_within_window) {
-    if (all_of(synced->keys.begin(), synced->keys.end(), [keyboard_state](char c) {
-      return keyboard_state[map_scancodes.at(c)] == 1;
+    if (all_of(synced->keys.begin(), synced->keys.end(), [keypresses, now](char c) {
+      KeyPress* keypress = keypresses->get(c);
+      if (keypress == nullptr) return false;
+      double press_duration_seconds = as_seconds(now - keypress->press_time);
+      return press_duration_seconds <= 0.135;
     })) {
       matches.push_back(synced);
     }
@@ -62,6 +98,7 @@ void try_hit(KhelState* state, UiState* ui_state) {
     } else {
       printf("hit %s exactly on time!\n", s_keys.c_str());
     }
+    // return a judgement
     if (std::abs(hit_time_ms) <= 23.0) { // marvelous
       // state->score += max_score_per_object;
       ui_state->judgement = "marvelous!";

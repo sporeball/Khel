@@ -43,6 +43,7 @@ struct Objects {
   Instance* get_instance(int id);
   void destroy_instance(int id);
   void draw_all_objects(SDL_Renderer* renderer);
+  void clear_all();
 };
 
 // A collection of object instances, able to be manipulated together.
@@ -65,6 +66,7 @@ struct Groups {
   void insert_into_group(std::string name, int id);
   void remove_from_group(std::string name, int id);
   void remove_from_all_groups(int id);
+  void clear_all();
 };
 
 #endif

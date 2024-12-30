@@ -120,6 +120,7 @@ struct Chart {
 
 // Status of the current chart.
 enum ChartStatus {
+  DONE,
   NONE,
   PAUSED,
   PLAYING,

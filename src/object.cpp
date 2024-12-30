@@ -128,6 +128,15 @@ void Objects::draw_all_objects(SDL_Renderer* renderer) {
     object.second->draw_all_instances(renderer);
   }
 }
+// Clear all object types, leaving no instances.
+void Objects::clear_all() {
+  for (auto object : objects) {
+    for (auto it = object.second->instances.begin(); it != object.second->instances.end(); ) {
+      it->second->~Instance();
+      it = object.second->instances.erase(it);
+    }
+  }
+}
 
 // Destructor method.
 Group::~Group() {
@@ -186,5 +195,13 @@ void Groups::remove_from_group(string name, int id) {
 void Groups::remove_from_all_groups(int id) {
   for (auto group : groups) {
     group.second->remove(id);
+  }
+}
+// Clear all groups, leaving no IDs.
+void Groups::clear_all() {
+  for (auto group : groups) {
+    for (auto id : group.second->instances) {
+      group.second->remove(id);
+    }
   }
 }

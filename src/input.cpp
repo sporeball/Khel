@@ -65,13 +65,11 @@ void try_hit(KhelState* state, UiState* ui_state) {
   // determine which hit objects are within the timing window
   for (auto synced : synced_struct_list->vec) {
     switch (synced->t) {
-      case SyncedStructType::SS_TIMING_LINE:
-        continue;
       default:
         double synced_exact_time = synced->beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
         double early_limit = synced_exact_time - 0.135;
         double late_limit = synced_exact_time + 0.135;
-        if (chart_time >= early_limit && chart_time <= late_limit) {
+        if (chart_time >= early_limit && chart_time <= late_limit && synced->t != SyncedStructType::SS_TIMING_LINE) {
           hit_objects_within_window.push_back(synced);
         } else if (chart_time > late_limit + 1.0) {
           // remove from objects and groups (stops rendering)
@@ -86,7 +84,7 @@ void try_hit(KhelState* state, UiState* ui_state) {
             ),
             state->chart_wrapper->synced_structs->vec.end()
           );
-        } else if (chart_time > late_limit && synced->judgement == Judgement::J_NONE) {
+        } else if (chart_time > late_limit && synced->t != SyncedStructType::SS_TIMING_LINE && synced->judgement == Judgement::J_NONE) {
           string s(synced->keys.begin(), synced->keys.end());
           printf("missed %s\n", s.c_str());
           synced->judgement = Judgement::J_MISS;

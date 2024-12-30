@@ -121,8 +121,6 @@ int main() {
   Uint64 last_tick_240 = state->performance_counter_value_at_game_start;
   Uint64 last_tick_1k = state->performance_counter_value_at_game_start;
 
-  // int max_score_per_object;
-
   SDL_Event e;
   int quit = 0;
   while (quit == 0) {
@@ -135,6 +133,13 @@ int main() {
           quit = 1;
           break;
         case SDL_KEYDOWN:
+          if (state->chart_wrapper->chart_status == ChartStatus::DONE) {
+            state->chart_wrapper->chart_status = ChartStatus::PREVIEWING;
+            state->objects->clear_all();
+            state->groups->clear_all();
+            state->score = 0;
+            state->max_score_per_object = 0;
+          }
           switch (e.key.keysym.scancode) {
             case SDL_SCANCODE_1:
               state->chart_wrapper->chart->print();
@@ -164,6 +169,11 @@ int main() {
         // play audio
         if (state->chart_time() > 0.0 && Mix_PlayingMusic() == 0) {
           state->chart_wrapper->chart->audio->play();
+        }
+        // end chart
+        if (state->chart_wrapper->synced_structs->vec.size() == 0) {
+          state->chart_wrapper->chart->audio->fade_out();
+          state->chart_wrapper->chart_status = ChartStatus::DONE;
         }
       }
       try_hit(state, ui_state);

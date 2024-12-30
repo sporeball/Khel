@@ -112,6 +112,9 @@ void UiState::draw_ui(KhelState* state) {
     if (state->chart_wrapper->chart_status == ChartStatus::PLAYING) {
       draw_ui_playing(state);
     }
+    if (state->chart_wrapper->chart_status == ChartStatus::DONE) {
+      draw_ui_done(state);
+    }
     ImGui::End();
   }
 }
@@ -196,6 +199,19 @@ void UiState::draw_ui_playing(KhelState* state) {
   ImGui::Text("%s", bpm_text.c_str());
   ImGui::SetCursorPosX((window_width - judgement_text_width) * 0.5f);
   ImGui::Text("%s", judgement.c_str());
+}
+// Draw the UI for when the current chart is done.
+void UiState::draw_ui_done(KhelState* state) {
+  auto window_width = 800.0;
+  string score_text = format("score: {}", state->score);
+  auto score_text_width = ImGui::CalcTextSize(score_text.c_str()).x;
+  string press_any_key_text = "press any key to continue";
+  auto press_any_key_text_width = ImGui::CalcTextSize(press_any_key_text.c_str()).x;
+  ImGui::Dummy(ImVec2(0.0f, 20.0f));
+  ImGui::SetCursorPosX((window_width - score_text_width) * 0.5f);
+  ImGui::Text("%s", score_text.c_str());
+  ImGui::SetCursorPosX((window_width - press_any_key_text_width) * 0.5f);
+  ImGui::Text("%s", press_any_key_text.c_str());
 }
 
 // This function can be pased to ImGui::ListBox in order to use a vector<string> with it.

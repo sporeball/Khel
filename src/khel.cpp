@@ -37,6 +37,10 @@ KhelState::KhelState(SDL_Window* w, SDL_Renderer* r)
   performance_frequency = SDL_GetPerformanceFrequency();
   printf("performance frequency: %llu\n", performance_frequency);
 }
+// Return the number of ticks of SDL's high resolution counter elapsed since Khel started.
+Uint64 KhelState::now() {
+  return SDL_GetPerformanceCounter() - performance_counter_value_at_game_start;
+}
 
 int main() {
   SDL_Window* window = NULL;
@@ -110,8 +114,6 @@ int main() {
   int quit = 0;
   while (quit == 0) {
     // then = now;
-    state->now = SDL_GetPerformanceCounter() - state->performance_counter_value_at_game_start;
-    double now_seconds = (double) state->now / (double) state->performance_frequency;
     // double frame_time = (double) (now - then) / (double) performance_frequency;
     while (SDL_PollEvent(&e)) {
       ImGui_ImplSDL2_ProcessEvent(&e);
@@ -135,15 +137,13 @@ int main() {
     ui_state->draw_ui(state);
     // updates
     // 1000 tps
-    state->now = SDL_GetPerformanceCounter() - state->performance_counter_value_at_game_start;
-    if (state->now - last_tick_1k >= un_1k) {
+    if (state->now() - last_tick_1k >= un_1k) {
       if (state->chart_wrapper->chart_status == ChartStatus::PLAYING) {
         double one_minute = 60.0;
         Bpm* bpm_at_zero = state->chart_wrapper->chart->metadata->bpms->at_exact_time(0.0);
         double one_beat_at_zero = one_minute / bpm_at_zero->value; // seconds
-        double start_time_seconds = (double) state->chart_wrapper->start_time / (double) state->performance_frequency;
-        state->now = SDL_GetPerformanceCounter() - state->performance_counter_value_at_game_start;
-        now_seconds = (double) state->now / (double) state->performance_frequency;
+        double start_time_seconds = as_seconds(state->chart_wrapper->start_time);
+        double now_seconds = as_seconds(state->now());
         double exact_time_seconds = now_seconds - start_time_seconds - (one_beat_at_zero * 8.0);
         // play audio
         if (exact_time_seconds > 0.0 && Mix_PlayingMusic() == 0) {
@@ -204,20 +204,18 @@ int main() {
           synced_struct_list->vec.erase(remove(synced_struct_list->vec.begin(), synced_struct_list->vec.end(), match), synced_struct_list->vec.end());
         }
       }
-      last_tick_1k = state->now;
+      last_tick_1k = state->now();
     }
     // 240 tps
-    state->now = SDL_GetPerformanceCounter() - state->performance_counter_value_at_game_start;
-    if (state->now - last_tick_240 >= un_240) {
+    if (state->now() - last_tick_240 >= un_240) {
       if (state->chart_wrapper->chart_status == ChartStatus::PLAYING) {
         // Group* hits_and_holds = groups->get_group("hits_and_holds");
         Group* pure_calculation = state->groups->get_group("pure_calculation");
         double one_minute = 60.0;
         Bpm* bpm_at_zero = state->chart_wrapper->chart->metadata->bpms->at_exact_time(0.0);
         double one_beat_at_zero = one_minute / bpm_at_zero->value;
-        double start_time_seconds = (double) state->chart_wrapper->start_time / (double) state->performance_frequency;
-        state->now = SDL_GetPerformanceCounter() - state->performance_counter_value_at_game_start;
-        now_seconds = (double) state->now / (double) state->performance_frequency;
+        double start_time_seconds = as_seconds(state->chart_wrapper->start_time);
+        double now_seconds = as_seconds(state->now());
         double exact_time_seconds = now_seconds - start_time_seconds - (one_beat_at_zero * 8.0);
         SyncedStructList* synced_struct_list = state->chart_wrapper->chart->get_difficulty(ui_state->difficulty)->synced_struct_list;
         for (int i = 0; i < pure_calculation->size(); i++) {
@@ -250,7 +248,7 @@ int main() {
           }
         }
       }
-      last_tick_240 = state->now;
+      last_tick_240 = state->now();
     }
     ImGui::Render();
     ImGuiIO& io = ImGui::GetIO();

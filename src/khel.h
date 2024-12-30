@@ -16,11 +16,12 @@ struct KhelState {
   ChartWrapper* chart_wrapper;
   AutoVelocity* av;
   Uint64 performance_counter_value_at_game_start;
-  Uint64 now;
   Uint64 performance_frequency;
   int offset;
   int score;
   KhelState(SDL_Window* w, SDL_Renderer* r);
+  Uint64 now();
+  double now_seconds();
 };
 
 #endif

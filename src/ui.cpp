@@ -2,6 +2,7 @@
 #include <string>
 #include <SDL.h>
 #include "ui.h"
+#include "util.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl2.h"
 #include "imgui/imgui_impl_sdlrenderer2.h"
@@ -163,8 +164,7 @@ void UiState::draw_ui_previewing(KhelState* state) {
     chart->audio->stop();
     state->chart_wrapper->load_chart(chart);
     state->chart_wrapper->play_chart(difficulty, state->renderer, state->objects, state->groups);
-    state->now = SDL_GetPerformanceCounter() - state->performance_counter_value_at_game_start;
-    state->chart_wrapper->start_time = state->now;
+    state->chart_wrapper->start_time = state->now();
     // TODO: include hold ticks in this calculation
     // max_score_per_object = ceil(1000000.0 / (double) state->groups->get_group("hits_and_holds")->size());
     // create objects
@@ -180,9 +180,8 @@ void UiState::draw_ui_playing(KhelState* state) {
   double one_minute = 60.0;
   Bpm* bpm_at_zero = state->chart_wrapper->chart->metadata->bpms->at_exact_time(0.0);
   double one_beat_at_zero = one_minute / bpm_at_zero->value;
-  double start_time_seconds = (double) state->chart_wrapper->start_time / (double) state->performance_frequency;
-  state->now = SDL_GetPerformanceCounter() - state->performance_counter_value_at_game_start;
-  double now_seconds = (double) state->now / (double) state->performance_frequency;
+  double start_time_seconds = as_seconds(state->chart_wrapper->start_time);
+  double now_seconds = as_seconds(state->now());
   double exact_time_seconds = now_seconds - start_time_seconds - (one_beat_at_zero * 8.0);
   Bpm* bpm_now = state->chart_wrapper->chart->metadata->bpms->at_exact_time(exact_time_seconds);
   string bpm_text = format("{:.2f}", bpm_now->value);

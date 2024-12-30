@@ -5,8 +5,14 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <SDL.h>
 
 using namespace std;
+
+// Convert a Uint64 from SDL's high resolution counter to a time in seconds.
+double as_seconds(Uint64 t) {
+  return (double) t / (double) SDL_GetPerformanceFrequency();
+}
 
 // Get the names of all files in a directory as a `vector<string>`.
 vector<string> crawl(string path) {

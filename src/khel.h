@@ -22,6 +22,7 @@ struct KhelState {
   int score;
   KhelState(SDL_Window* w, SDL_Renderer* r);
   Uint64 now();
+  double chart_time();
 };
 
 #endif

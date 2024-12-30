@@ -23,12 +23,7 @@ const map<char, int> map_scancodes = {
 
 void try_hit(KhelState* state, UiState* ui_state) {
   if (state->chart_wrapper->chart_status != ChartStatus::PLAYING) return;
-  double one_minute = 60.0;
-  Bpm* bpm_at_zero = state->chart_wrapper->chart->metadata->bpms->at_exact_time(0.0);
-  double one_beat_at_zero = one_minute / bpm_at_zero->value; // seconds
-  double start_time_seconds = as_seconds(state->chart_wrapper->start_time);
-  double now_seconds = as_seconds(state->now());
-  double exact_time_seconds = now_seconds - start_time_seconds - (one_beat_at_zero * 8.0);
+  double chart_time = state->chart_time();
   const Uint8* keyboard_state = SDL_GetKeyboardState(NULL);
   SyncedStructList* synced_struct_list = state->chart_wrapper->chart->get_difficulty(ui_state->difficulty)->synced_struct_list;
   vector<SyncedStruct*> hits_and_holds;
@@ -40,9 +35,9 @@ void try_hit(KhelState* state, UiState* ui_state) {
     double synced_exact_time = synced->beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
     double early_limit = synced_exact_time - 0.135;
     double late_limit = synced_exact_time + 0.135;
-    if (exact_time_seconds >= early_limit && exact_time_seconds <= late_limit) {
+    if (chart_time >= early_limit && chart_time <= late_limit) {
       hits_and_holds_within_window.push_back(synced);
-    } else if (exact_time_seconds > late_limit) {
+    } else if (chart_time > late_limit) {
       synced_struct_list->vec.erase(remove(synced_struct_list->vec.begin(), synced_struct_list->vec.end(), synced), synced_struct_list->vec.end());
     }
   }
@@ -59,7 +54,7 @@ void try_hit(KhelState* state, UiState* ui_state) {
   for (auto match : matches) {
     string s_keys(match->keys.begin(), match->keys.end());
     double match_exact_time = match->beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
-    double hit_time_ms = (exact_time_seconds - match_exact_time) * 1000.0;
+    double hit_time_ms = (chart_time - match_exact_time) * 1000.0;
     if (hit_time_ms < 0.0) {
       printf("hit %s %f ms early\n", s_keys.c_str(), std::abs(hit_time_ms));
     } else if (hit_time_ms > 0.0) {

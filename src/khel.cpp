@@ -41,6 +41,15 @@ KhelState::KhelState(SDL_Window* w, SDL_Renderer* r)
 Uint64 KhelState::now() {
   return SDL_GetPerformanceCounter() - performance_counter_value_at_game_start;
 }
+// Return the number of seconds elapsed in the currently playing chart.
+// This method should only be called when the chart status is ChartStatus::PLAYING.
+double KhelState::chart_time() {
+  Bpm* bpm_at_zero = chart_wrapper->chart->metadata->bpms->at_exact_time(0.0);
+  double one_beat_at_zero = 60.0 / bpm_at_zero->value; // seconds
+  double start_time_seconds = as_seconds(chart_wrapper->start_time);
+  double now_seconds = as_seconds(now());
+  return now_seconds - start_time_seconds - (one_beat_at_zero * 8.0) - ((double) offset / 1000.0);
+}
 
 int main() {
   SDL_Window* window = NULL;
@@ -139,14 +148,8 @@ int main() {
     // 1000 tps
     if (state->now() - last_tick_1k >= un_1k) {
       if (state->chart_wrapper->chart_status == ChartStatus::PLAYING) {
-        double one_minute = 60.0;
-        Bpm* bpm_at_zero = state->chart_wrapper->chart->metadata->bpms->at_exact_time(0.0);
-        double one_beat_at_zero = one_minute / bpm_at_zero->value; // seconds
-        double start_time_seconds = as_seconds(state->chart_wrapper->start_time);
-        double now_seconds = as_seconds(state->now());
-        double exact_time_seconds = now_seconds - start_time_seconds - (one_beat_at_zero * 8.0);
         // play audio
-        if (exact_time_seconds > 0.0 && Mix_PlayingMusic() == 0) {
+        if (state->chart_time() > 0.0 && Mix_PlayingMusic() == 0) {
           state->chart_wrapper->chart->audio->play();
         }
       }
@@ -158,12 +161,6 @@ int main() {
       if (state->chart_wrapper->chart_status == ChartStatus::PLAYING) {
         // Group* hits_and_holds = groups->get_group("hits_and_holds");
         Group* pure_calculation = state->groups->get_group("pure_calculation");
-        double one_minute = 60.0;
-        Bpm* bpm_at_zero = state->chart_wrapper->chart->metadata->bpms->at_exact_time(0.0);
-        double one_beat_at_zero = one_minute / bpm_at_zero->value;
-        double start_time_seconds = as_seconds(state->chart_wrapper->start_time);
-        double now_seconds = as_seconds(state->now());
-        double exact_time_seconds = now_seconds - start_time_seconds - (one_beat_at_zero * 8.0);
         SyncedStructList* synced_struct_list = state->chart_wrapper->chart->get_difficulty(ui_state->difficulty)->synced_struct_list;
         for (int i = 0; i < pure_calculation->size(); i++) {
           // all hit objects and all timing lines are subject to pure calculation
@@ -175,7 +172,7 @@ int main() {
           double position_at_exact_time_zero = state->av->over_time(exact_time_from_beat, state->chart_wrapper->chart->metadata->bpms);
           y -= position_at_exact_time_zero;
           // and translating it by the distance that it travels from zero to now
-          double distance = state->av->over_time(exact_time_seconds, state->chart_wrapper->chart->metadata->bpms);
+          double distance = state->av->over_time(state->chart_time(), state->chart_wrapper->chart->metadata->bpms);
           y += distance;
           y -= 120.0; // correct
           y *= -1.0; // coordinates are flipped

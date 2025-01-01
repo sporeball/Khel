@@ -245,11 +245,46 @@ void UiState::draw_ui_done(KhelState* state) {
   int score_display_value = score_trunc - (score_trunc % 10);
   string score_text = format("score: {}", score_display_value);
   auto score_text_width = ImGui::CalcTextSize(score_text.c_str()).x;
+  string result_text;
+  if (all_of(state->judgements.begin(), state->judgements.end(), [](Judgement* j) {
+    return j->t() == JudgementType::J_MARVELOUS;
+  })) {
+    result_text = "marvelous full combo!";
+  } else if (all_of(state->judgements.begin(), state->judgements.end(), [](Judgement* j) {
+    return j->t() <= JudgementType::J_PERFECT;
+  })) {
+    result_text = "perfect full combo!";
+  } else if (all_of(state->judgements.begin(), state->judgements.end(), [](Judgement* j) {
+    return j->t() <= JudgementType::J_GREAT;
+  })) {
+    result_text = "great full combo!";
+  } else if (all_of(state->judgements.begin(), state->judgements.end(), [](Judgement* j) {
+    return j->t() <= JudgementType::J_GOOD;
+  })) {
+    result_text = "full combo!";
+  } else {
+    result_text = "clear";
+  }
+  auto result_text_width = ImGui::CalcTextSize(result_text.c_str()).x;
   string press_any_key_text = "press any key to continue";
   auto press_any_key_text_width = ImGui::CalcTextSize(press_any_key_text.c_str()).x;
   ImGui::Dummy(ImVec2(0.0f, 20.0f));
   ImGui::SetCursorPosX((window_width - score_text_width) * 0.5f);
   ImGui::Text("%s", score_text.c_str());
+  ImVec4 result_text_color;
+  if (result_text == "clear") {
+    result_text_color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+  } else if (state->lowest_judgement_in_combo->t() == JudgementType::J_GOOD) {
+    result_text_color = ImVec4(0.0f, 1.0f, 1.0f, 1.0f);
+  } else if (state->lowest_judgement_in_combo->t() == JudgementType::J_GREAT) {
+    result_text_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+  } else if (state->lowest_judgement_in_combo->t() == JudgementType::J_PERFECT) {
+    result_text_color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+  } else {
+    result_text_color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+  }
+  ImGui::SetCursorPosX((window_width - result_text_width) * 0.5f);
+  ImGui::TextColored(result_text_color, "%s", result_text.c_str());
   ImGui::SetCursorPosX((window_width - press_any_key_text_width) * 0.5f);
   ImGui::Text("%s", press_any_key_text.c_str());
 }

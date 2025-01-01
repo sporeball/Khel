@@ -139,6 +139,7 @@ int main() {
             state->chart_wrapper->chart_status = ChartStatus::PREVIEWING;
             state->objects->clear_all();
             state->groups->clear_all();
+            state->judgements.clear();
             state->combo = 0;
             state->lowest_judgement_in_combo = new Judgement;
             state->score = 0.0;

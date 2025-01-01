@@ -29,6 +29,7 @@ struct KhelState {
   Uint64 performance_counter_value_at_game_start;
   Uint64 performance_frequency;
   int offset;
+  std::vector<Judgement*> judgements;
   int combo;
   Judgement* lowest_judgement_in_combo;
   double score;

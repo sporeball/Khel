@@ -208,6 +208,7 @@ void try_hit(KhelState* state, UiState* ui_state) {
 void judge(double ms, SyncedStruct* synced, KhelState* state, UiState* ui_state) {
   Judgement* j = new Judgement(ms);
   synced->judgement = j;
+  state->judgements.push_back(j);
   state->score += j->score(state->max_score_per_object);
   ui_state->judgement = j->text();
   // combo

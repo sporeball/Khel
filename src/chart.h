@@ -75,7 +75,7 @@ struct SyncedStruct {
   Beat* beat;
   SyncedStructType t;
   std::vector<char> keys;
-  Judgement judgement;
+  Judgement* judgement;
   ~SyncedStruct();
   int lane();
   int lane_x();

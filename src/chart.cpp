@@ -314,7 +314,7 @@ SyncedStructList::SyncedStructList(string s) {
     timing_line->id = -1;
     timing_line->beat = ptr_beat;
     timing_line->t = SyncedStructType::SS_TIMING_LINE;
-    timing_line->judgement = Judgement::J_NONE;
+    timing_line->judgement = new Judgement;
     vec.push_back(timing_line);
     // split the hit objects on plus sign, separating the hits from the holds and their info
     vector<string> hits_and_holds = split(s_hit_objects, "+");
@@ -335,7 +335,7 @@ SyncedStructList::SyncedStructList(string s) {
       ptr_hit_object->beat = ptr_beat;
       ptr_hit_object->t = SyncedStructType::SS_HIT;
       ptr_hit_object->keys = keys;
-      ptr_hit_object->judgement = Judgement::J_NONE;
+      ptr_hit_object->judgement = new Judgement;
       vec.push_back(ptr_hit_object);
     }
     if (hits_and_holds.size() == 2) {
@@ -370,7 +370,7 @@ SyncedStructList::SyncedStructList(string s) {
         ptr_hit_object->beat = ptr_beat;
         ptr_hit_object->t = SyncedStructType::SS_HOLD;
         ptr_hit_object->keys = keys;
-        ptr_hit_object->judgement = Judgement::J_NONE;
+        ptr_hit_object->judgement = new Judgement;
         vec.push_back(ptr_hit_object);
       }
       // hold ticks
@@ -387,7 +387,7 @@ SyncedStructList::SyncedStructList(string s) {
           ptr_hit_object->beat = ptr_beat;
           ptr_hit_object->t = SyncedStructType::SS_HOLD_TICK;
           ptr_hit_object->keys = keys;
-          ptr_hit_object->judgement = Judgement::J_NONE;
+          ptr_hit_object->judgement = new Judgement;
           vec.push_back(ptr_hit_object);
           i += 1;
           tick_beat_value += delta;

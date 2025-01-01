@@ -3,6 +3,7 @@
 
 #include <map>
 #include <SDL.h>
+#include "chart.h"
 #include "khel.h"
 #include "ui.h"
 
@@ -24,13 +25,23 @@ struct KeyPressList {
   int contains(char c);
 };
 
-enum Judgement {
+enum JudgementType {
   J_MARVELOUS,
   J_PERFECT,
   J_GREAT,
   J_GOOD,
   J_MISS,
   J_NONE,
+};
+
+struct Judgement {
+  double ms;
+  Judgement();
+  Judgement(double m);
+  Judgement* miss();
+  JudgementType t();
+  double score(double max_score_per_object);
+  std::string text();
 };
 
 void try_hit(KhelState* state, UiState* ui_state);

@@ -54,6 +54,67 @@ int KeyPressList::contains(char c) {
   return 0;
 }
 
+// Construct a judgement with type `JudgementType::J_NONE`.
+Judgement::Judgement() {
+  ms = -100000.0;
+}
+// Construct a judgement with type `JudgementType::J_GOOD` or better.
+Judgement::Judgement(double m) : ms(m) {}
+// Construct a judgement with type `JudgementType::J_MISS`.
+Judgement* Judgement::miss() {
+  Judgement* j = new Judgement();
+  j->ms = -10000.0;
+  return j;
+}
+// Return the type of this judgement.
+JudgementType Judgement::t() {
+  if (std::abs(ms) <= 23.0) {
+    return JudgementType::J_MARVELOUS;
+  } else if (std::abs(ms) <= 45.0) {
+    return JudgementType::J_PERFECT;
+  } else if (std::abs(ms) <= 90.0) {
+    return JudgementType::J_GREAT;
+  } else if (std::abs(ms) <= 135.0) {
+    return JudgementType::J_GOOD;
+  } else if (ms == -10000.0) {
+    return JudgementType::J_MISS;
+  } else {
+    return JudgementType::J_NONE;
+  }
+}
+// Return the amount of score that should be added by this judgement.
+double Judgement::score(double max_score_per_object) {
+  switch (t()) {
+    case JudgementType::J_MARVELOUS:
+      return max_score_per_object;
+    case JudgementType::J_PERFECT:
+      return max_score_per_object - 10.0;
+    case JudgementType::J_GREAT:
+      return (max_score_per_object * 0.6) - 10.0;
+    case JudgementType::J_GOOD:
+      return (max_score_per_object * 0.2) - 10.0;
+    default:
+      return 0.0;
+  }
+}
+// Return the text that should be used to represent this judgemt in the UI.
+string Judgement::text() {
+  switch (t()) {
+    case JudgementType::J_MARVELOUS:
+      return "marvelous!";
+    case JudgementType::J_PERFECT:
+      return "perfect";
+    case JudgementType::J_GREAT:
+      return "great";
+    case JudgementType::J_GOOD:
+      return "good";
+    case JudgementType::J_MISS:
+      return "miss";
+    case JudgementType::J_NONE:
+      return "none";
+  }
+}
+
 // Try to register a hit on the currently playing chart.
 void try_hit(KhelState* state, UiState* ui_state) {
   if (state->chart_wrapper->chart_status != ChartStatus::PLAYING) return;
@@ -84,10 +145,10 @@ void try_hit(KhelState* state, UiState* ui_state) {
             ),
             state->chart_wrapper->synced_structs->vec.end()
           );
-        } else if (chart_time > late_limit && synced->t != SyncedStructType::SS_TIMING_LINE && synced->judgement == Judgement::J_NONE) {
+        } else if (chart_time > late_limit && synced->t != SyncedStructType::SS_TIMING_LINE && synced->judgement->t() == JudgementType::J_NONE) {
           string s(synced->keys.begin(), synced->keys.end());
           printf("missed %s\n", s.c_str());
-          synced->judgement = Judgement::J_MISS;
+          synced->judgement = (new Judgement)->miss();
           ui_state->judgement = "miss";
         }
         break;
@@ -118,9 +179,7 @@ void try_hit(KhelState* state, UiState* ui_state) {
     SyncedStructType t = match->t;
     if (t == SyncedStructType::SS_HOLD_TICK) {
       printf("held %s\n", s_keys.c_str());
-      state->score += state->max_score_per_object;
-      match->judgement = Judgement::J_MARVELOUS;
-      ui_state->judgement = "marvelous!";
+      match->judgement = new Judgement(0.0);
     } else {
       double hit_time_ms = (chart_time - match_exact_time) * 1000.0;
       if (hit_time_ms < 0.0) {
@@ -130,25 +189,11 @@ void try_hit(KhelState* state, UiState* ui_state) {
       } else {
         printf("hit %s exactly on time!\n", s_keys.c_str());
       }
-      // return a judgement
-      if (std::abs(hit_time_ms) <= 23.0) { // marvelous
-        state->score += state->max_score_per_object;
-        match->judgement = Judgement::J_MARVELOUS;
-        ui_state->judgement = "marvelous!";
-      } else if (std::abs(hit_time_ms) <= 45.0) { // perfect
-        state->score += state->max_score_per_object - 10.0;
-        match->judgement = Judgement::J_PERFECT;
-        ui_state->judgement = "perfect";
-      } else if (std::abs(hit_time_ms) <= 90.0) { // great
-        state->score += (state->max_score_per_object * 0.6) - 10.0;
-        match->judgement = Judgement::J_GREAT;
-        ui_state->judgement = "great";
-      } else { // good
-        state->score += (state->max_score_per_object * 0.2) - 10.0;
-        match->judgement = Judgement::J_GOOD;
-        ui_state->judgement = "good";
-      }
+      match->judgement = new Judgement(hit_time_ms);
     }
+    // update associated values
+    state->score += match->judgement->score(state->max_score_per_object);
+    ui_state->judgement = match->judgement->text();
     // remove from objects and groups (stops rendering)
     state->objects->destroy_instance(match->id);
     state->groups->remove_from_all_groups(match->id);

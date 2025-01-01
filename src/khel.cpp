@@ -37,8 +37,8 @@ KhelState::KhelState(SDL_Window* w, SDL_Renderer* r)
   performance_counter_value_at_game_start = SDL_GetPerformanceCounter();
   performance_frequency = SDL_GetPerformanceFrequency();
   offset = 0;
-  score = 0;
-  max_score_per_object = 0;
+  score = 0.0;
+  max_score_per_object = 0.0;
   printf("performance frequency: %llu\n", performance_frequency);
 }
 // Return the number of ticks of SDL's high resolution counter elapsed since Khel started.
@@ -137,8 +137,8 @@ int main() {
             state->chart_wrapper->chart_status = ChartStatus::PREVIEWING;
             state->objects->clear_all();
             state->groups->clear_all();
-            state->score = 0;
-            state->max_score_per_object = 0;
+            state->score = 0.0;
+            state->max_score_per_object = 0.0;
           }
           switch (e.key.keysym.scancode) {
             case SDL_SCANCODE_1:

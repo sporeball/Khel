@@ -28,8 +28,8 @@ struct KhelState {
   Uint64 performance_counter_value_at_game_start;
   Uint64 performance_frequency;
   int offset;
-  int score;
-  int max_score_per_object;
+  double score;
+  double max_score_per_object;
   KhelState(SDL_Window* w, SDL_Renderer* r);
   Uint64 now();
   double chart_time();

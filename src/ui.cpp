@@ -1,3 +1,4 @@
+#include <cmath>
 #include <iostream>
 #include <string>
 #include <SDL.h>
@@ -169,7 +170,7 @@ void UiState::draw_ui_previewing(KhelState* state) {
     state->chart_wrapper->load_chart(chart);
     state->chart_wrapper->play_chart(difficulty, state->renderer, state->objects, state->groups);
     state->chart_wrapper->start_time = state->now();
-    state->max_score_per_object = ceil(1000000.0 / (double) state->groups->get_group("hit_objects")->size());
+    state->max_score_per_object = 1000000.0 / (double) state->groups->get_group("hit_objects")->size();
     // create objects
     state->objects->create_instance("assets/line_white.png", 0.0, 120.0, 100, 1, state->renderer);
     for (int i = 0; i < 10; i++) {
@@ -189,7 +190,9 @@ void UiState::draw_ui_playing(KhelState* state) {
   Bpm* bpm_now = state->chart_wrapper->chart->metadata->bpms->at_exact_time(exact_time_seconds);
   string bpm_text = format("{:.2f}", bpm_now->value);
   auto bpm_text_width = ImGui::CalcTextSize(bpm_text.c_str()).x;
-  string score_text = format("{}", state->score);
+  int score_trunc = (int) trunc(state->score);
+  int score_display_value = score_trunc - (score_trunc % 10);
+  string score_text = format("{}", score_display_value);
   auto score_text_width = ImGui::CalcTextSize(score_text.c_str()).x;
   auto judgement_text_width = ImGui::CalcTextSize(judgement.c_str()).x;
   ImGui::Dummy(ImVec2(0.0f, 20.0f));

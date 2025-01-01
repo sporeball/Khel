@@ -136,15 +136,15 @@ void try_hit(KhelState* state, UiState* ui_state) {
         match->judgement = Judgement::J_MARVELOUS;
         ui_state->judgement = "marvelous!";
       } else if (std::abs(hit_time_ms) <= 45.0) { // perfect
-        state->score += ceil(state->max_score_per_object * 0.75);
+        state->score += state->max_score_per_object - 10.0;
         match->judgement = Judgement::J_PERFECT;
         ui_state->judgement = "perfect";
       } else if (std::abs(hit_time_ms) <= 90.0) { // great
-        state->score += ceil(state->max_score_per_object * 0.5);
+        state->score += (state->max_score_per_object * 0.6) - 10.0;
         match->judgement = Judgement::J_GREAT;
         ui_state->judgement = "great";
       } else { // good
-        state->score += ceil(state->max_score_per_object * 0.25);
+        state->score += (state->max_score_per_object * 0.2) - 10.0;
         match->judgement = Judgement::J_GOOD;
         ui_state->judgement = "good";
       }

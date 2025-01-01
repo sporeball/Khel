@@ -37,6 +37,8 @@ KhelState::KhelState(SDL_Window* w, SDL_Renderer* r)
   performance_counter_value_at_game_start = SDL_GetPerformanceCounter();
   performance_frequency = SDL_GetPerformanceFrequency();
   offset = 0;
+  combo = 0;
+  lowest_judgement_in_combo = new Judgement;
   score = 0.0;
   max_score_per_object = 0.0;
   printf("performance frequency: %llu\n", performance_frequency);
@@ -137,6 +139,8 @@ int main() {
             state->chart_wrapper->chart_status = ChartStatus::PREVIEWING;
             state->objects->clear_all();
             state->groups->clear_all();
+            state->combo = 0;
+            state->lowest_judgement_in_combo = new Judgement;
             state->score = 0.0;
             state->max_score_per_object = 0.0;
           }

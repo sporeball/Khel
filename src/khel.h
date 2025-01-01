@@ -12,6 +12,7 @@ struct AutoVelocity;
 struct Chart;
 struct ChartWrapper;
 struct Groups;
+struct Judgement;
 struct KeyPressList;
 struct Objects;
 
@@ -28,6 +29,8 @@ struct KhelState {
   Uint64 performance_counter_value_at_game_start;
   Uint64 performance_frequency;
   int offset;
+  int combo;
+  Judgement* lowest_judgement_in_combo;
   double score;
   double max_score_per_object;
   KhelState(SDL_Window* w, SDL_Renderer* r);

@@ -11,6 +11,7 @@ extern const std::map<int, char> map_keys;
 
 struct KhelState;
 struct UiState;
+struct SyncedStruct;
 
 struct KeyPress {
   char key;
@@ -45,5 +46,6 @@ struct Judgement {
 };
 
 void try_hit(KhelState* state, UiState* ui_state);
+void judge(double ms, SyncedStruct* synced, KhelState* state, UiState* ui_state);
 
 #endif

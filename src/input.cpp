@@ -146,10 +146,9 @@ void try_hit(KhelState* state, UiState* ui_state) {
             state->chart_wrapper->synced_structs->vec.end()
           );
         } else if (chart_time > late_limit && synced->t != SyncedStructType::SS_TIMING_LINE && synced->judgement->t() == JudgementType::J_NONE) {
-          string s(synced->keys.begin(), synced->keys.end());
-          printf("missed %s\n", s.c_str());
-          synced->judgement = (new Judgement)->miss();
-          ui_state->judgement = "miss";
+          // string s(synced->keys.begin(), synced->keys.end());
+          // printf("missed %s\n", s.c_str());
+          judge(-10000.0, synced, state, ui_state); // miss
         }
         break;
     }
@@ -174,26 +173,23 @@ void try_hit(KhelState* state, UiState* ui_state) {
   }
   // figure out how accurate each one is
   for (auto match : matches) {
-    string s_keys(match->keys.begin(), match->keys.end());
+    // string s_keys(match->keys.begin(), match->keys.end());
     double match_exact_time = match->beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
     SyncedStructType t = match->t;
     if (t == SyncedStructType::SS_HOLD_TICK) {
-      printf("held %s\n", s_keys.c_str());
-      match->judgement = new Judgement(0.0);
+      // printf("held %s\n", s_keys.c_str());
+      judge(0.0, match, state, ui_state);
     } else {
-      double hit_time_ms = (chart_time - match_exact_time) * 1000.0;
-      if (hit_time_ms < 0.0) {
-        printf("hit %s %f ms early\n", s_keys.c_str(), std::abs(hit_time_ms));
-      } else if (hit_time_ms > 0.0) {
-        printf("hit %s %f ms late\n", s_keys.c_str(), hit_time_ms);
-      } else {
-        printf("hit %s exactly on time!\n", s_keys.c_str());
-      }
-      match->judgement = new Judgement(hit_time_ms);
+      double ms = (chart_time - match_exact_time) * 1000.0;
+      // if (hit_time_ms < 0.0) {
+      //   printf("hit %s %f ms early\n", s_keys.c_str(), std::abs(hit_time_ms));
+      // } else if (hit_time_ms > 0.0) {
+      //   printf("hit %s %f ms late\n", s_keys.c_str(), hit_time_ms);
+      // } else {
+      //   printf("hit %s exactly on time!\n", s_keys.c_str());
+      // }
+      judge(ms, match, state, ui_state);
     }
-    // update associated values
-    state->score += match->judgement->score(state->max_score_per_object);
-    ui_state->judgement = match->judgement->text();
     // remove from objects and groups (stops rendering)
     state->objects->destroy_instance(match->id);
     state->groups->remove_from_all_groups(match->id);
@@ -206,5 +202,32 @@ void try_hit(KhelState* state, UiState* ui_state) {
       ),
       state->chart_wrapper->synced_structs->vec.end()
     );
+  }
+}
+
+void judge(double ms, SyncedStruct* synced, KhelState* state, UiState* ui_state) {
+  Judgement* j = new Judgement(ms);
+  synced->judgement = j;
+  state->score += j->score(state->max_score_per_object);
+  ui_state->judgement = j->text();
+  // combo
+  if (j->t() == JudgementType::J_MISS) {
+    if (state->combo > 0) {
+      state->combo = -1;
+      state->lowest_judgement_in_combo = j;
+    } else {
+      state->combo -= 1;
+    }
+  } else {
+    if (state->combo > 0) {
+      state->combo += 1;
+    } else {
+      state->combo = 1;
+    }
+    if (state->lowest_judgement_in_combo->t() == JudgementType::J_MISS || state->lowest_judgement_in_combo->t() == JudgementType::J_NONE) {
+      state->lowest_judgement_in_combo = j;
+    } else if (j->t() > state->lowest_judgement_in_combo->t()) {
+      state->lowest_judgement_in_combo = j;
+    }
   }
 }

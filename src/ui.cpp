@@ -181,6 +181,7 @@ void UiState::draw_ui_previewing(KhelState* state) {
 // Draw the UI for when the current chart is playing.
 void UiState::draw_ui_playing(KhelState* state) {
   auto window_width = 800.0;
+  auto window_height = 600.0;
   double one_minute = 60.0;
   Bpm* bpm_at_zero = state->chart_wrapper->chart->metadata->bpms->at_exact_time(0.0);
   double one_beat_at_zero = one_minute / bpm_at_zero->value;
@@ -195,6 +196,13 @@ void UiState::draw_ui_playing(KhelState* state) {
   string score_text = format("{}", score_display_value);
   auto score_text_width = ImGui::CalcTextSize(score_text.c_str()).x;
   auto judgement_text_width = ImGui::CalcTextSize(judgement.c_str()).x;
+  string combo_text;
+  if (state->combo == 0) {
+    combo_text = "";
+  } else {
+    combo_text = format("{}", std::abs(state->combo));
+  }
+  auto combo_text_size = ImGui::CalcTextSize(score_text.c_str());
   ImGui::Dummy(ImVec2(0.0f, 20.0f));
   ImGui::SetCursorPosX((window_width - score_text_width) * 0.95f);
   ImGui::Text("%s", score_text.c_str());
@@ -215,6 +223,21 @@ void UiState::draw_ui_playing(KhelState* state) {
     judgement_color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
   }
   ImGui::TextColored(judgement_color, "%s", judgement.c_str());
+  ImVec4 combo_color;
+  if (state->lowest_judgement_in_combo->t() == JudgementType::J_MARVELOUS) {
+    combo_color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+  } else if (state->lowest_judgement_in_combo->t() == JudgementType::J_PERFECT) {
+    combo_color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+  } else if (state->lowest_judgement_in_combo->t() == JudgementType::J_GREAT) {
+    combo_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+  } else if (state->lowest_judgement_in_combo->t() == JudgementType::J_GOOD) {
+    combo_color = ImVec4(0.0f, 1.0f, 1.0f, 1.0f);
+  } else {
+    combo_color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
+  }
+  ImGui::SetCursorPosX((window_width - combo_text_size.x) * 0.5f);
+  ImGui::SetCursorPosY((window_height - combo_text_size.y) * 0.5f);
+  ImGui::TextColored(combo_color, "%s", combo_text.c_str());
 }
 // Draw the UI for when the current chart is done.
 void UiState::draw_ui_done(KhelState* state) {

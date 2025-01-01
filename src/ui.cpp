@@ -201,7 +201,20 @@ void UiState::draw_ui_playing(KhelState* state) {
   ImGui::SetCursorPosX((window_width - bpm_text_width) * 0.5f);
   ImGui::Text("%s", bpm_text.c_str());
   ImGui::SetCursorPosX((window_width - judgement_text_width) * 0.5f);
-  ImGui::Text("%s", judgement.c_str());
+  // ImGui::Text("%s", judgement.c_str());
+  ImVec4 judgement_color;
+  if (judgement == "marvelous!") {
+    judgement_color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+  } else if (judgement == "perfect") {
+    judgement_color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+  } else if (judgement == "great") {
+    judgement_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+  } else if (judgement == "good") {
+    judgement_color = ImVec4(0.0f, 1.0f, 1.0f, 1.0f);
+  } else {
+    judgement_color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
+  }
+  ImGui::TextColored(judgement_color, "%s", judgement.c_str());
 }
 // Draw the UI for when the current chart is done.
 void UiState::draw_ui_done(KhelState* state) {

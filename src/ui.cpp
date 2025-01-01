@@ -209,7 +209,6 @@ void UiState::draw_ui_playing(KhelState* state) {
   ImGui::SetCursorPosX((window_width - bpm_text_width) * 0.5f);
   ImGui::Text("%s", bpm_text.c_str());
   ImGui::SetCursorPosX((window_width - judgement_text_width) * 0.5f);
-  // ImGui::Text("%s", judgement.c_str());
   ImVec4 judgement_color;
   if (judgement == "marvelous!") {
     judgement_color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -242,7 +241,9 @@ void UiState::draw_ui_playing(KhelState* state) {
 // Draw the UI for when the current chart is done.
 void UiState::draw_ui_done(KhelState* state) {
   auto window_width = 800.0;
-  string score_text = format("score: {}", state->score);
+  int score_trunc = (int) trunc(state->score);
+  int score_display_value = score_trunc - (score_trunc % 10);
+  string score_text = format("score: {}", score_display_value);
   auto score_text_width = ImGui::CalcTextSize(score_text.c_str()).x;
   string press_any_key_text = "press any key to continue";
   auto press_any_key_text_width = ImGui::CalcTextSize(press_any_key_text.c_str()).x;

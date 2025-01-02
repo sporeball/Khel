@@ -178,6 +178,15 @@ Bpm* BpmList::at_exact_time(double exact_time) {
     }
   }
 }
+// Return the minimum Bpm from this BpmList.
+Bpm* BpmList::min() {
+  vector<double> dvec;
+  for (Bpm* ptr : vec) {
+    dvec.push_back(ptr->value);
+  }
+  int index = distance(dvec.begin(), min_element(dvec.begin(), dvec.end()));
+  return vec[index];
+}
 // Return the maximum Bpm from this BpmList.
 Bpm* BpmList::max() {
   vector<double> dvec;

@@ -45,6 +45,7 @@ struct BpmList {
   BpmList(std::string s);
   ~BpmList();
   Bpm* at_exact_time(double exact_time);
+  Bpm* min();
   Bpm* max();
   void print();
 };

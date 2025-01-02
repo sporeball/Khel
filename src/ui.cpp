@@ -162,6 +162,13 @@ void UiState::draw_ui_previewing(KhelState* state) {
     difficulties.data(),
     (int) difficulties.size()
   );
+  double min_bpm = chart->metadata->bpms->min()->value;
+  double max_bpm = chart->metadata->bpms->max()->value;
+  if (min_bpm == max_bpm) {
+    ImGui::Text("bpm: %.2f", min_bpm);
+  } else {
+    ImGui::Text("bpm: %.2f - %.2f", min_bpm, max_bpm);
+  }
   ImGui::SliderInt("AV", &state->av->value, 100, 500);
   ImGui::SliderInt("Offset", &state->offset, -100, 100);
   ImGui::PopItemWidth();

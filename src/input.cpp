@@ -79,7 +79,7 @@ JudgementType Judgement::t() {
     return JudgementType::J_GREAT;
   } else if (std::abs(ms) <= 135.0) {
     return JudgementType::J_GOOD;
-  } else if (std::abs(ms) <= 10000.0) {
+  } else if (std::abs(ms) < 100000.0) {
     return JudgementType::J_MISS;
   } else {
     return JudgementType::J_NONE;

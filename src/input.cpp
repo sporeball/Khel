@@ -201,6 +201,26 @@ void judge(double ms, SyncedStruct* synced, KhelState* state, UiState* ui_state)
   state->judgements.push_back(j);
   state->score += j->score(state->max_score_per_object);
   ui_state->judgement = j->text();
+  // counts
+  switch (j->t()) {
+    case JudgementType::J_MARVELOUS:
+      state->marvelous_count += 1;
+      break;
+    case JudgementType::J_PERFECT:
+      state->perfect_count += 1;
+      break;
+    case JudgementType::J_GREAT:
+      state->great_count += 1;
+      break;
+    case JudgementType::J_GOOD:
+      state->good_count += 1;
+      break;
+    case JudgementType::J_MISS:
+      state->miss_count += 1;
+      break;
+    default:
+      break;
+  }
   // combo
   if (j->t() == JudgementType::J_MISS) {
     if (state->combo > 0) {

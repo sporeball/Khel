@@ -31,6 +31,11 @@ struct KhelState {
   Uint64 performance_frequency;
   int offset;
   std::vector<Judgement*> judgements;
+  int marvelous_count;
+  int perfect_count;
+  int great_count;
+  int good_count;
+  int miss_count;
   int combo;
   Judgement* lowest_judgement_in_combo;
   double score;

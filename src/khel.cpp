@@ -37,6 +37,11 @@ KhelState::KhelState(SDL_Window* w, SDL_Renderer* r)
   performance_counter_value_at_game_start = SDL_GetPerformanceCounter();
   performance_frequency = SDL_GetPerformanceFrequency();
   offset = 0;
+  marvelous_count = 0;
+  perfect_count = 0;
+  great_count = 0;
+  good_count = 0;
+  miss_count = 0;
   combo = 0;
   lowest_judgement_in_combo = new Judgement;
   score = 0.0;
@@ -155,6 +160,11 @@ int main() {
             state->objects->clear_all();
             state->groups->clear_all();
             state->judgements.clear();
+            state->marvelous_count = 0;
+            state->perfect_count = 0;
+            state->great_count = 0;
+            state->good_count = 0;
+            state->miss_count = 0;
             state->combo = 0;
             state->lowest_judgement_in_combo = new Judgement;
             state->score = 0.0;

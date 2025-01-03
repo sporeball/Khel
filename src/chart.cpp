@@ -219,6 +219,10 @@ void Metadata::print() {
 SyncedStruct::~SyncedStruct() {
   keys.erase(keys.begin(), keys.end());
 }
+// Return a pointer to a clone of this SyncedStruct.
+SyncedStruct* SyncedStruct::clone() const {
+  return new SyncedStruct(*this);
+}
 // Return the column that this SyncedStruct is in.
 // Returns -1 if this SyncedStruct is a timing line.
 int SyncedStruct::lane() {
@@ -302,7 +306,9 @@ void SyncedStruct::print() {
 
 // Create a SyncedStructList from an existing one.
 SyncedStructList::SyncedStructList(SyncedStructList* l) {
-  vec = l->vec;
+  for (const auto& ss : l->vec) {
+    vec.push_back(ss->clone());
+  }
 }
 // Create a SyncedStructList from a string.
 SyncedStructList::SyncedStructList(string s) {

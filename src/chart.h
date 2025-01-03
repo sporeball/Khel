@@ -78,6 +78,7 @@ struct SyncedStruct {
   std::vector<char> keys;
   Judgement* judgement;
   ~SyncedStruct();
+  SyncedStruct* clone() const;
   int lane();
   int lane_x();
   std::string color();

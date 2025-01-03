@@ -192,6 +192,8 @@ int main() {
         if (chart_time >= 0.0 && Mix_PlayingMusic() == 0) {
           state->chart_wrapper->chart->audio->play();
         }
+        // try hold
+        try_hold(state, ui_state);
         // for each synced struct...
         for (auto synced : state->chart_wrapper->synced_structs->vec) {
           double synced_exact_time = synced->beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);

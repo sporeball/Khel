@@ -157,35 +157,35 @@ void try_hit(KhelState* state, UiState* ui_state) {
   // figure out how accurate each one is
   for (auto match : hit_objects_within_window) {
     double match_exact_time = match->beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
-    // SyncedStructType t = match->t;
-    // if (t == SyncedStructType::SS_HOLD_TICK) { judge(0.0, match, state, ui_state); } else {
     double ms = (chart_time - match_exact_time) * 1000.0;
     judge(ms, match, state, ui_state);
-    // }
     state->remove_synced_struct(match);
   }
 }
 
 void try_hold(KhelState* state, UiState* ui_state) {
   if (state->chart_wrapper->chart_status != ChartStatus::PLAYING) return;
-  // Uint64 now = state->now();
   double chart_time = state->chart_time();
   KeyPressList* keypresses = state->keypresses;
   SyncedStructList* synced_struct_list = state->chart_wrapper->synced_structs;
+  // for each synced struct...
   for (SyncedStruct* synced : synced_struct_list->vec) {
+    // it must be a hold tick
     if (synced->t != SyncedStructType::SS_HOLD_TICK) continue;
+    // it must be within the second half of the timing window
     double synced_exact_time = synced->beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
-    // double early_limit = synced_exact_time - 0.135;
     double late_limit = synced_exact_time + 0.135;
-    if (chart_time >= synced_exact_time && chart_time <= late_limit) {
-      if (all_of(synced->keys.begin(), synced->keys.end(), [keypresses](char c) {
-        KeyPress* keypress = keypresses->get(c);
-        if (keypress == nullptr) return false;
-        return true;
-      })) {
-        judge(0.0, synced, state, ui_state);
-      }
+    if (chart_time < synced_exact_time || chart_time > late_limit) continue;
+    // it must have all of its keys pressed right now
+    if (!all_of(synced->keys.begin(), synced->keys.end(), [keypresses](char c) {
+      KeyPress* keypress = keypresses->get(c);
+      if (keypress == nullptr) return false;
+      return true;
+    })) {
+      continue;
     }
+    judge(0.0, synced, state, ui_state);
+    state->remove_synced_struct(synced);
   }
 }
 

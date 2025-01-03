@@ -54,7 +54,7 @@ double KhelState::chart_time() {
   double one_beat_at_zero = 60.0 / bpm_at_zero->value; // seconds
   double start_time_seconds = as_seconds(chart_wrapper->start_time);
   double now_seconds = as_seconds(now());
-  return now_seconds - start_time_seconds - (one_beat_at_zero * 8.0) - ((double) offset / 1000.0);
+  return now_seconds - start_time_seconds - (one_beat_at_zero * 8.0);
 }
 // Completely remove a synced struct from the state.
 void KhelState::remove_synced_struct(SyncedStruct* synced) {

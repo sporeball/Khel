@@ -79,7 +79,7 @@ JudgementType Judgement::t() {
     return JudgementType::J_GREAT;
   } else if (std::abs(ms) <= 135.0) {
     return JudgementType::J_GOOD;
-  } else if (ms == -10000.0) {
+  } else if (std::abs(ms) <= 10000.0) {
     return JudgementType::J_MISS;
   } else {
     return JudgementType::J_NONE;
@@ -190,7 +190,13 @@ void try_hold(KhelState* state, UiState* ui_state) {
 }
 
 void judge(double ms, SyncedStruct* synced, KhelState* state, UiState* ui_state) {
+  ms += state->offset;
   Judgement* j = new Judgement(ms);
+  if (ms < 0.0) {
+    printf("judge: %f ms early\n", std::abs(ms));
+  } else {
+    printf("judge: %f ms late\n", ms);
+  }
   synced->judgement = j;
   state->judgements.push_back(j);
   state->score += j->score(state->max_score_per_object);

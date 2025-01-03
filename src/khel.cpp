@@ -159,6 +159,7 @@ int main() {
             state->lowest_judgement_in_combo = new Judgement;
             state->score = 0.0;
             state->max_score_per_object = 0.0;
+            ui_state->judgement = "";
           }
           switch (e.key.keysym.scancode) {
             case SDL_SCANCODE_1:

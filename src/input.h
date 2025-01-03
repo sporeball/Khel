@@ -46,6 +46,7 @@ struct Judgement {
 };
 
 void try_hit(KhelState* state, UiState* ui_state);
+void try_hold(KhelState* state, UiState* ui_state);
 void judge(double ms, SyncedStruct* synced, KhelState* state, UiState* ui_state);
 
 #endif

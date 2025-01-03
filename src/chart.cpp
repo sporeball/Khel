@@ -404,10 +404,6 @@ SyncedStructList::SyncedStructList(string s) {
       }
     }
   }
-  // reverse the whole vector, meaning that SyncedStructs which are timed later appear first
-  // if we do not do this, destroying one pair of SyncedStructs in the pure calculation group
-  // will quickly destroy them all
-  reverse(vec.begin(), vec.end());
 }
 // Destructor method.
 SyncedStructList::~SyncedStructList() {

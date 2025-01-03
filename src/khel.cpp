@@ -56,6 +56,21 @@ double KhelState::chart_time() {
   double now_seconds = as_seconds(now());
   return now_seconds - start_time_seconds - (one_beat_at_zero * 8.0) - ((double) offset / 1000.0);
 }
+// Completely remove a synced struct from the state.
+void KhelState::remove_synced_struct(SyncedStruct* synced) {
+  // remove from objects and groups (stops rendering)
+  objects->destroy_instance(synced->id);
+  groups->remove_from_all_groups(synced->id);
+  // remove from chart wrapper
+  chart_wrapper->synced_structs->vec.erase(
+    remove(
+      chart_wrapper->synced_structs->vec.begin(),
+      chart_wrapper->synced_structs->vec.end(),
+      synced
+    ),
+    chart_wrapper->synced_structs->vec.end()
+  );
+}
 
 int main() {
   SDL_Window* window = NULL;
@@ -153,6 +168,7 @@ int main() {
             default:
               if (!map_keys.contains(e.key.keysym.scancode)) break;
               state->keypresses->add(map_keys.at(e.key.keysym.scancode), state->now());
+              try_hit(state, ui_state);
               break;
           }
           break;
@@ -171,9 +187,23 @@ int main() {
     // 1000 tps
     if (state->now() - last_tick_1k >= un_1k) {
       if (state->chart_wrapper->chart_status == ChartStatus::PLAYING) {
+        double chart_time = state->chart_time();
         // play audio
-        if (state->chart_time() > 0.0 && Mix_PlayingMusic() == 0) {
+        if (chart_time >= 0.0 && Mix_PlayingMusic() == 0) {
           state->chart_wrapper->chart->audio->play();
+        }
+        // for each synced struct...
+        for (auto synced : state->chart_wrapper->synced_structs->vec) {
+          double synced_exact_time = synced->beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
+          double late_limit = synced_exact_time + 0.135;
+          // remove super late synced structs
+          if (chart_time > late_limit + 1.0) {
+            state->remove_synced_struct(synced);
+          }
+          // miss late synced structs
+          else if (chart_time > late_limit && synced->t != SyncedStructType::SS_TIMING_LINE && synced->judgement->t() == JudgementType::J_NONE) {
+            judge(-10000.0, synced, state, ui_state);
+          }
         }
         // end chart
         if (state->chart_wrapper->synced_structs->vec.size() == 0) {
@@ -181,7 +211,6 @@ int main() {
           state->chart_wrapper->chart_status = ChartStatus::DONE;
         }
       }
-      try_hit(state, ui_state);
       last_tick_1k = state->now();
     }
     // 240 tps

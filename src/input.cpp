@@ -1,4 +1,7 @@
+#include <algorithm>
 #include <map>
+#include <set>
+#include <string>
 #include <vector>
 #include <SDL.h>
 #include "chart.h"
@@ -123,85 +126,66 @@ void try_hit(KhelState* state, UiState* ui_state) {
   KeyPressList* keypresses = state->keypresses;
   SyncedStructList* synced_struct_list = state->chart_wrapper->synced_structs;
   vector<SyncedStruct*> hit_objects_within_window;
-  // determine which hit objects are within the timing window
-  for (auto synced : synced_struct_list->vec) {
-    switch (synced->t) {
-      default:
-        double synced_exact_time = synced->beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
-        double early_limit = synced_exact_time - 0.135;
-        double late_limit = synced_exact_time + 0.135;
-        if (chart_time >= early_limit && chart_time <= late_limit && synced->t != SyncedStructType::SS_TIMING_LINE) {
-          hit_objects_within_window.push_back(synced);
-        } else if (chart_time > late_limit + 1.0) {
-          // remove from objects and groups (stops rendering)
-          state->objects->destroy_instance(synced->id);
-          state->groups->remove_from_all_groups(synced->id);
-          // remove from chart wrapper
-          state->chart_wrapper->synced_structs->vec.erase(
-            remove(
-              state->chart_wrapper->synced_structs->vec.begin(),
-              state->chart_wrapper->synced_structs->vec.end(),
-              synced
-            ),
-            state->chart_wrapper->synced_structs->vec.end()
-          );
-        } else if (chart_time > late_limit && synced->t != SyncedStructType::SS_TIMING_LINE && synced->judgement->t() == JudgementType::J_NONE) {
-          // string s(synced->keys.begin(), synced->keys.end());
-          // printf("missed %s\n", s.c_str());
-          judge(-10000.0, synced, state, ui_state); // miss
-        }
-        break;
-    }
-  }
-  // determine which hits and holds are having their keys pressed right now
-  vector<SyncedStruct*> matches;
-  for (auto synced : hit_objects_within_window) {
+  // for each synced struct...
+  for (SyncedStruct* synced : synced_struct_list->vec) {
+    // it must be a hit or the start of a hold
+    if (synced->t == SyncedStructType::SS_TIMING_LINE || synced->t == SyncedStructType::SS_HOLD_TICK) continue;
+    // it must be within the timing window (+/-135ms)
     double synced_exact_time = synced->beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
-    SyncedStructType t = synced->t;
-    if (all_of(synced->keys.begin(), synced->keys.end(), [now, keypresses, chart_time, synced_exact_time, t](char c) {
+    double early_limit = synced_exact_time - 0.135;
+    double late_limit = synced_exact_time + 0.135;
+    if (chart_time < early_limit || chart_time > late_limit) continue;
+    // it must have all of its keys pressed right now
+    if (!all_of(synced->keys.begin(), synced->keys.end(), [now, keypresses](char c) {
       KeyPress* keypress = keypresses->get(c);
       if (keypress == nullptr) return false;
-      if (t == SyncedStructType::SS_HOLD_TICK) {
-        return chart_time > synced_exact_time;
-      } else {
-        double press_duration_seconds = as_seconds(now - keypress->press_time);
-        return press_duration_seconds <= 0.135;
-      }
+      double press_duration_seconds = as_seconds(now - keypress->press_time);
+      return press_duration_seconds <= 0.135;
     })) {
-      matches.push_back(synced);
+      continue;
     }
+    // no other synced structs in the vector should have the same keys as this one
+    if (any_of(hit_objects_within_window.begin(), hit_objects_within_window.end(), [synced](SyncedStruct* s) {
+      string s1(s->keys.begin(), s->keys.end());
+      string s2(synced->keys.begin(), synced->keys.end());
+      return s1 == s2;
+    })) {
+      continue;
+    }
+    hit_objects_within_window.push_back(synced);
   }
   // figure out how accurate each one is
-  for (auto match : matches) {
-    // string s_keys(match->keys.begin(), match->keys.end());
+  for (auto match : hit_objects_within_window) {
     double match_exact_time = match->beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
-    SyncedStructType t = match->t;
-    if (t == SyncedStructType::SS_HOLD_TICK) {
-      // printf("held %s\n", s_keys.c_str());
-      judge(0.0, match, state, ui_state);
-    } else {
-      double ms = (chart_time - match_exact_time) * 1000.0;
-      // if (hit_time_ms < 0.0) {
-      //   printf("hit %s %f ms early\n", s_keys.c_str(), std::abs(hit_time_ms));
-      // } else if (hit_time_ms > 0.0) {
-      //   printf("hit %s %f ms late\n", s_keys.c_str(), hit_time_ms);
-      // } else {
-      //   printf("hit %s exactly on time!\n", s_keys.c_str());
-      // }
-      judge(ms, match, state, ui_state);
+    // SyncedStructType t = match->t;
+    // if (t == SyncedStructType::SS_HOLD_TICK) { judge(0.0, match, state, ui_state); } else {
+    double ms = (chart_time - match_exact_time) * 1000.0;
+    judge(ms, match, state, ui_state);
+    // }
+    state->remove_synced_struct(match);
+  }
+}
+
+void try_hold(KhelState* state, UiState* ui_state) {
+  if (state->chart_wrapper->chart_status != ChartStatus::PLAYING) return;
+  // Uint64 now = state->now();
+  double chart_time = state->chart_time();
+  KeyPressList* keypresses = state->keypresses;
+  SyncedStructList* synced_struct_list = state->chart_wrapper->synced_structs;
+  for (SyncedStruct* synced : synced_struct_list->vec) {
+    if (synced->t != SyncedStructType::SS_HOLD_TICK) continue;
+    double synced_exact_time = synced->beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
+    // double early_limit = synced_exact_time - 0.135;
+    double late_limit = synced_exact_time + 0.135;
+    if (chart_time >= synced_exact_time && chart_time <= late_limit) {
+      if (all_of(synced->keys.begin(), synced->keys.end(), [keypresses](char c) {
+        KeyPress* keypress = keypresses->get(c);
+        if (keypress == nullptr) return false;
+        return true;
+      })) {
+        judge(0.0, synced, state, ui_state);
+      }
     }
-    // remove from objects and groups (stops rendering)
-    state->objects->destroy_instance(match->id);
-    state->groups->remove_from_all_groups(match->id);
-    // remove from chart wrapper
-    state->chart_wrapper->synced_structs->vec.erase(
-      remove(
-        state->chart_wrapper->synced_structs->vec.begin(),
-        state->chart_wrapper->synced_structs->vec.end(),
-        match
-      ),
-      state->chart_wrapper->synced_structs->vec.end()
-    );
   }
 }
 

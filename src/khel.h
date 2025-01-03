@@ -15,6 +15,7 @@ struct Groups;
 struct Judgement;
 struct KeyPressList;
 struct Objects;
+struct SyncedStruct;
 
 struct KhelState {
   SDL_Window* window;
@@ -37,6 +38,7 @@ struct KhelState {
   KhelState(SDL_Window* w, SDL_Renderer* r);
   Uint64 now();
   double chart_time();
+  void remove_synced_struct(SyncedStruct* synced);
 };
 
 #endif

@@ -37,14 +37,31 @@ double as_seconds(Uint64 t) {
 }
 
 // Get the names of all files in a directory as a `vector<string>`.
-vector<string> crawl(string path) {
+vector<string> filenames(string path) {
   vector<string> vec;
   set<filesystem::path, CaseInsensitive> sorted;
   for (const auto& entry : filesystem::directory_iterator(path)) {
-    sorted.insert(entry.path());
+    if (entry.is_regular_file()) {
+      sorted.insert(entry.path());
+    }
   }
   for (const auto& filename : sorted) {
     vec.push_back(filename.stem().string());
+  }
+  return vec;
+}
+
+// Get the names of all folders in a directory as a `vector<string>`.
+vector<string> foldernames(string path) {
+  vector<string> vec;
+  set<filesystem::path, CaseInsensitive> sorted;
+  for (const auto& entry : filesystem::directory_iterator(path)) {
+    if (entry.is_directory()) {
+      sorted.insert(entry.path());
+    }
+  }
+  for (const auto& foldername : sorted) {
+    vec.push_back(foldername.stem().string());
   }
   return vec;
 }

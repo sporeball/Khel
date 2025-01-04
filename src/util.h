@@ -11,7 +11,8 @@
 struct CaseInsensitive;
 
 double as_seconds(Uint64 t);
-std::vector<std::string> crawl(std::string path);
+std::vector<std::string> filenames(std::string path);
+std::vector<std::string> foldernames(std::string path);
 std::string read_file(std::string filename);
 std::vector<std::string> split(std::string s, std::string delimiter, int max_times = -1);
 

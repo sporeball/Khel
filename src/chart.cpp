@@ -610,10 +610,11 @@ vector<string> deserialize_kv(string raw) {
 }
 
 // Load all given charts into a vector<Chart*>.
-vector<Chart*> load_all_charts(vector<string> chart_names) {
+vector<Chart*> load_all_charts_in_folder(string folder_name) {
   vector<Chart*> charts;
+  vector<string> chart_names = filenames("charts/" + folder_name);
   for (string chart_name : chart_names) {
-    string chart_path = "charts/" + chart_name + ".khel";
+    string chart_path = "charts/" + folder_name + "/" + chart_name + ".khel";
     Chart* chart = new Chart(chart_path);
     charts.push_back(chart);
   }

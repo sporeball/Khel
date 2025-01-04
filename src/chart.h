@@ -145,6 +145,6 @@ struct ChartWrapper {
 
 std::string deserialize_group(std::string raw);
 std::vector<std::string> deserialize_kv(std::string raw);
-std::vector<Chart*> load_all_charts(std::vector<std::string> chart_names);
+std::vector<Chart*> load_all_charts_in_folder(std::string folder_name);
 
 #endif

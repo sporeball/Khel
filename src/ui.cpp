@@ -16,6 +16,7 @@ bool string_vector_getter(void* data, int n, const char** out_text);
 // Constructor method.
 UiState::UiState() {
   chart = nullptr;
+  folders_listbox_index = 0;
   charts_listbox_index = 0;
   difficulties_listbox_index = 0;
 }
@@ -121,18 +122,26 @@ void UiState::draw_ui(KhelState* state) {
 }
 // Draw the UI for when the current chart is previewing.
 void UiState::draw_ui_previewing(KhelState* state) {
+  // detect change to folder
+  if (state->folder_names[folders_listbox_index] != folder_name) {
+    folder_name = state->folder_names[folders_listbox_index];
+    state->chart_names = filenames("charts/" + folder_name);
+    charts_listbox_index = 0;
+  }
   // detect change to chart
-  if (state->charts[charts_listbox_index] != chart) {
+  if (state->chart_names[charts_listbox_index] != chart_name) {
     if (chart != nullptr) {
       chart->audio->fade_out();
     }
+    chart_name = state->chart_names[charts_listbox_index];
+    state->charts = load_all_charts_in_folder(folder_name);
     chart = state->charts[charts_listbox_index];
-    difficulties = chart->difficulties->names();
+    state->difficulty_names = chart->difficulties->names();
     difficulties_listbox_index = 0;
   }
   // detect change to difficulty
-  if (difficulties[difficulties_listbox_index] != difficulty) {
-    difficulty = difficulties[difficulties_listbox_index];
+  if (state->difficulty_names[difficulties_listbox_index] != difficulty_name) {
+    difficulty_name = state->difficulty_names[difficulties_listbox_index];
   }
   // fade in
   Beat* preview = chart->metadata->preview;
@@ -149,6 +158,14 @@ void UiState::draw_ui_previewing(KhelState* state) {
   }
   ImGui::PushItemWidth(200.0);
   ImGui::ListBox(
+    "##Folder",
+    &folders_listbox_index,
+    string_vector_getter,
+    state->folder_names.data(),
+    (int) state->folder_names.size()
+  );
+  ImGui::SameLine();
+  ImGui::ListBox(
     "##Chart",
     &charts_listbox_index,
     string_vector_getter,
@@ -159,8 +176,8 @@ void UiState::draw_ui_previewing(KhelState* state) {
     "##Difficulty",
     &difficulties_listbox_index,
     string_vector_getter,
-    difficulties.data(),
-    (int) difficulties.size()
+    state->difficulty_names.data(),
+    (int) state->difficulty_names.size()
   );
   double min_bpm = chart->metadata->bpms->min()->value;
   double max_bpm = chart->metadata->bpms->max()->value;
@@ -175,7 +192,7 @@ void UiState::draw_ui_previewing(KhelState* state) {
   if (ImGui::Button("Play")) {
     chart->audio->stop();
     state->chart_wrapper->load_chart(chart);
-    state->chart_wrapper->play_chart(difficulty, state->renderer, state->objects, state->groups);
+    state->chart_wrapper->play_chart(difficulty_name, state->renderer, state->objects, state->groups);
     state->chart_wrapper->start_time = state->now();
     state->max_score_per_object = 1000000.0 / (double) state->groups->get_group("hit_objects")->size();
     // create objects

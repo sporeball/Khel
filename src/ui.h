@@ -14,9 +14,11 @@
 
 struct UiState {
   Chart* chart;
-  std::vector<std::string> difficulties;
-  std::string difficulty;
+  std::string folder_name;
+  std::string chart_name;
+  std::string difficulty_name;
   std::string judgement;
+  int folders_listbox_index;
   int charts_listbox_index;
   int difficulties_listbox_index;
   void draw_ui(KhelState* state);

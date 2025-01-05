@@ -126,6 +126,7 @@ void UiState::draw_ui_previewing(KhelState* state) {
   if (state->folder_names[folders_listbox_index] != folder_name) {
     folder_name = state->folder_names[folders_listbox_index];
     state->chart_names = filenames("charts/" + folder_name);
+    state->charts = load_all_charts_in_folder(folder_name);
     charts_listbox_index = 0;
   }
   // detect change to chart
@@ -134,7 +135,6 @@ void UiState::draw_ui_previewing(KhelState* state) {
       chart->audio->fade_out();
     }
     chart_name = state->chart_names[charts_listbox_index];
-    state->charts = load_all_charts_in_folder(folder_name);
     chart = state->charts[charts_listbox_index];
     state->difficulty_names = chart->difficulties->names();
     difficulties_listbox_index = 0;

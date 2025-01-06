@@ -25,8 +25,6 @@ KhelState::KhelState(SDL_Window* w, SDL_Renderer* r)
 {
   objects = new Objects;
   groups = new Groups;
-  printf("loading charts...\n");
-  folder_names = foldernames("charts");
   chart_wrapper = new ChartWrapper;
   chart_wrapper->chart_status = ChartStatus::PREVIEWING;
   av = new AutoVelocity;
@@ -133,6 +131,7 @@ int main() {
 
   KhelState* state = new KhelState(window, renderer);
   UiState* ui_state = new UiState;
+  ui_state->folder_names = foldernames("charts");
 
   printf("all done\n");
 

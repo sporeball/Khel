@@ -22,9 +22,6 @@ struct KhelState {
   SDL_Renderer* renderer;
   Objects* objects;
   Groups* groups;
-  std::vector<std::string> folder_names;
-  std::vector<std::string> chart_names;
-  std::vector<std::string> difficulty_names;
   std::vector<Chart*> charts;
   ChartWrapper* chart_wrapper;
   AutoVelocity* av;

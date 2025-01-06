@@ -123,25 +123,25 @@ void UiState::draw_ui(KhelState* state) {
 // Draw the UI for when the current chart is previewing.
 void UiState::draw_ui_previewing(KhelState* state) {
   // detect change to folder
-  if (state->folder_names[folders_listbox_index] != folder_name) {
-    folder_name = state->folder_names[folders_listbox_index];
-    state->chart_names = filenames("charts/" + folder_name);
+  if (folder_names[folders_listbox_index] != folder_name) {
+    folder_name = folder_names[folders_listbox_index];
+    chart_names = filenames("charts/" + folder_name);
     state->charts = load_all_charts_in_folder(folder_name);
     charts_listbox_index = 0;
   }
   // detect change to chart
-  if (state->chart_names[charts_listbox_index] != chart_name) {
+  if (chart_names[charts_listbox_index] != chart_name) {
     if (chart != nullptr) {
       chart->audio->fade_out();
     }
-    chart_name = state->chart_names[charts_listbox_index];
+    chart_name = chart_names[charts_listbox_index];
     chart = state->charts[charts_listbox_index];
-    state->difficulty_names = chart->difficulties->names();
+    difficulty_names = chart->difficulties->names();
     difficulties_listbox_index = 0;
   }
   // detect change to difficulty
-  if (state->difficulty_names[difficulties_listbox_index] != difficulty_name) {
-    difficulty_name = state->difficulty_names[difficulties_listbox_index];
+  if (difficulty_names[difficulties_listbox_index] != difficulty_name) {
+    difficulty_name = difficulty_names[difficulties_listbox_index];
   }
   // fade in
   Beat* preview = chart->metadata->preview;
@@ -161,23 +161,23 @@ void UiState::draw_ui_previewing(KhelState* state) {
     "##Folder",
     &folders_listbox_index,
     string_vector_getter,
-    state->folder_names.data(),
-    (int) state->folder_names.size()
+    folder_names.data(),
+    (int) folder_names.size()
   );
   ImGui::SameLine();
   ImGui::ListBox(
     "##Chart",
     &charts_listbox_index,
     string_vector_getter,
-    state->chart_names.data(),
-    (int) state->chart_names.size()
+    chart_names.data(),
+    (int) chart_names.size()
   );
   ImGui::ListBox(
     "##Difficulty",
     &difficulties_listbox_index,
     string_vector_getter,
-    state->difficulty_names.data(),
-    (int) state->difficulty_names.size()
+    difficulty_names.data(),
+    (int) difficulty_names.size()
   );
   double min_bpm = chart->metadata->bpms->min()->value;
   double max_bpm = chart->metadata->bpms->max()->value;

@@ -14,8 +14,11 @@
 
 struct UiState {
   Chart* chart;
+  std::vector<std::string> folder_names;
   std::string folder_name;
+  std::vector<std::string> chart_names;
   std::string chart_name;
+  std::vector<std::string> difficulty_names;
   std::string difficulty_name;
   std::string judgement;
   int folders_listbox_index;

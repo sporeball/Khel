@@ -188,6 +188,7 @@ void UiState::draw_ui_previewing(KhelState* state) {
   }
   ImGui::SliderInt("AV", &state->av->value, 100, 500);
   ImGui::SliderInt("Offset", &state->offset, -100, 100);
+  ImGui::SliderInt("Visual Offset", &state->visual_offset, -10, 10);
   ImGui::PopItemWidth();
   if (ImGui::Button("Play")) {
     chart->audio->stop();

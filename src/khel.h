@@ -29,6 +29,7 @@ struct KhelState {
   Uint64 performance_counter_value_at_game_start;
   Uint64 performance_frequency;
   int offset;
+  int visual_offset;
   std::vector<Judgement*> judgements;
   int marvelous_count;
   int perfect_count;

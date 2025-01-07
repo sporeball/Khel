@@ -33,6 +33,7 @@ KhelState::KhelState(SDL_Window* w, SDL_Renderer* r)
   performance_counter_value_at_game_start = SDL_GetPerformanceCounter();
   performance_frequency = SDL_GetPerformanceFrequency();
   offset = 0;
+  visual_offset = 0;
   marvelous_count = 0;
   perfect_count = 0;
   great_count = 0;
@@ -249,6 +250,7 @@ int main() {
           y += distance;
           y -= 120.0; // correct
           y *= -1.0; // coordinates are flipped
+          y += state->visual_offset; // negative = sooner
           if (t == SyncedStructType::SS_TIMING_LINE) {
             y += 16.0;
           }

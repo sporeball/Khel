@@ -16,6 +16,10 @@
 #define KHEL_VERSION_MAJOR 0
 #define KHEL_VERSION_MINOR 0
 #define KHEL_VERSION_PATCH 0
+#define KHEL_MIN_FPS 120
+#define KHEL_MAX_FPS 1000
+#define KHEL_UPDATE_INTERVAL (1.0 / KHEL_MAX_FPS)
+#define KHEL_MAX_CYCLES (KHEL_MAX_FPS / KHEL_MIN_FPS)
 
 using namespace std;
 
@@ -76,6 +80,155 @@ void KhelState::remove_synced_struct(SyncedStruct* synced) {
   );
 }
 
+void poll_event(SDL_Event* e, int* quit, KhelState* state, UiState* ui_state) {
+  while (SDL_PollEvent(e)) {
+    ImGui_ImplSDL2_ProcessEvent(e);
+    switch (e->type) {
+      case SDL_QUIT:
+        *quit = 1;
+        break;
+      case SDL_KEYDOWN:
+        if (state->chart_wrapper->chart_status == ChartStatus::DONE) {
+          state->chart_wrapper->chart_status = ChartStatus::PREVIEWING;
+          state->objects->clear_all();
+          state->groups->clear_all();
+          state->judgements.clear();
+          state->countdown_ticks = 0;
+          state->marvelous_count = 0;
+          state->perfect_count = 0;
+          state->great_count = 0;
+          state->good_count = 0;
+          state->miss_count = 0;
+          state->combo = 0;
+          state->lowest_judgement_in_combo = new Judgement;
+          state->score = 0.0;
+          state->max_score_per_object = 0.0;
+          ui_state->judgement = "";
+        }
+        switch (e->key.keysym.scancode) {
+          case SDL_SCANCODE_1:
+            state->chart_wrapper->chart->print();
+            printf("\n");
+            break;
+          default:
+            if (!map_keys.contains(e->key.keysym.scancode)) break;
+            state->keypresses->add(map_keys.at(e->key.keysym.scancode), state->now());
+            try_hit(state, ui_state);
+            break;
+        }
+        break;
+      case SDL_KEYUP:
+        switch (e->key.keysym.scancode) {
+          default:
+            if (!map_keys.contains(e->key.keysym.scancode)) break;
+            state->keypresses->remove(map_keys.at(e->key.keysym.scancode));
+            break;
+        }
+        break;
+    }
+  }
+}
+
+void try_count(KhelState* state) {
+  Bpm* bpm_at_zero = state->chart_wrapper->chart->metadata->bpms->at_exact_time(0.0);
+  double one_beat_at_zero = 60.0 / bpm_at_zero->value; // seconds
+  double chart_time = state->chart_time();
+  // count 3
+  if (chart_time + (one_beat_at_zero * 4.0) >= 0.0 && state->countdown_ticks == 0) {
+    state->sounds->play_sound("assets/count.wav");
+    state->countdown_ticks += 1;
+  }
+  // count 2
+  if (chart_time + (one_beat_at_zero * 3.0) >= 0.0 && state->countdown_ticks == 1) {
+    state->sounds->play_sound("assets/count.wav");
+    state->countdown_ticks += 1;
+  }
+  // count 1
+  if (chart_time + (one_beat_at_zero * 2.0) >= 0.0 && state->countdown_ticks == 2) {
+    state->sounds->play_sound("assets/count.wav");
+    state->countdown_ticks += 1;
+  }
+  // count 0
+  if (chart_time + one_beat_at_zero >= 0.0 && state->countdown_ticks == 3) {
+    state->sounds->play_sound("assets/count.wav");
+    state->countdown_ticks += 1;
+  }
+}
+
+void try_play_audio(KhelState* state) {
+  if (state->chart_time() >= 0.0 && Mix_PlayingMusic() == 0) {
+    state->chart_wrapper->chart->audio->play();
+  }
+}
+
+void try_update_synced_structs(KhelState* state, UiState* ui_state) {
+  double chart_time = state->chart_time();
+  // for each synced struct...
+  for (auto synced : state->chart_wrapper->synced_structs->vec) {
+    double synced_exact_time = synced->beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
+    double late_limit = synced_exact_time + 0.135;
+    // remove super late synced structs
+    if (chart_time > late_limit + 1.0) {
+      state->remove_synced_struct(synced);
+    }
+    // miss late synced structs
+    else if (chart_time > late_limit && synced->t != SyncedStructType::SS_TIMING_LINE && synced->judgement->t() == JudgementType::J_NONE) {
+      judge(-10000.0, synced, state, ui_state);
+    }
+  }
+}
+
+void try_end_chart(KhelState* state) {
+  if (state->chart_wrapper->synced_structs->vec.size() == 0) {
+    state->chart_wrapper->chart->audio->fade_out();
+    state->chart_wrapper->chart_status = ChartStatus::DONE;
+  }
+}
+
+void update_object_instances(KhelState* state) {
+  Group* pure_calculation = state->groups->get_group("pure_calculation");
+  SyncedStructList* synced_struct_list = state->chart_wrapper->synced_structs;
+  for (int i = 0; i < pure_calculation->size(); i++) {
+    int id = pure_calculation->instances[i];
+    SyncedStruct* synced;
+    for (auto ss : synced_struct_list->vec) {
+      if (ss->id == id) {
+        synced = ss;
+      }
+    }
+    double y = 0.0;
+    Beat* beat = synced->beat;
+    SyncedStructType t = synced->t;
+    // we are essentially getting the synced object's position at exact time zero...
+    double exact_time_from_beat = beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
+    double position_at_exact_time_zero = state->av->over_time(exact_time_from_beat, state->chart_wrapper->chart->metadata->bpms);
+    y -= position_at_exact_time_zero;
+    // and translating it by the distance that it travels from zero to now
+    double distance = state->av->over_time(state->chart_time(), state->chart_wrapper->chart->metadata->bpms);
+    y += distance;
+    y -= 120.0; // correct
+    y *= -1.0; // coordinates are flipped
+    y += state->visual_offset; // negative = sooner
+    if (t == SyncedStructType::SS_TIMING_LINE) {
+      y += 16.0;
+    }
+    Instance* ptr = state->objects->get_instance(id);
+    ptr->move(ptr->x, y);
+  }
+}
+
+void draw(KhelState* state, UiState* ui_state) {
+  ui_state->draw_ui(state);
+  ImGui::Render();
+  ImGuiIO& io = ImGui::GetIO();
+  SDL_RenderSetScale(state->renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
+  SDL_SetRenderDrawColor(state->renderer, (Uint8) 0, (Uint8) 0, (Uint8) 0, (Uint8) 255);
+  SDL_RenderClear(state->renderer);
+  ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), state->renderer);
+  state->objects->draw_all_objects(state->renderer);
+  SDL_RenderPresent(state->renderer);
+}
+
 int main() {
   SDL_Window* window = NULL;
   SDL_Renderer* renderer = NULL;
@@ -98,8 +251,8 @@ int main() {
   }
 
   printf("creating renderer...\n");
-  int renderer_flags_accelerated = SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC;
-  int renderer_flags_software = SDL_RENDERER_SOFTWARE | SDL_RENDERER_PRESENTVSYNC;
+  int renderer_flags_accelerated = SDL_RENDERER_ACCELERATED;
+  int renderer_flags_software = SDL_RENDERER_SOFTWARE;
   renderer = SDL_CreateRenderer(window, -1, renderer_flags_accelerated);
   if (renderer == NULL) {
     printf("could not create accelerated renderer!: %s\n", SDL_GetError());
@@ -138,161 +291,35 @@ int main() {
 
   printf("all done\n");
 
-  Uint64 un_240 = state->performance_frequency / 240;
-  Uint64 un_1k = state->performance_frequency / 1000;
-  Uint64 last_tick_240 = state->performance_counter_value_at_game_start;
-  Uint64 last_tick_1k = state->performance_counter_value_at_game_start;
+  double last_frame_time = 0.0;
+  double cycles_left_over = 0.0;
+  double now;
+  double update_iterations;
 
   SDL_Event e;
   int quit = 0;
+
   while (quit == 0) {
-    // then = now;
-    // double frame_time = (double) (now - then) / (double) performance_frequency;
-    while (SDL_PollEvent(&e)) {
-      ImGui_ImplSDL2_ProcessEvent(&e);
-      switch (e.type) {
-        case SDL_QUIT:
-          quit = 1;
-          break;
-        case SDL_KEYDOWN:
-          if (state->chart_wrapper->chart_status == ChartStatus::DONE) {
-            state->chart_wrapper->chart_status = ChartStatus::PREVIEWING;
-            state->objects->clear_all();
-            state->groups->clear_all();
-            state->judgements.clear();
-            state->countdown_ticks = 0;
-            state->marvelous_count = 0;
-            state->perfect_count = 0;
-            state->great_count = 0;
-            state->good_count = 0;
-            state->miss_count = 0;
-            state->combo = 0;
-            state->lowest_judgement_in_combo = new Judgement;
-            state->score = 0.0;
-            state->max_score_per_object = 0.0;
-            ui_state->judgement = "";
-          }
-          switch (e.key.keysym.scancode) {
-            case SDL_SCANCODE_1:
-              state->chart_wrapper->chart->print();
-              printf("\n");
-              break;
-            default:
-              if (!map_keys.contains(e.key.keysym.scancode)) break;
-              state->keypresses->add(map_keys.at(e.key.keysym.scancode), state->now());
-              try_hit(state, ui_state);
-              break;
-          }
-          break;
-        case SDL_KEYUP:
-          switch (e.key.keysym.scancode) {
-            default:
-              if (!map_keys.contains(e.key.keysym.scancode)) break;
-              state->keypresses->remove(map_keys.at(e.key.keysym.scancode));
-              break;
-          }
-          break;
-      }
+    poll_event(&e, &quit, state, ui_state);
+    now = (double) state->now();
+    update_iterations = (now - last_frame_time) + cycles_left_over;
+    if (update_iterations > KHEL_MAX_CYCLES * KHEL_UPDATE_INTERVAL) {
+      update_iterations = KHEL_MAX_CYCLES * KHEL_UPDATE_INTERVAL;
     }
-    ui_state->draw_ui(state);
-    // updates
-    // 1000 tps
-    if (state->now() - last_tick_1k >= un_1k) {
+    while (update_iterations > KHEL_UPDATE_INTERVAL) {
+      update_iterations -= KHEL_UPDATE_INTERVAL;
       if (state->chart_wrapper->chart_status == ChartStatus::PLAYING) {
-        Bpm* bpm_at_zero = state->chart_wrapper->chart->metadata->bpms->at_exact_time(0.0);
-        double one_beat_at_zero = 60.0 / bpm_at_zero->value; // seconds
-        double chart_time = state->chart_time();
-        // count 3
-        if (chart_time + (one_beat_at_zero * 4.0) >= 0.0 && state->countdown_ticks == 0) {
-          state->sounds->play_sound("assets/count.wav");
-          state->countdown_ticks += 1;
-        }
-        // count 2
-        if (chart_time + (one_beat_at_zero * 3.0) >= 0.0 && state->countdown_ticks == 1) {
-          state->sounds->play_sound("assets/count.wav");
-          state->countdown_ticks += 1;
-        }
-        // count 1
-        if (chart_time + (one_beat_at_zero * 2.0) >= 0.0 && state->countdown_ticks == 2) {
-          state->sounds->play_sound("assets/count.wav");
-          state->countdown_ticks += 1;
-        }
-        // count 0
-        if (chart_time + one_beat_at_zero >= 0.0 && state->countdown_ticks == 3) {
-          state->sounds->play_sound("assets/count.wav");
-          state->countdown_ticks += 1;
-        }
-        // play audio
-        if (chart_time >= 0.0 && Mix_PlayingMusic() == 0) {
-          state->chart_wrapper->chart->audio->play();
-        }
-        // try hold
+        try_count(state);
+        try_play_audio(state);
         try_hold(state, ui_state);
-        // for each synced struct...
-        for (auto synced : state->chart_wrapper->synced_structs->vec) {
-          double synced_exact_time = synced->beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
-          double late_limit = synced_exact_time + 0.135;
-          // remove super late synced structs
-          if (chart_time > late_limit + 1.0) {
-            state->remove_synced_struct(synced);
-          }
-          // miss late synced structs
-          else if (chart_time > late_limit && synced->t != SyncedStructType::SS_TIMING_LINE && synced->judgement->t() == JudgementType::J_NONE) {
-            judge(-10000.0, synced, state, ui_state);
-          }
-        }
-        // end chart
-        if (state->chart_wrapper->synced_structs->vec.size() == 0) {
-          state->chart_wrapper->chart->audio->fade_out();
-          state->chart_wrapper->chart_status = ChartStatus::DONE;
-        }
+        try_update_synced_structs(state, ui_state);
+        try_end_chart(state);
+        update_object_instances(state);
       }
-      last_tick_1k = state->now();
     }
-    // 240 tps
-    if (state->now() - last_tick_240 >= un_240) {
-      if (state->chart_wrapper->chart_status == ChartStatus::PLAYING) {
-        // Group* hits_and_holds = groups->get_group("hits_and_holds");
-        Group* pure_calculation = state->groups->get_group("pure_calculation");
-        SyncedStructList* synced_struct_list = state->chart_wrapper->synced_structs;
-        for (int i = 0; i < pure_calculation->size(); i++) {
-          int id = pure_calculation->instances[i];
-          SyncedStruct* synced;
-          for (auto ss : synced_struct_list->vec) {
-            if (ss->id == id) {
-              synced = ss;
-            }
-          }
-          double y = 0.0;
-          Beat* beat = synced->beat;
-          SyncedStructType t = synced->t;
-          // we are essentially getting the synced object's position at exact time zero...
-          double exact_time_from_beat = beat->to_exact_time(state->chart_wrapper->chart->metadata->bpms);
-          double position_at_exact_time_zero = state->av->over_time(exact_time_from_beat, state->chart_wrapper->chart->metadata->bpms);
-          y -= position_at_exact_time_zero;
-          // and translating it by the distance that it travels from zero to now
-          double distance = state->av->over_time(state->chart_time(), state->chart_wrapper->chart->metadata->bpms);
-          y += distance;
-          y -= 120.0; // correct
-          y *= -1.0; // coordinates are flipped
-          y += state->visual_offset; // negative = sooner
-          if (t == SyncedStructType::SS_TIMING_LINE) {
-            y += 16.0;
-          }
-          Instance* ptr = state->objects->get_instance(id);
-          ptr->move(ptr->x, y);
-        }
-      }
-      last_tick_240 = state->now();
-    }
-    ImGui::Render();
-    ImGuiIO& io = ImGui::GetIO();
-    SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
-    SDL_SetRenderDrawColor(renderer, (Uint8) 0, (Uint8) 0, (Uint8) 0, (Uint8) 255);
-    SDL_RenderClear(renderer);
-    ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
-    state->objects->draw_all_objects(renderer);
-    SDL_RenderPresent(renderer);
+    cycles_left_over = update_iterations;
+    last_frame_time = now;
+    draw(state, ui_state);
   }
 
   ImGui_ImplSDLRenderer2_Shutdown();

@@ -17,6 +17,7 @@ struct KeyPressList;
 struct Objects;
 struct Sounds;
 struct SyncedStruct;
+struct UiState;
 
 struct KhelState {
   SDL_Window* window;
@@ -48,5 +49,13 @@ struct KhelState {
   double chart_time();
   void remove_synced_struct(SyncedStruct* synced);
 };
+
+void poll_event(SDL_Event* e, int* quit, KhelState* state, UiState* ui_state);
+void try_count(KhelState* state);
+void try_play_audio(KhelState* state);
+void try_update_synced_structs(KhelState* state, UiState* ui_state);
+void try_end_chart(KhelState* state);
+void update_object_instances(KhelState* state);
+void draw(KhelState* state, UiState* ui_state);
 
 #endif

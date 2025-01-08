@@ -122,12 +122,14 @@ void UiState::draw_ui(KhelState* state) {
 }
 // Draw the UI for when the current chart is previewing.
 void UiState::draw_ui_previewing(KhelState* state) {
+  int any_listbox_has_changed = 0;
   // detect change to folder
   if (folder_names[folders_listbox_index] != folder_name) {
     folder_name = folder_names[folders_listbox_index];
     chart_names = filenames("charts/" + folder_name);
     state->charts = load_all_charts_in_folder(folder_name);
     charts_listbox_index = 0;
+    any_listbox_has_changed = 1;
   }
   // detect change to chart
   if (chart_names[charts_listbox_index] != chart_name) {
@@ -138,10 +140,37 @@ void UiState::draw_ui_previewing(KhelState* state) {
     chart = state->charts[charts_listbox_index];
     difficulty_names = chart->difficulties->names();
     difficulties_listbox_index = 0;
+    any_listbox_has_changed = 1;
   }
   // detect change to difficulty
   if (difficulty_names[difficulties_listbox_index] != difficulty_name) {
     difficulty_name = difficulty_names[difficulties_listbox_index];
+    any_listbox_has_changed = 1;
+  }
+  // detect change to any
+  if (any_listbox_has_changed == 1) {
+    // color counts
+    color_counts = vector<int>(7, 0);
+    SyncedStructList* synced_struct_list = new SyncedStructList(chart->get_difficulty(difficulty_name)->synced_struct_list);
+    for (SyncedStruct* synced : synced_struct_list->vec) {
+      if (synced->t == SyncedStructType::SS_TIMING_LINE) continue;
+      string color = synced->color();
+      if (color == "red") {
+        color_counts[0] += 1;
+      } else if (color == "green") {
+        color_counts[1] += 1;
+      } else if (color == "yellow") {
+        color_counts[2] += 1;
+      } else if (color == "blue") {
+        color_counts[3] += 1;
+      } else if (color == "magenta") {
+        color_counts[4] += 1;
+      } else if (color == "cyan") {
+        color_counts[5] += 1;
+      } else {
+        color_counts[6] += 1;
+      }
+    }
   }
   // fade in
   Beat* preview = chart->metadata->preview;
@@ -156,6 +185,7 @@ void UiState::draw_ui_previewing(KhelState* state) {
   if (Mix_GetMusicPosition(chart->audio->music) >= preview_end_seconds - 0.5 && chart->audio->fading_out == 0) {
     chart->audio->fade_out();
   }
+  // list boxes
   ImGui::PushItemWidth(200.0);
   ImGui::ListBox(
     "##Folder",
@@ -179,6 +209,7 @@ void UiState::draw_ui_previewing(KhelState* state) {
     difficulty_names.data(),
     (int) difficulty_names.size()
   );
+  // bpm
   double min_bpm = chart->metadata->bpms->min()->value;
   double max_bpm = chart->metadata->bpms->max()->value;
   if (min_bpm == max_bpm) {
@@ -186,10 +217,40 @@ void UiState::draw_ui_previewing(KhelState* state) {
   } else {
     ImGui::Text("bpm: %.2f - %.2f", min_bpm, max_bpm);
   }
+  // color counts
+  ImGui::Text("objects: ");
+  ImGui::SameLine(0.0f, 0.0f);
+  ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%d", color_counts[0]);
+  ImGui::SameLine(0.0f, 0.0f);
+  ImGui::Text("/");
+  ImGui::SameLine(0.0f, 0.0f);
+  ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%d", color_counts[1]);
+  ImGui::SameLine(0.0f, 0.0f);
+  ImGui::Text("/");
+  ImGui::SameLine(0.0f, 0.0f);
+  ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%d", color_counts[2]);
+  ImGui::SameLine(0.0f, 0.0f);
+  ImGui::Text("/");
+  ImGui::SameLine(0.0f, 0.0f);
+  ImGui::TextColored(ImVec4(0.0f, 0.0f, 1.0f, 1.0f), "%d", color_counts[3]);
+  ImGui::SameLine(0.0f, 0.0f);
+  ImGui::Text("/");
+  ImGui::SameLine(0.0f, 0.0f);
+  ImGui::TextColored(ImVec4(1.0f, 0.0f, 1.0f, 1.0f), "%d", color_counts[4]);
+  ImGui::SameLine(0.0f, 0.0f);
+  ImGui::Text("/");
+  ImGui::SameLine(0.0f, 0.0f);
+  ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%d", color_counts[5]);
+  ImGui::SameLine(0.0f, 0.0f);
+  ImGui::Text("/");
+  ImGui::SameLine(0.0f, 0.0f);
+  ImGui::Text("%d", color_counts[6]);
+  // settings
   ImGui::SliderInt("AV", &state->av->value, 100, 500);
   ImGui::SliderInt("Offset", &state->offset, -100, 100);
   ImGui::SliderInt("Visual Offset", &state->visual_offset, -10, 10);
   ImGui::PopItemWidth();
+  // play button
   if (ImGui::Button("Play")) {
     chart->audio->stop();
     state->chart_wrapper->load_chart(chart);

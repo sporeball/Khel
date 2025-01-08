@@ -20,6 +20,7 @@ struct UiState {
   std::string chart_name;
   std::vector<std::string> difficulty_names;
   std::string difficulty_name;
+  std::vector<int> color_counts;
   std::string judgement;
   int folders_listbox_index;
   int charts_listbox_index;

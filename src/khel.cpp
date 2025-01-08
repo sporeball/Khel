@@ -25,6 +25,7 @@ KhelState::KhelState(SDL_Window* w, SDL_Renderer* r)
 {
   objects = new Objects;
   groups = new Groups;
+  sounds = new Sounds;
   chart_wrapper = new ChartWrapper;
   chart_wrapper->chart_status = ChartStatus::PREVIEWING;
   av = new AutoVelocity;
@@ -34,6 +35,7 @@ KhelState::KhelState(SDL_Window* w, SDL_Renderer* r)
   performance_frequency = SDL_GetPerformanceFrequency();
   offset = 0;
   visual_offset = 0;
+  countdown_ticks = 0;
   marvelous_count = 0;
   perfect_count = 0;
   great_count = 0;
@@ -158,6 +160,7 @@ int main() {
             state->objects->clear_all();
             state->groups->clear_all();
             state->judgements.clear();
+            state->countdown_ticks = 0;
             state->marvelous_count = 0;
             state->perfect_count = 0;
             state->great_count = 0;
@@ -196,7 +199,29 @@ int main() {
     // 1000 tps
     if (state->now() - last_tick_1k >= un_1k) {
       if (state->chart_wrapper->chart_status == ChartStatus::PLAYING) {
+        Bpm* bpm_at_zero = state->chart_wrapper->chart->metadata->bpms->at_exact_time(0.0);
+        double one_beat_at_zero = 60.0 / bpm_at_zero->value; // seconds
         double chart_time = state->chart_time();
+        // count 3
+        if (chart_time + (one_beat_at_zero * 4.0) >= 0.0 && state->countdown_ticks == 0) {
+          state->sounds->play_sound("assets/count.wav");
+          state->countdown_ticks += 1;
+        }
+        // count 2
+        if (chart_time + (one_beat_at_zero * 3.0) >= 0.0 && state->countdown_ticks == 1) {
+          state->sounds->play_sound("assets/count.wav");
+          state->countdown_ticks += 1;
+        }
+        // count 1
+        if (chart_time + (one_beat_at_zero * 2.0) >= 0.0 && state->countdown_ticks == 2) {
+          state->sounds->play_sound("assets/count.wav");
+          state->countdown_ticks += 1;
+        }
+        // count 0
+        if (chart_time + one_beat_at_zero >= 0.0 && state->countdown_ticks == 3) {
+          state->sounds->play_sound("assets/count.wav");
+          state->countdown_ticks += 1;
+        }
         // play audio
         if (chart_time >= 0.0 && Mix_PlayingMusic() == 0) {
           state->chart_wrapper->chart->audio->play();

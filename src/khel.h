@@ -15,6 +15,7 @@ struct Groups;
 struct Judgement;
 struct KeyPressList;
 struct Objects;
+struct Sounds;
 struct SyncedStruct;
 
 struct KhelState {
@@ -22,6 +23,7 @@ struct KhelState {
   SDL_Renderer* renderer;
   Objects* objects;
   Groups* groups;
+  Sounds* sounds;
   std::vector<Chart*> charts;
   ChartWrapper* chart_wrapper;
   AutoVelocity* av;
@@ -30,6 +32,7 @@ struct KhelState {
   Uint64 performance_frequency;
   int offset;
   int visual_offset;
+  int countdown_ticks;
   std::vector<Judgement*> judgements;
   int marvelous_count;
   int perfect_count;

@@ -32,6 +32,33 @@ int Sound::playing() {
   return Mix_Playing(channel);
 }
 
+// Destructor method.
+Sounds::~Sounds() {
+  for (auto it = sounds.begin(); it != sounds.end(); ) {
+    it->second->~Sound();
+    it = sounds.erase(it);
+  }
+}
+// Create a new sound and return a pointer to it.
+Sound* Sounds::create_sound(string filename) {
+  Sound* sound = new Sound(filename);
+  pair<string, Sound*> p(filename, sound);
+  sounds.insert(p);
+  return sound;
+}
+// Play the sound with the given filename.
+// Creates the sound if it does not exist.
+void Sounds::play_sound(string filename) {
+  unordered_map<string, Sound*>::const_iterator got = sounds.find(filename);
+  Sound* sound;
+  if (got == sounds.end()) {
+    sound = create_sound(filename);
+  } else {
+    sound = got->second;
+  }
+  sound->play();
+}
+
 // Constructor method.
 Music::Music(string s) {
   music = Mix_LoadMUS(s.c_str());

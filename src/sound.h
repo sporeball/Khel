@@ -2,6 +2,7 @@
 #define KHEL_SOUND_H
 
 #include <string>
+#include <unordered_map>
 #include <SDL_mixer.h>
 
 struct Sound {
@@ -12,6 +13,14 @@ struct Sound {
   void play();
   void stop();
   int playing();
+};
+
+// A collection of all sounds created by Khel.
+struct Sounds {
+  std::unordered_map<std::string, Sound*> sounds;
+  ~Sounds();
+  Sound* create_sound(std::string filename);
+  void play_sound(std::string filename);
 };
 
 struct Music {

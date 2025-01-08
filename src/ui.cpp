@@ -192,7 +192,8 @@ void UiState::draw_ui_previewing(KhelState* state) {
     &folders_listbox_index,
     string_vector_getter,
     folder_names.data(),
-    (int) folder_names.size()
+    (int) folder_names.size(),
+    5
   );
   ImGui::SameLine();
   ImGui::ListBox(
@@ -200,7 +201,8 @@ void UiState::draw_ui_previewing(KhelState* state) {
     &charts_listbox_index,
     string_vector_getter,
     chart_names.data(),
-    (int) chart_names.size()
+    (int) chart_names.size(),
+    5
   );
   ImGui::ListBox(
     "##Difficulty",

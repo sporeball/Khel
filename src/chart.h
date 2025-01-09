@@ -124,7 +124,6 @@ struct Chart {
 enum ChartStatus {
   DONE,
   NONE,
-  PAUSED,
   PLAYING,
   PREVIEWING,
 };

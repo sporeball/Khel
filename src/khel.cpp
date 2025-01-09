@@ -79,6 +79,22 @@ void KhelState::remove_synced_struct(SyncedStruct* synced) {
     chart_wrapper->synced_structs->vec.end()
   );
 }
+// Reset the state.
+void KhelState::reset() {
+  objects->clear_all();
+  groups->clear_all();
+  judgements.clear();
+  countdown_ticks = 0;
+  marvelous_count = 0;
+  perfect_count = 0;
+  great_count = 0;
+  good_count = 0;
+  miss_count = 0;
+  combo = 0;
+  lowest_judgement_in_combo = new Judgement;
+  score = 0.0;
+  max_score_per_object = 0.0;
+}
 
 void poll_event(SDL_Event* e, int* quit, KhelState* state, UiState* ui_state) {
   while (SDL_PollEvent(e)) {
@@ -88,22 +104,16 @@ void poll_event(SDL_Event* e, int* quit, KhelState* state, UiState* ui_state) {
         *quit = 1;
         break;
       case SDL_KEYDOWN:
-        if (state->chart_wrapper->chart_status == ChartStatus::DONE) {
+        if (state->chart_wrapper->chart_status == ChartStatus::PLAYING && e->key.keysym.scancode == SDL_SCANCODE_ESCAPE) {
+          state->reset();
+          ui_state->reset();
+          state->chart_wrapper->chart->audio->fade_out();
           state->chart_wrapper->chart_status = ChartStatus::PREVIEWING;
-          state->objects->clear_all();
-          state->groups->clear_all();
-          state->judgements.clear();
-          state->countdown_ticks = 0;
-          state->marvelous_count = 0;
-          state->perfect_count = 0;
-          state->great_count = 0;
-          state->good_count = 0;
-          state->miss_count = 0;
-          state->combo = 0;
-          state->lowest_judgement_in_combo = new Judgement;
-          state->score = 0.0;
-          state->max_score_per_object = 0.0;
-          ui_state->judgement = "";
+        }
+        if (state->chart_wrapper->chart_status == ChartStatus::DONE) {
+          state->reset();
+          ui_state->reset();
+          state->chart_wrapper->chart_status = ChartStatus::PREVIEWING;
         }
         switch (e->key.keysym.scancode) {
           case SDL_SCANCODE_1:

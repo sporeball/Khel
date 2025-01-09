@@ -200,8 +200,6 @@ void Groups::remove_from_all_groups(int id) {
 // Clear all groups, leaving no IDs.
 void Groups::clear_all() {
   for (auto group : groups) {
-    for (auto id : group.second->instances) {
-      group.second->remove(id);
-    }
+    group.second->instances.clear();
   }
 }

@@ -384,6 +384,10 @@ void UiState::draw_ui_done(KhelState* state) {
   ImGui::SetCursorPosX((window_width - press_any_key_text_width) * 0.5f);
   ImGui::Text("%s", press_any_key_text.c_str());
 }
+// Reset the UI state.
+void UiState::reset() {
+  judgement = "";
+}
 
 // This function can be pased to ImGui::ListBox in order to use a vector<string> with it.
 // See https://github.com/ocornut/imgui/issues/911.

@@ -29,6 +29,7 @@ struct UiState {
   void draw_ui_previewing(KhelState* state);
   void draw_ui_playing(KhelState* state);
   void draw_ui_done(KhelState* state);
+  void reset();
   UiState();
 };
 

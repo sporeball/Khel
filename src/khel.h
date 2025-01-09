@@ -48,6 +48,7 @@ struct KhelState {
   Uint64 now();
   double chart_time();
   void remove_synced_struct(SyncedStruct* synced);
+  void reset();
 };
 
 void poll_event(SDL_Event* e, int* quit, KhelState* state, UiState* ui_state);

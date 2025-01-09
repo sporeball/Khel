@@ -35,11 +35,7 @@ struct KhelState {
   int visual_offset;
   int countdown_ticks;
   std::vector<Judgement*> judgements;
-  int marvelous_count;
-  int perfect_count;
-  int great_count;
-  int good_count;
-  int miss_count;
+  std::vector<int> judgement_counts;
   int combo;
   Judgement* lowest_judgement_in_combo;
   double score;

@@ -40,11 +40,7 @@ KhelState::KhelState(SDL_Window* w, SDL_Renderer* r)
   offset = 0;
   visual_offset = 0;
   countdown_ticks = 0;
-  marvelous_count = 0;
-  perfect_count = 0;
-  great_count = 0;
-  good_count = 0;
-  miss_count = 0;
+  judgement_counts = vector<int>(5, 0);
   combo = 0;
   lowest_judgement_in_combo = new Judgement;
   score = 0.0;
@@ -83,13 +79,9 @@ void KhelState::remove_synced_struct(SyncedStruct* synced) {
 void KhelState::reset() {
   objects->clear_all();
   groups->clear_all();
-  judgements.clear();
   countdown_ticks = 0;
-  marvelous_count = 0;
-  perfect_count = 0;
-  great_count = 0;
-  good_count = 0;
-  miss_count = 0;
+  judgements.clear();
+  judgement_counts = vector<int>(5, 0);
   combo = 0;
   lowest_judgement_in_combo = new Judgement;
   score = 0.0;

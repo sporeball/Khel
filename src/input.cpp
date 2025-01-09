@@ -204,19 +204,19 @@ void judge(double ms, SyncedStruct* synced, KhelState* state, UiState* ui_state)
   // counts
   switch (j->t()) {
     case JudgementType::J_MARVELOUS:
-      state->marvelous_count += 1;
+      state->judgement_counts[0] += 1;
       break;
     case JudgementType::J_PERFECT:
-      state->perfect_count += 1;
+      state->judgement_counts[1] += 1;
       break;
     case JudgementType::J_GREAT:
-      state->great_count += 1;
+      state->judgement_counts[2] += 1;
       break;
     case JudgementType::J_GOOD:
-      state->good_count += 1;
+      state->judgement_counts[3] += 1;
       break;
     case JudgementType::J_MISS:
-      state->miss_count += 1;
+      state->judgement_counts[4] += 1;
       break;
     default:
       break;

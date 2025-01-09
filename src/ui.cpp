@@ -364,23 +364,23 @@ void UiState::draw_ui_done(KhelState* state) {
   ImGui::SetCursorPosX(window_width * 0.2f);
   ImGui::Text("marvelous");
   ImGui::SameLine(0.0f, 0.0f);
-  ImGui::Text(": %d", state->marvelous_count);
+  ImGui::Text(": %d", state->judgement_counts[0]);
   ImGui::SetCursorPosX(window_width * 0.2f);
   ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "perfect");
   ImGui::SameLine(0.0f, 0.0f);
-  ImGui::Text(": %d", state->perfect_count);
+  ImGui::Text(": %d", state->judgement_counts[1]);
   ImGui::SetCursorPosX(window_width * 0.2f);
   ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "great");
   ImGui::SameLine(0.0f, 0.0f);
-  ImGui::Text(": %d", state->great_count);
+  ImGui::Text(": %d", state->judgement_counts[2]);
   ImGui::SetCursorPosX(window_width * 0.2f);
   ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "good");
   ImGui::SameLine(0.0f, 0.0f);
-  ImGui::Text(": %d", state->good_count);
+  ImGui::Text(": %d", state->judgement_counts[3]);
   ImGui::SetCursorPosX(window_width * 0.2f);
   ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "miss");
   ImGui::SameLine(0.0f, 0.0f);
-  ImGui::Text(": %d", state->miss_count);
+  ImGui::Text(": %d", state->judgement_counts[4]);
   ImGui::SetCursorPosX((window_width - press_any_key_text_width) * 0.5f);
   ImGui::Text("%s", press_any_key_text.c_str());
 }

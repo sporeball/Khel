@@ -335,9 +335,7 @@ void UiState::draw_ui_done(KhelState* state) {
   auto score_text_width = ImGui::CalcTextSize(score_text.c_str()).x;
   string result_text;
   ImVec4 result_text_color;
-  if (any_of(state->judgements.begin(), state->judgements.end(), [](Judgement* j) {
-    return j->t() == JudgementType::J_MISS;
-  })) {
+  if (state->judgement_counts[4] > 0) {
     result_text = "clear";
     result_text_color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
   } else if (state->lowest_judgement_in_combo->t() == JudgementType::J_GOOD) {

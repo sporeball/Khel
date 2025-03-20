@@ -566,7 +566,7 @@ void ChartWrapper::play_chart(string difficulty, SDL_Renderer* renderer, Objects
     int id;
     // create object instance
     if (synced->t == SyncedStructType::SS_TIMING_LINE) {
-      id = objects->create_instance(synced->asset(), 0.0, 1000.0, 100, 1, renderer);
+      id = objects->create_instance(synced->asset(), 0.0, 1000.0, 25, 1, renderer);
       groups->insert_into_group("pure_calculation", id);
       groups->insert_into_group("timing_lines", id);
     } else {

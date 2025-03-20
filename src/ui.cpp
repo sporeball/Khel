@@ -260,7 +260,7 @@ void UiState::draw_ui_previewing(KhelState* state) {
     state->chart_wrapper->start_time = state->now();
     state->max_score_per_object = 1000000.0 / (double) state->groups->get_group("hit_objects")->size();
     // create objects
-    state->objects->create_instance("assets/line_white.png", 0.0, 120.0, 100, 1, state->renderer);
+    state->objects->create_instance("assets/line_white.png", 0.0, 120.0, 25, 1, state->renderer);
     for (int i = 0; i < 10; i++) {
       state->objects->create_instance("assets/circle_gray.png", ((40 * i) - 180) + 400, 104.0, 32, 32, state->renderer);
     }
